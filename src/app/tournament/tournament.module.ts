@@ -22,6 +22,8 @@ import { TournamentDivisionEditComponent } from './tournament-division-edit.comp
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { RatingModule } from 'primeng/rating';
 
 @NgModule({
   declarations: [
@@ -45,7 +47,9 @@ import Aura from '@primeng/themes/aura';
     TableModule,
     DatePickerModule,
     InputNumberModule,
-    InputMaskModule
+    InputMaskModule,
+    ToggleSwitchModule,
+    RatingModule
   ],
   providers: [
     provideAnimationsAsync(),
