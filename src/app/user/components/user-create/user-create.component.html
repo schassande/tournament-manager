@@ -1,0 +1,63 @@
+<div>
+@if (user) {
+<ion-list style="max-width: 500px;margin: 0 auto;">
+  <ion-item>
+      <ion-label *ngIf="!user.photoUrl">No photo</ion-label>
+      <ion-avatar item-start *ngIf="user.photoUrl"><img src="{{user.photoUrl}}"></ion-avatar>
+  </ion-item>
+
+  <ion-item>
+      <ion-input label="First name" type="text" [(ngModel)]="user.firstName" (ionBlur)="updateShortName()" id="firstName" name="firstName" min="3" max="15" #firstName="ngModel" required autofocus tabindex="1"></ion-input>
+  </ion-item>
+  <ion-item no-lines *ngIf="firstName.invalid && (firstName.dirty || firstName.touched)" class="alert alert-danger">
+      <div *ngIf="firstName.hasError">A value is required.</div>
+  </ion-item>
+
+  <ion-item>
+      <ion-input label="Last name" type="text" [(ngModel)]="user.lastName" (ionBlur)="updateShortName()" id="lastName" name="lastName" min="3" max="25" #lastName="ngModel" required tabindex="2"></ion-input>
+  </ion-item>
+  <ion-item no-lines *ngIf="lastName.invalid && (lastName.dirty || lastName.touched)" class="alert alert-danger">
+      <div *ngIf="lastName.hasError">A value is required.</div>
+  </ion-item>
+
+  <ion-item>
+      <ion-input label="Short Name" type="text" [(ngModel)]="user.shortName" id="shortName" name="shortName" min="3" max="5" #shortName="ngModel" required tabindex="3"></ion-input>
+  </ion-item>
+  <ion-item no-lines *ngIf="shortName.invalid && (shortName.dirty || shortName.touched)" class="alert alert-danger">
+      <div *ngIf="shortName.hasError">A value is required.</div>
+  </ion-item>
+
+  <ion-item>
+      <ion-input label="Email" type="text" [(ngModel)]="user.email" id="email" name="email" min="3" max="30" #email="ngModel" required tabindex="4"></ion-input>
+  </ion-item>
+  <ion-item no-lines *ngIf="email.invalid && (email.dirty || email.touched)" class="alert alert-danger">
+      <div *ngIf="email.hasError">A value is required.</div>
+  </ion-item>
+
+  <ion-item>
+      <ion-input label="Password" type="password" [(ngModel)]="password" max="15" tabindex="5"></ion-input>
+  </ion-item>
+  <ion-item>
+      <ion-select label="Region" [(ngModel)]="user.regionId" required="true">
+        @for(region of regions$ |async; track region.id) {
+          <ion-select-option [value]="region.id">{{region.name}}</ion-select-option>
+        }
+      </ion-select>
+  </ion-item>
+  <ion-item>
+      <ion-select label="Country" [(ngModel)]="user.countryId" interface="action-sheet" required="true">
+          <ion-select-option *ngFor="let country of region?.countries" value="{{country.id}}">{{country.name}}</ion-select-option>
+      </ion-select>
+  </ion-item>
+  <ion-item>
+      <ion-select label="Gender" [(ngModel)]="user.gender">
+          <ion-select-option value="F">Female</ion-select-option>
+          <ion-select-option value="M">Male</ion-select-option>
+      </ion-select>
+  </ion-item>
+</ion-list>
+<div style="text-align: center; margin-top: 20px;">
+  <ion-button shape="round" size="large" (click)="save()">Save</ion-button>
+</div>
+}
+</div>

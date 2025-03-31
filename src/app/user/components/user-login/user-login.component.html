@@ -1,0 +1,36 @@
+<div class="ion-padding">
+  <div class="loginPanel">
+    <form>
+      <ion-list>
+          <ion-item>
+              <ion-input name="email" label="Email" type="email" [(ngModel)]="email" tabindex="1"></ion-input>
+          </ion-item>
+          <ion-item>
+              <ion-input name="password" label="Password" type="password" [(ngModel)]="password" tabindex="2"></ion-input>
+          </ion-item>
+          <ion-item style="text-align: right;">
+              <ion-checkbox scope="end" [checked]="savePassword ">Remember on this device&nbsp;</ion-checkbox>
+          </ion-item>
+      </ion-list>
+    </form>
+    <div style="text-align: right; margin-right: 10px;">
+        <a (click)="resetPassword() ">Reset password</a> &nbsp;
+    </div>
+    <div *ngIf="errors && errors.length " style="margin: 5px 20px;">
+        <div style="color: red; ">Errors:</div>
+        <ul>
+            <li *ngFor="let error of errors ">{{error}}</li>
+        </ul>
+    </div>
+    <div style="text-align: center; margin-top: 20px;">
+        <ion-button shape="round" color="success" size="large"  [routerLink]="['/user/create']">
+            <ion-icon name="add" scope="start"></ion-icon>
+            Register
+        </ion-button>
+        <ion-button shape="round" size="large" (click)="login()">
+            <ion-icon name="log-in" scope="start"></ion-icon>
+            Login
+        </ion-button>
+    </div>
+  </div>
+</div>

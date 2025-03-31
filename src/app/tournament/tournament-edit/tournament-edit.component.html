@@ -1,0 +1,35 @@
+<div *ngIf="tournament()" class="page">
+
+  <h2>General information</h2>
+  <div class="p-field">
+    <label for="name">Name</label>
+    <input id="name" type="text" pInputText [(ngModel)]="tournament()!.name" required />
+  </div>
+  <div class="p-field">
+    <label for="description">Description</label>
+    <textarea id="description" pInputTextarea [(ngModel)]="tournament()!.description"></textarea>
+  </div>
+
+  <h2>Tournament fields</h2>
+  <app-tournament-fields-edit
+    [(fields)]="tournament()!.fields">
+  </app-tournament-fields-edit>
+
+  <h2>Tournament days</h2>
+  <app-tournament-days-edit
+    [tournament]="tournament()!"
+    (startDateChange)="onTournamentStartDateChange($event)"
+    (endDateChange)="onTournamentEndDateChange($event)">
+  </app-tournament-days-edit>
+
+  <h2>Divisions and teams</h2>
+  <app-tournament-divisions-edit
+    [(divisions)]="tournament()!.divisions">
+  </app-tournament-divisions-edit>
+
+  <div class="p-field" style="margin-top: 20px;">
+    <button pButton type="button" label="Save" icon="pi pi-check" (click)="save()"></button>
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>

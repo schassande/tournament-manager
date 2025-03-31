@@ -1,0 +1,31 @@
+<div>
+  <p-button label="New Tournament" (click)="createTournament()"/>
+  @let ts = tournaments | async;
+  @if(ts) {
+    <p-table [value]="ts" [tableStyle]="{ 'min-width': '50rem' }" size="small" showGridlines stripedRows
+    [paginator]="true"
+    [rows]="10"
+    >
+      <ng-template #header>
+          <tr>
+              <th>Region</th>
+              <th>Country</th>
+              <th>Name</th>
+              <th pSortableColumn="code">Begin date <p-sortIcon field="startDate" /></th>
+              <th>End date</th>
+          </tr>
+      </ng-template>
+      <ng-template #body let-tournament>
+          <tr>
+            <td>{{ tournament.regionId }}</td>
+            <td>{{ tournament.countryId }}</td>
+            <td>{{ tournament.name }}</td>
+            <td>{{ tournament.startDate }}</td>
+            <td>{{ tournament.endDate }}</td>
+          </tr>
+      </ng-template>
+    </p-table>
+  }
+</div>
+
+

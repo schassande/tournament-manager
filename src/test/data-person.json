@@ -1,0 +1,172 @@
+{
+    "persons": [
+      {
+        "id": 1,
+        "lastChange": 1709891200,
+        "userAuthId": "auth_001",
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe@example.com",
+        "phone": "+33123456789",
+        "shortName": "JDoe",
+        "referee": {
+          "badge": "National",
+          "upgrade": "International"
+        },
+        "countryId": 1,
+        "regionId": 1
+      },
+      {
+        "id": 2,
+        "lastChange": 1709891210,
+        "userAuthId": "auth_002",
+        "firstName": "Alice",
+        "lastName": "Smith",
+        "email": "alice.smith@example.com",
+        "phone": "+442012345678",
+        "shortName": "ASmith",
+        "refereeCoach": {
+          "badge": "Regional",
+          "upgrade": "National"
+        },
+        "countryId": 2,
+        "regionId": 1
+      },
+      {
+        "id": 3,
+        "lastChange": 1709891220,
+        "userAuthId": "auth_003",
+        "firstName": "Hiroshi",
+        "lastName": "Tanaka",
+        "email": "hiroshi.tanaka@example.jp",
+        "phone": "",
+        "shortName": "HTanaka",
+        "referee": {
+          "badge": "International",
+          "upgrade": ""
+        },
+        "countryId": 3,
+        "regionId": 4
+      },
+      {
+        "id": 4,
+        "lastChange": 1709891230,
+        "userAuthId": "auth_004",
+        "firstName": "Emma",
+        "lastName": "Johnson",
+        "email": "emma.johnson@example.com",
+        "phone": "+16501234567",
+        "shortName": "EJohnson",
+        "countryId": 4,
+        "regionId": 5
+      },
+      {
+        "id": 5,
+        "lastChange": 1709891240,
+        "userAuthId": "auth_005",
+        "firstName": "Carlos",
+        "lastName": "Garcia",
+        "email": "carlos.garcia@example.com",
+        "phone": "+34123456789",
+        "shortName": "CGarcia",
+        "referee": {
+          "badge": "Regional",
+          "upgrade": "National"
+        },
+        "countryId": 5,
+        "regionId": 5
+      },
+      {
+        "id": 6,
+        "lastChange": 1709891250,
+        "userAuthId": "auth_006",
+        "firstName": "Sophie",
+        "lastName": "Martin",
+        "email": "sophie.martin@example.fr",
+        "phone": "+33698765432",
+        "shortName": "SMartin",
+        "refereeCoach": {
+          "badge": "National",
+          "upgrade": "International"
+        },
+        "countryId": 6,
+        "regionId": 1
+      },
+      {
+        "id": 7,
+        "lastChange": 1709891260,
+        "userAuthId": "auth_007",
+        "firstName": "Liam",
+        "lastName": "O'Connor",
+        "email": "liam.oconnor@example.ie",
+        "phone": "+353876543210",
+        "shortName": "LOConnor",
+        "countryId": 7,
+        "regionId": 1
+      },
+      {
+        "id": 8,
+        "lastChange": 1709891270,
+        "userAuthId": "auth_008",
+        "firstName": "Wei",
+        "lastName": "Zhang",
+        "email": "wei.zhang@example.cn",
+        "phone": "",
+        "shortName": "WZhang",
+        "referee": {
+          "badge": "International",
+          "upgrade": ""
+        },
+        "countryId": 8,
+        "regionId": 4
+      },
+      {
+        "id": 9,
+        "lastChange": 1709891280,
+        "userAuthId": "auth_009",
+        "firstName": "Oliver",
+        "lastName": "Brown",
+        "email": "oliver.brown@example.com.au",
+        "phone": "+61412345678",
+        "shortName": "OBrown",
+        "refereeCoach": {
+          "badge": "Regional",
+          "upgrade": "National"
+        },
+        "countryId": 9,
+        "regionId": 2
+      },
+      {
+        "id": 10,
+        "lastChange": 1709891290,
+        "userAuthId": "auth_010",
+        "firstName": "Emma",
+        "lastName": "Williams",
+        "email": "emma.williams@example.nz",
+        "phone": "+64219876543",
+        "shortName": "EWilliams",
+        "countryId": 10,
+        "regionId": 3
+      }
+    ],
+    "regions": [
+      { "id": 1, "name": "Europe", "shortName": "EU", "countries": [1, 2, 6, 7] },
+      { "id": 2, "name": "Australia", "shortName": "AU", "countries": [9] },
+      { "id": 3, "name": "New Zealand", "shortName": "NZ", "countries": [10] },
+      { "id": 4, "name": "Asia", "shortName": "AS", "countries": [3, 8] },
+      { "id": 5, "name": "America", "shortName": "AM", "countries": [4, 5] }
+    ],
+    "countries": [
+      { "id": 1, "name": "France", "shortName": "FR" },
+      { "id": 2, "name": "United Kingdom", "shortName": "UK" },
+      { "id": 3, "name": "Japan", "shortName": "JP" },
+      { "id": 4, "name": "USA", "shortName": "US" },
+      { "id": 5, "name": "Spain", "shortName": "ES" },
+      { "id": 6, "name": "Germany", "shortName": "DE" },
+      { "id": 7, "name": "Ireland", "shortName": "IE" },
+      { "id": 8, "name": "China", "shortName": "CN" },
+      { "id": 9, "name": "Australia", "shortName": "AU" },
+      { "id": 10, "name": "New Zealand", "shortName": "NZ" }
+    ]
+  }
+  
