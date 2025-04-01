@@ -66,8 +66,8 @@ export class TournamentEditComponent  implements OnInit {
       countryId: '',
       regionId: '',
       fields: [
-        { id: '1', name: 'Field 1', video: false, quality: 1 },
-        { id: '2', name: 'Field 2', video: false, quality: 1 }
+        { id: '1', name: 'Field 1', video: false, quality: 1, orderView: 1 },
+        { id: '2', name: 'Field 2', video: false, quality: 1, orderView: 2 }
       ],
       days: [{
         id: '1',

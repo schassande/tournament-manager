@@ -37,7 +37,8 @@ export interface Tournament extends PersistentObject{
 export interface Field extends WithId{
   name: string;
   video: boolean;
-  quality: FieldQuality
+  quality: FieldQuality;
+  orderView: number;
 }
 export type FieldQuality = 1 | 2 | 3;
 
