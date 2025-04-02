@@ -1,9 +1,11 @@
 import { UserService } from './../../shared/services/user.service';
-import { Day, Field, PartDay, Person, Timeslot, Tournament } from './../../shared/data.model';
+import { Country, Person, Region, Timeslot, Tournament } from './../../shared/data.model';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TournamentService } from '../../shared/services/tournament.service';
 import { DateService } from 'src/app/shared/services/date.service';
+import { RegionService } from 'src/app/shared/services/region.service';
+import { map } from 'rxjs';
 
 @Component({
   standalone: false,
@@ -18,9 +20,12 @@ export class TournamentEditComponent  implements OnInit {
   private router = inject(Router);
   private userService = inject(UserService);
   private dateService = inject(DateService);
+  private regionService = inject(RegionService);
 
   // Properties
   tournament = signal<Tournament|null>(null);
+  tournamentCountry = signal<string>('');
+  countries: string[] = [];
 
   ngOnInit() {
     this.userService.currentUser$$.subscribe((currentUser) => {
@@ -29,6 +34,14 @@ export class TournamentEditComponent  implements OnInit {
   }
 
   private init(currentUser: Person) {
+    this.regionService.all().pipe(
+      map(regions => {
+        this.countries = regions.map(region => region.countries.map(country => country.name))
+          .reduce((cur, prev) => cur.concat(prev));
+        //console.log('regions', regions);
+        //console.log('countries', this.countries);
+      })
+    ).subscribe()
     const tournamentId = this.activatedRoute.snapshot.paramMap.get('id') as string;
     if (tournamentId) {
       this.tournamentService.byId(tournamentId).subscribe(t => {
@@ -42,7 +55,26 @@ export class TournamentEditComponent  implements OnInit {
       this.tournament.set(this.buildDefaultTournament(currentUser));
     }
   }
-
+  countrySelected(countryName: string) {
+    this.regionService.all().pipe(
+      map((regions:Region[]) => {
+        let country: Country|undefined;
+        const region: Region|undefined = regions.find(region => {
+          country = region.countries.find(country => country.name === countryName);
+          return country;
+        });
+        if (region && country) {
+          this.tournament.update(tournament => {
+            console.debug('Country selected: ', country, region);
+            tournament!.countryId = country!.id;
+            tournament!.regionId = region!.id;
+            //this.tournamentCountry.set(countryName);
+            return tournament;
+          });
+        }
+      })
+    ).subscribe()
+  }
   private buildDefaultTournament(currentUser: Person): Tournament {
     const startDateEpoch = this.dateService.setTime(this.dateService.tomorrow(), 9, 0);
     const defaultDuration = 50*60*1000;

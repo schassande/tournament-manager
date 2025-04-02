@@ -90,7 +90,7 @@ export class TournamentDayEditComponent {
       const dateEpoch = this.day().date;
       this.dayDateStr = this.dateService.toDateStr(dateEpoch, 'YYYY-MM-DD');
       this.cdr.detectChanges();
-      console.debug('effect ', this.day().id, this.dayDateStr);
+      //console.debug('effect ', this.day().id, this.dayDateStr);
     });
   }
 

@@ -10,6 +10,11 @@
       <label for="description">Description</label>
       <textarea id="description" pInputTextarea [(ngModel)]="tournament()!.description"></textarea>
     </div>
+    <div class="form-field">
+      <label for="country">Country</label>
+      <p-select id="description" size="small" [options]="countries" [(ngModel)]="tournamentCountry"
+        appendTo="body" placeholder="Country" (onChange)="countrySelected($event.value)" />
+      </div>
   </div>
 
   <h2>Tournament fields</h2>
