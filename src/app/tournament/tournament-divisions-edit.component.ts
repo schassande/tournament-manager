@@ -1,40 +1,38 @@
-import { Component, computed, model } from '@angular/core';
+import { Tournament, BasicDivision, BasicDivisions } from './../shared/data.model';
+import { Component, computed, effect, model, signal } from '@angular/core';
 import { Division } from '../shared/data.model';
-import { max } from 'rxjs';
 
 @Component({
   selector: 'app-tournament-divisions-edit',
   template: `
-  <div class="divisionTable">
-  <p-table [value]="allTeamsArray()" stripedRows
-    showGridlines [size]="'small'" tableLayout="fixed">
-    <ng-template #header>
-        <tr class="tableRowTitle1">
-          @for(division of divisions(); track division.id) {
-            <th>{{division.name}}</th>
-          }
-        </tr>
-        <tr class="tableRowTitle2">
-          @for(division of divisions(); track division.id) {
-            <th>{{division.shortName}}</th>
-          }
-        </tr>
-    </ng-template>
-    <ng-template #body let-rowData>
-        <tr class="tableRowItem">
-          @for(division of divisions(); track division.id; let idx = $index) {
-            <td>{{rowData[idx]}}</td>
-          }
-        </tr>
-    </ng-template>
-  </p-table>
+  <div class="divisionsTable">
+    @for(division of divisions(); track division.id) {
+      <p-card class="divisionBlock">
+        <app-tournament-division-edit [division]="division" [tournament]="tournament()"
+          (divisionchanged)="onDivisionChanged(division)"
+          (divisionRemoved)="removeDivision($event.id)"
+          ></app-tournament-division-edit>
+      </p-card>
+    }
+    <p-card class="addBlock" (click)="addDivision()">
+      <i class="pi pi-plus  action-add" aria-label="add day"></i>
+    </p-card>
   </div>`,
-  styles: [''],
+  styles: [`
+    .divisionsTable { }
+    .addBlock,
+    .divisionBlock {
+      display: inline-block;
+      vertical-align: top;
+      padding: 5px;
+      margin: 5px;
+    }
+    `],
   standalone: false
 })
 export class TournamentDivisionsEditComponent {
-
-  divisions = model.required<Division[]>()
+  tournament = model.required<Tournament>();
+  divisions = signal<Division[]>([]);
 
   allTeamsArray = computed(() => {
     const divisions = this.divisions();
@@ -50,13 +48,58 @@ export class TournamentDivisionsEditComponent {
     console.log(result);
     return result;
   });
+  constructor() {
+    effect(() =>{
+      this.divisions.set(this.tournament()!.divisions);
+    })
+  }
 
   addDivision() {
+    this.tournament.update(tournament => {
+      const bd = this.computeBasicDivision(tournament);
+      tournament.divisions.push({
+        id: this.computeDivisionId(tournament),
+        name: bd.name,
+        shortName: bd.shortName,
+        teams: []
+      });
+      return tournament;
+    });
   }
   removeDivision(divisionId: string) {
-
+    this.tournament.update(tournament => {
+      const idx = tournament.divisions.findIndex(d => d.id === divisionId);
+      if (idx >= 0) {
+        console.debug('remove division', divisionId, 'at', idx)
+        tournament.divisions.splice(idx, 1);
+      }
+      return tournament;
+    });
   }
-  onPaste(event:any, rowIdx:number) {
-
+  onDivisionChanged(division:Division) {
+    this.tournament.update(tournament => {
+      const idx = tournament.divisions.findIndex(d => d.id === division.id);
+      if (idx < 0) return tournament;
+      tournament.divisions[idx] = division;
+      return tournament;
+    });
+  }
+  private computeDivisionId(tournament: Tournament): string {
+    let i = 0;
+    let str: string;
+    do {
+      i+=100;
+      str = i.toString();
+    } while(tournament.divisions.findIndex(d => d.id === str) >= 0);
+    return str;
+  }
+  private computeBasicDivision(tournament: Tournament): BasicDivision {
+    let i = 0;
+    let bd: BasicDivision = { name: '', shortName: ''};
+    do {
+      i++;
+      bd = BasicDivisions[i];
+    } while(tournament.divisions.findIndex(d => d.name === bd.name || d.shortName === bd.shortName) >= 0);
+    return bd;
   }
 }

@@ -63,11 +63,48 @@ export type RefereeCategory =
   | 'O' // Open
   | 'S' // Senior
   | 'M'; // Master
-export interface Division extends WithId {
-  name: string; // name of the division
-  shortName: string; // short name of the division
+export interface Division extends WithId, BasicDivision {
   teams: Team[]; // list of teams in the division
 }
+export interface BasicDivision {
+  name: string; // name of the division
+  shortName: string; // short name of the division
+}
+export const BasicDivisions: BasicDivision[] = [
+  {name: 'Mens open',      shortName: 'MO'},
+  {name: 'Womens open',    shortName: 'WO'},
+  {name: 'Mixed open',     shortName: 'XO'},
+  {name: 'Mens over 30',   shortName: 'M30'},
+  {name: 'Mens over 35',   shortName: 'M35'},
+  {name: 'Mens over 40',   shortName: 'M40'},
+  {name: 'Mens over 45',   shortName: 'M45'},
+  {name: 'Mens over 50',   shortName: 'M50'},
+  {name: 'Mens over 55',   shortName: 'M55'},
+  {name: 'Mens over 60',   shortName: 'M60'},
+  {name: 'Womens over 27', shortName: 'W27'},
+  {name: 'Womens over 30', shortName: 'W30'},
+  {name: 'Womens over 35', shortName: 'W35'},
+  {name: 'Womens over 45', shortName: 'W45'},
+  {name: 'Womens over 50', shortName: 'W50'},
+  {name: 'Womens over 55', shortName: 'W55'},
+  {name: 'Womens over 60', shortName: 'W60'},
+  {name: 'Girls under 11', shortName: 'G11'},
+  {name: 'Girls under 13', shortName: 'G13'},
+  {name: 'Girls under 15', shortName: 'G15'},
+  {name: 'Girls under 18', shortName: 'G18'},
+  {name: 'Girls under 20', shortName: 'G20'},
+  {name: 'Boys under 11',  shortName: 'B11'},
+  {name: 'Boys under 13',  shortName: 'B13'},
+  {name: 'Boys under 15',  shortName: 'B15'},
+  {name: 'Boys under 18',  shortName: 'B18'},
+  {name: 'Boys under 20',  shortName: 'B20'},
+  {name: 'Mixed under 11', shortName: 'B11'},
+  {name: 'Mixed under 13', shortName: 'B13'},
+  {name: 'Mixed under 15', shortName: 'B15'},
+  {name: 'Mixed under 18', shortName: 'B18'},
+  {name: 'Mixed under 20', shortName: 'B20'},
+  {name: 'Open',           shortName: 'O'}
+];
 export interface Team extends WithId {
   name: string; // name of the team
   shortName: string; // short name of the team

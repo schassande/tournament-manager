@@ -7,24 +7,30 @@ const defaultVideo = false;
 @Component({
   selector: 'app-tournament-fields-edit',
   template: `
-  <div class="fieldTable">
+    <p-card [style]="{'max-width': '600px'}">
+    <div class="fieldTable">
     <p-table [value]="fields()" stripedRows
       showGridlines [size]="'small'" tableLayout="fixed"
       sortField="orderView" [sortOrder]="1">
       <ng-template #header>
           <tr class="tableRowTitle">
-            <th style="width:10%" pSortableColumn="orderView">View Order</th>
+            <th style="width:15%" pSortableColumn="orderView">View Order</th>
             <th style="width:40%">Name</th>
             <th style="width:10%">Video</th>
             <th style="width:20%">Quality</th>
-            <th style="width:20%" (click)="addField()">
+            <th style="width:15%" (click)="addField()">
             <i class="pi pi-plus action-add" aria-label="add field"></i> Add
             </th>
           </tr>
       </ng-template>
       <ng-template #body let-field let-ri="rowIndex">
           <tr class="tableRowItem">
-              <td>{{field.orderView}}</td>
+              <td style="text-align: left; padding-left: 15px;">
+                <span>{{field.orderView}}</span>
+                <i class="pi pi-arrow-up action"            aria-label="up" (click)="upField(field.id)" *ngIf="field.orderView > 1"></i>
+                <i class="pi pi-arrow-down action"          aria-label="down" (click)="downField(field.id)" *ngIf="field.orderView < fields().length"></i>
+
+              </td>
               <td [pEditableColumn]="field.name" pEditableColumnField="name">
                 <p-cellEditor>
                   <ng-template #input><input pInputText type="text" [(ngModel)]="field.name" (paste)="onPaste($event, ri)" /></ng-template>
@@ -33,16 +39,14 @@ const defaultVideo = false;
               </td>
               <td><p-toggleswitch [(ngModel)]="field.video"/></td>
               <td><p-rating [ngModel]="field.quality" [stars]="3"/></td>
-              <td style="text-align: left; padding-left: 20px;">
-                <i class="pi pi-trash action action-remove" aria-label="remove field" (click)="removeField(field.id)"></i>
-                <i class="pi pi-arrow-up action"            aria-label="up" (click)="upField(field.id)" *ngIf="field.orderView > 1"></i>
-                <span *ngIf="field.orderView === 1" style="margin-left: 20px;">&nbsp;</span>
-                <i class="pi pi-arrow-down action"          aria-label="down" (click)="downField(field.id)" *ngIf="field.orderView < fields().length"></i>
+              <td style="text-align: center;" (click)="removeField(field.id)">
+                <i class="pi pi-trash action action-remove" aria-label="remove field"></i>
               </td>
           </tr>
       </ng-template>
     </p-table>
-    </div>`,
+    </div>
+    </p-card>`,
   styles: [`
     .fieldTable {  margin-left: 10px; }
     .fieldTable, p-table { max-width: 600px; margin: 10 auto;}

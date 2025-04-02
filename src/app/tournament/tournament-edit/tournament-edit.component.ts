@@ -82,7 +82,7 @@ export class TournamentEditComponent  implements OnInit {
       }],
       divisions: [
         {
-          id:'1', name: 'Mens Open', shortName: 'MO', teams: [
+          id:'100', name: 'Mens Open', shortName: 'MO', teams: [
             {id:'101', divisionName: 'Mens Open', name: 'Team MO 1', shortName: 'MO1'},
             {id:'102', divisionName: 'Mens Open', name: 'Team MO 2', shortName: 'MO2'},
             {id:'103', divisionName: 'Mens Open', name: 'Team MO 3', shortName: 'MO3'},
@@ -90,7 +90,7 @@ export class TournamentEditComponent  implements OnInit {
           ]
         },
         {
-          id:'2', name: 'Womens Open', shortName: 'WO', teams: [
+          id:'200', name: 'Womens Open', shortName: 'WO', teams: [
             {id:'201', divisionName: 'Mens Open', name: 'Team WO 1', shortName: 'WO1'},
             {id:'202', divisionName: 'Mens Open', name: 'Team WO 2', shortName: 'WO2'},
             {id:'203', divisionName: 'Mens Open', name: 'Team WO 3', shortName: 'wO3'},
@@ -98,7 +98,7 @@ export class TournamentEditComponent  implements OnInit {
           ]
         },
         {
-          id:'3', name: 'Mixed Open', shortName: 'XO', teams: [
+          id:'300', name: 'Mixed Open', shortName: 'XO', teams: [
             {id:'301', divisionName: 'Mixed Open', name: 'Team XO 1', shortName: 'XO1'},
             {id:'302', divisionName: 'Mixed Open', name: 'Team XO 2', shortName: 'XO2'},
             {id:'303', divisionName: 'Mixed Open', name: 'Team XO 3', shortName: 'xO3'},

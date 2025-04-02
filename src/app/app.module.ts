@@ -44,8 +44,6 @@ import { HomeComponent } from './components/home/home.component';
     provideFirestore(() => getFirestore()),
     provideFunctions(() => getFunctions()),
     provideMessaging(() => getMessaging()),
-    provideAnimationsAsync(),
-    providePrimeNG({ theme: { preset: Aura } })
   ]
 })
 export class AppModule {}

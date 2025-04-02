@@ -24,6 +24,7 @@ import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { RatingModule } from 'primeng/rating';
+import { SelectModule } from 'primeng/select';
 
 @NgModule({
   declarations: [
@@ -49,18 +50,13 @@ import { RatingModule } from 'primeng/rating';
     InputNumberModule,
     InputMaskModule,
     ToggleSwitchModule,
-    RatingModule
+    RatingModule,
+    SelectModule
   ],
   providers: [
-    provideAnimationsAsync(),
+    // provideAnimationsAsync(),
     providePrimeNG({
-      theme: { preset: Aura },
-      zIndex: {
-        modal: 11000,    // dialog, sidebar
-        overlay: 100000,  // dropdown, overlaypanel
-        menu: 10000,     // overlay menus
-        tooltip: 11000   // tooltip
-      }
+      theme: { preset: Aura }
     })
   ]
 })

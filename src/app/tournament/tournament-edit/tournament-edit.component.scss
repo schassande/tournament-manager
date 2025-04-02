@@ -1,3 +1,22 @@
 .page {
-  background-color: rgb(229, 231, 235);
+  margin: 0 auto;
+}
+.chapterSection {
+  margin: 10px;
+}
+.chapterSection .form-field {
+  margin: 5px 0;
+  vertical-align: middle;
+}
+.chapterSection .form-field label {
+  display: inline-block;
+  width: 150px;
+  text-align: right;
+  margin-right: 10px;
+  vertical-align: top;
+}
+
+.chapterSection .form-field textarea {
+  width: 450px;
+  height: 60px;
 }

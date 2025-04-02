@@ -19,8 +19,8 @@ import { Day, Tournament } from 'src/app/shared/data.model';
       >
     </app-tournament-day-edit>
   }
-  <p-card class="addBlock">
-    <i class="pi pi-plus  action-add"     aria-label="add day"     (click)="addDay()"></i>
+  <p-card class="addBlock" (click)="addDay()">
+    <i class="pi pi-plus  action-add" aria-label="add day"></i>
   </p-card>
   `,
   styles: [`
