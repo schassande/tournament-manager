@@ -1,5 +1,5 @@
 import { UserService } from './../../shared/services/user.service';
-import { Country, Person, Region, Timeslot, Tournament } from './../../shared/data.model';
+import { Country, Division, Person, Region, Timeslot, Tournament } from './../../shared/data.model';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TournamentService } from '../../shared/services/tournament.service';
@@ -26,6 +26,7 @@ export class TournamentEditComponent  implements OnInit {
   tournament = signal<Tournament|null>(null);
   tournamentCountry = signal<string>('');
   countries: string[] = [];
+  errors = signal<string[]>([]);
 
   ngOnInit() {
     this.userService.currentUser$$.subscribe((currentUser) => {
@@ -33,28 +34,14 @@ export class TournamentEditComponent  implements OnInit {
     });
   }
 
-  private init(currentUser: Person) {
-    this.regionService.all().pipe(
-      map(regions => {
-        this.countries = regions.map(region => region.countries.map(country => country.name))
-          .reduce((cur, prev) => cur.concat(prev));
-        //console.log('regions', regions);
-        //console.log('countries', this.countries);
-      })
-    ).subscribe()
-    const tournamentId = this.activatedRoute.snapshot.paramMap.get('id') as string;
-    if (tournamentId) {
-      this.tournamentService.byId(tournamentId).subscribe(t => {
-        if (t) {
-          this.tournament.set(t);
-        } else {
-          this.router.navigate(['/home']);
-        }
-      });
-    } else {
-      this.tournament.set(this.buildDefaultTournament(currentUser));
-    }
+  onDivisionsChanged(divisions: Division[]) {
+    this.tournament.update(tournament => {
+      tournament!.divisions = divisions;
+      this.save();
+      return tournament;
+    });
   }
+
   countrySelected(countryName: string) {
     this.regionService.all().pipe(
       map((regions:Region[]) => {
@@ -72,9 +59,81 @@ export class TournamentEditComponent  implements OnInit {
             return tournament;
           });
         }
+        this.save();
       })
     ).subscribe()
   }
+
+  onTournamentStartDateChange(startDate: number) {
+    this.tournament.update(tournament => {
+      tournament!.startDate = startDate;
+      this.save();
+      return tournament;
+    });
+  }
+  onTournamentEndDateChange(endDate: number) {
+    this.tournament.update(tournament => {
+      tournament!.endDate = endDate;
+      this.save();
+      return tournament;
+    });
+  }
+
+  private save() {
+    if (!this.tournament()) return;
+    if (!this.checkTournamentBeforeSave(this.tournament()!)) return;
+    console.log('Saving tournament');
+    const id = this.tournament()!.id;
+    this.tournamentService.save(this.tournament()!).subscribe(() => {
+      if (id === '') {
+        this.router.navigate(['/tournament/' + this.tournament()!.id, 'edit']);
+      }
+    });
+  }
+
+  private init(currentUser: Person) {
+    this.regionService.all().pipe(
+      map(regions => {
+        this.countries = regions.map(region => region.countries.map(country => country.name))
+          .reduce((cur, prev) => cur.concat(prev));
+      })
+    ).subscribe()
+    const tournamentId = this.activatedRoute.snapshot.paramMap.get('id') as string;
+    if (tournamentId) {
+      this.tournamentService.byId(tournamentId).subscribe(t => {
+        if (t) {
+          this.tournament.set(t);
+        } else {
+          console.error('Tournament not found: ', tournamentId, t);
+          this.router.navigate(['/home']);
+        }
+      });
+    } else {
+      this.tournament.set(this.buildDefaultTournament(currentUser));
+    }
+  }
+
+
+  // ================================================ //
+  // =============== INTERNAL METHODS =============== //
+  // ================================================ //
+
+  private checkTournamentBeforeSave(tournament: Tournament): boolean {
+    this.errors.update(() => {
+      const errors = [];
+      if (!tournament.name || tournament.name.length <4) errors.push('Tournament name is too short (4 characters minimum)');
+      if (!tournament.regionId) errors.push('Tournament region is not defined');
+      if (tournament.managers.length === 0) errors.push('Tournament managers are not defined');
+      if (!tournament.countryId) errors.push('Tournament country is not defined');
+      if (tournament.divisions.length === 0) errors.push('At least one tournament division is required');
+      if (tournament.fields.length === 0) errors.push('At least one tournament field is required');
+      if (tournament.days.length === 0) errors.push('At least one tournament day is required');
+      if (tournament.startDate <= 0) errors.push('Tournament start date is is not defined');
+      return errors;
+    });
+    return this.errors().length === 0;
+  }
+
   private buildDefaultTournament(currentUser: Person): Tournament {
     const startDateEpoch = this.dateService.setTime(this.dateService.tomorrow(), 9, 0);
     const defaultDuration = 50*60*1000;
@@ -140,26 +199,5 @@ export class TournamentEditComponent  implements OnInit {
       ],
       managers :[{ role: 'TournamentManager', attendeeId: currentUser.id }],
     };
-  }
-
-  onTournamentStartDateChange(startDate: number) {
-    this.tournament.update(tournament => {
-      tournament!.startDate = startDate;
-      return tournament;
-    });
-  }
-  onTournamentEndDateChange(endDate: number) {
-    this.tournament.update(tournament => {
-      tournament!.endDate = endDate;
-      return tournament;
-    });
-  }
-
-  public save() {
-    if (this.tournament()) {
-      this.tournamentService.save(this.tournament()!).subscribe(() => {
-        this.router.navigate(['/tournament/' + this.tournament()!.id]);
-      });
-    }
   }
 }

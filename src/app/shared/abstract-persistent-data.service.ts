@@ -23,8 +23,9 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
   }
 
   public byId(id: string): Observable<T | undefined> {
-    const tournamentDoc = doc(this.firestore, `${this.getCollectionName}/${id}`);
-    return docData(tournamentDoc, { idField: 'id' }) as Observable<T | undefined>;
+    const path = `${this.getCollectionName()}/${id}`;
+    const itemDoc = doc(this.firestore, path);
+    return docData(itemDoc, { idField: 'id' }) as Observable<T | undefined>;
   }
   public save(item: T): Observable<T> {
     if (item.id) {

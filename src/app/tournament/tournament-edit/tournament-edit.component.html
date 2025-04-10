@@ -1,5 +1,11 @@
 <div *ngIf="tournament()" class="page">
 
+  <div style="margin: 20px; text-align: center;">
+    @for(error of errors(); track error) {
+      <p-message severity="error">{{ error }}</p-message>
+    }
+  </div>
+
   <h2>General information</h2>
   <div class="chapterSection">
     <div class="form-field">
@@ -36,13 +42,8 @@
   <h2>Divisions and teams</h2>
   <div class="chapterSection">
     <app-tournament-divisions-edit
-      [tournament]="tournament()!">
+      [tournament]="tournament()!" (divisionsChanged)="onDivisionsChanged($event)" >
     </app-tournament-divisions-edit>
   </div>
-
-  <div class="p-field" style="margin-top: 20px;">
-    <button pButton type="button" label="Save" icon="pi pi-check" (click)="save()"></button>
-  </div>
-
   <div style="height: 100px;"></div>
 </div>

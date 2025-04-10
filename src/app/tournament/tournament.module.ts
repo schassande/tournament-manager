@@ -25,6 +25,8 @@ import Aura from '@primeng/themes/aura';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { RatingModule } from 'primeng/rating';
 import { SelectModule } from 'primeng/select';
+import { MessageModule } from 'primeng/message';
+import { TournamentHomeComponent } from './tournament-home/tournament-home.component';
 
 @NgModule({
   declarations: [
@@ -35,6 +37,7 @@ import { SelectModule } from 'primeng/select';
     TournamentDivisionsEditComponent,
     TournamentEditComponent,
     TournamentFieldsEditComponent,
+    TournamentHomeComponent,
     TournamentListComponent
   ],
   imports: [
@@ -51,7 +54,8 @@ import { SelectModule } from 'primeng/select';
     InputMaskModule,
     ToggleSwitchModule,
     RatingModule,
-    SelectModule
+    SelectModule,
+    MessageModule
   ],
   providers: [
     // provideAnimationsAsync(),

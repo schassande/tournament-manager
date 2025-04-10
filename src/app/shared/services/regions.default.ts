@@ -1,4 +1,6 @@
-[
+import { Region } from "../data.model";
+
+export const defaultRegions: Region[] = [
   {
     "id": "Europe",
     "lastChange": 0,
@@ -237,4 +239,4 @@
       { "id": "VUT", "name": "Vanuatu", "shortName": "VUT" }
     ]
   }
-]
+];

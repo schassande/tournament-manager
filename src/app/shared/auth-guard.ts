@@ -12,7 +12,6 @@ export class AuthGuard {
   router = inject(Router)
 
   canActivate(next: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean|Observable<boolean> {
-    console.debug('AuthGuard: begin');
     if (this.userService.isConnected()) {
       console.debug('AuthGuard: User is connected');
       return true;

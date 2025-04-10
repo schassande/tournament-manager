@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, inject, OnInit, signal, viewChild, 
 import { RegionService } from './shared/services/region.service';
 import { Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
+import { TournamentService } from './shared/services/tournament.service';
 
 @Component({
   standalone: false,
@@ -15,6 +16,7 @@ import { Title } from '@angular/platform-browser';
 export class AppComponent implements OnInit {
 
   userService = inject(UserService);
+  tournamentService = inject(TournamentService);
   router = inject(Router);
   regionService = inject(RegionService);
   cdr = inject(ChangeDetectorRef)
@@ -27,6 +29,14 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     // Update the page title each time
     this.router.events.pipe().subscribe(() => this.title.set(this.titleService.getTitle()));
+    this.tournamentService.loadCurrentTournamentFromLocalStorage().subscribe(t => {
+      if (t) {
+        // if asked page is home '/', then go to tournament home
+        if (this.router.url === '/') {
+          //this.router.navigate(['/tournament', t.id, 'home']);
+        }
+      }
+    });
   }
 
   closeUserMenu() {

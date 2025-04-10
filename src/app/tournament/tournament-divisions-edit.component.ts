@@ -1,5 +1,5 @@
 import { Tournament, BasicDivision, BasicDivisions } from './../shared/data.model';
-import { Component, computed, effect, model, signal } from '@angular/core';
+import { Component, computed, effect, model, output, signal } from '@angular/core';
 import { Division } from '../shared/data.model';
 
 @Component({
@@ -33,6 +33,7 @@ import { Division } from '../shared/data.model';
 export class TournamentDivisionsEditComponent {
   tournament = model.required<Tournament>();
   divisions = signal<Division[]>([]);
+  divisionsChanged = output<Division[]>();
 
   allTeamsArray = computed(() => {
     const divisions = this.divisions();
@@ -63,6 +64,7 @@ export class TournamentDivisionsEditComponent {
         shortName: bd.shortName,
         teams: []
       });
+      this.divisionsChanged.emit(tournament.divisions);
       return tournament;
     });
   }
@@ -73,6 +75,7 @@ export class TournamentDivisionsEditComponent {
         console.debug('remove division', divisionId, 'at', idx)
         tournament.divisions.splice(idx, 1);
       }
+      this.divisionsChanged.emit(tournament.divisions);
       return tournament;
     });
   }
@@ -81,6 +84,7 @@ export class TournamentDivisionsEditComponent {
       const idx = tournament.divisions.findIndex(d => d.id === division.id);
       if (idx < 0) return tournament;
       tournament.divisions[idx] = division;
+      this.divisionsChanged.emit(tournament.divisions);
       return tournament;
     });
   }
