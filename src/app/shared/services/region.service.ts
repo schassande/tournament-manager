@@ -10,19 +10,23 @@ import { defaultRegions } from './regions.default';
 export class RegionService extends AbstractPersistentDataService<Region>{
 
   protected override getCollectionName(): string { return 'region'; }
-  readonly regions: Region[] = [];
+  public readonly regions: Region[] = [];
+  public readonly countries: Country[] = [];
 
   constructor() {
     super();
     // this.init();
     this.loadRegions();
   }
-
   private loadRegions() {
     this.all().pipe(
       map((regions: Region[]) => {
         this.regions.splice(0, this.regions.length);
         this.regions.push(...regions);
+
+        this.countries.splice(0, this.countries.length);
+        this.regions.forEach(region => this.countries.push(...region.countries));
+        this.countries.sort((country1, country2) => country1.name.localeCompare(country2.name));
       })
     ).subscribe();
   }
@@ -45,6 +49,16 @@ export class RegionService extends AbstractPersistentDataService<Region>{
       const country = region.countries.find(country => country.id === id);
       if (country) {
         return country;
+      }
+    }
+    return undefined;
+  }
+
+  public regionByCountryId(countryId: string): Region|undefined {
+    for (const region of this.regions) {
+      const country = region.countries.find(country => country.id === countryId);
+      if (country) {
+        return region;
       }
     }
     return undefined;

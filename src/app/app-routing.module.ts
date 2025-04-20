@@ -6,6 +6,7 @@ const routes: Routes = [
   { path: 'home',       component: HomeComponent , data: { title: 'Home' }, pathMatch: 'full'},
   { path: 'user',       loadChildren: () => import('./user/user.module').then( m => m.UserModule), pathMatch: 'prefix'},
   { path: 'tournament', loadChildren: () => import('./tournament/tournament.module').then( m => m.TournamentModule), pathMatch: 'prefix'},
+  { path: 'referee',    loadChildren: () => import('./referee/referee.module').then( m => m.RefereeModule), pathMatch: 'prefix'},
   { path: '',         redirectTo: '/home', pathMatch: 'full' },
 ];
 

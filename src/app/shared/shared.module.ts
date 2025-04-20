@@ -1,8 +1,8 @@
 import { ButtonModule } from 'primeng/button';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MainMenuComponent } from './components/main-menu/main-menu.component';
-import { UserMenuComponent } from './components/user-menu/user-menu.component';
+import { MainMenuComponent } from './components/main-menu.component';
+import { UserMenuComponent } from './components/user-menu.component';
 import { IonicModule } from '@ionic/angular';
 import { UserMenuTitleComponent } from './components/user-menu-title.component';
 import { FormsModule } from '@angular/forms';

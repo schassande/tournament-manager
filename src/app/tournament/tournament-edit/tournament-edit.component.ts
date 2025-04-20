@@ -92,12 +92,7 @@ export class TournamentEditComponent  implements OnInit {
   }
 
   private init(currentUser: Person) {
-    this.regionService.all().pipe(
-      map(regions => {
-        this.countries = regions.map(region => region.countries.map(country => country.name))
-          .reduce((cur, prev) => cur.concat(prev));
-      })
-    ).subscribe()
+    this.countries = this.regionService.countries.map(country => country.name);
     const tournamentId = this.activatedRoute.snapshot.paramMap.get('id') as string;
     if (tournamentId) {
       this.tournamentService.byId(tournamentId).subscribe(t => {

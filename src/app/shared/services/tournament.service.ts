@@ -10,6 +10,7 @@ export class TournamentService extends AbstractPersistentDataService<Tournament>
 
   /** Signal containing the current selected tournament. Null means no current tournament is selected. */
   private currentTournament$ = signal<Tournament|null>(null);
+  public currentTournament = this.currentTournament$.asReadonly();
 
   protected override getCollectionName(): string { return 'tournament'; }
 

@@ -32,6 +32,7 @@ export interface Tournament extends PersistentObject{
   }[];
   currentScheduleId?: string;
   currentDrawId?: string;
+  allowPlayerReferees?: boolean; // true if the tournament has player referees
 }
 
 export interface Field extends WithId{
@@ -111,23 +112,38 @@ export interface Team extends WithId {
   divisionName: string; // name of the division
   players?: Attendee[]; // list of players in the team
 }
+export interface TeamDivision extends Team {
+  divisionShortName: string;
+}
+
 export interface Attendee extends PersistentObject{
   tournamentId: string; // unique identifier of the tournament
   personId: string; // unique identifier
   roles: AttendeeRole[]; // roles of the attendee (cumulative from partDays field)
+  isPlayer: boolean; // true if the attendee is a player
+  isReferee: boolean; // true if the attendee is a referee
+  isRefereeCoach: boolean; // true if the attendee is a referee coach
+  isTournamentManager: boolean; // true if the attendee is a tournament manager
   player? : {
     teamId: string; // unique identifier of the team
-    num: number; // number of the player
-    adult: boolean; // true if the player is an adult
+    num?: number; // number of the player
   };
   referee? : {
-    badge: string; // badge of the referee
-    upgrade: string|undefined; // Looking for upgrade of the referee
+    badge: number; // badge of the referee
+    badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
+    upgrade: { // Looking for upgrade of the referee
+      badge: number; // badge of the referee. 0 means no upgrade
+      badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
+    };
     category: RefereeCategory; // category of the referee
   };
   refereeCoach? : {
-    badge: string; // badge of the referee coach
-    upgrade: string|undefined; // Looking for upgrade of the referee coach
+    badge: number; // badge of the referee coach
+    badgeSystem: RefereeCoachBadgeSystem; // badge system of the referee coach
+    upgrade?: { // Looking for upgrade of the referee Coach
+      badge: number; // badge of the referee  Coach
+      badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
+    };
   };
   partDays: {
     dayId: string; // unique identifier of the day
@@ -153,19 +169,37 @@ export interface Person extends PersistentObject {
   photoUrl?: string;
   phone?: string; // phone of  the person
   referee? : {
-    badge: string; // badge of the referee
-    upgrade: string|undefined; // Looking for upgrade of the referee
+    badge: number; // badge of the referee
+    badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
+    upgrade: { // Looking for upgrade of the referee
+      badge: number; // badge of the referee
+      badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
+    };
+    category: RefereeCategory; // category of the referee
   };
   refereeCoach? : {
-    badge: string; // badge of the referee
-    upgrade: string|undefined; // Looking for upgrade of the referee
-  }
+    badge: number; // badge of the referee coach
+    badgeSystem: RefereeCoachBadgeSystem; // badge system of the referee coach
+    upgrade?: { // Looking for upgrade of the referee Coach
+      badge: number; // badge of the referee  Coach
+      badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
+    };
+  };
 }
+
+export interface Referee {
+  attendee: Attendee;
+  isPR: boolean;
+  person?: Person;
+  team?: Team;
+}
+
 export interface Region extends PersistentObject {
   name: string; // name of the region
   countries: Country[]; // countries of the region
 }
 export type RefereeBadgeSystem = 4 | 5 | 6;
+export type RefereeCoachBadgeSystem = 3 | 4 | 5 | 6;
 
 export interface Country extends WithId {
   name: string; // name of the country

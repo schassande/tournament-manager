@@ -61,6 +61,12 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
       map(this.snapshotOneToObs.bind(this))
     );
   }
+
+  public query(q: Query): Observable<T[]> {
+    return from(getDocs(query(q)) as Promise<QuerySnapshot<T>>).pipe(
+      map(this.snapshotToObs.bind(this))
+    );
+  }
   private snapshotOneToObs(qs: QuerySnapshot<T>): T|null {
     const datas: T[] = [];
     qs.forEach((qds: QueryDocumentSnapshot<T>) => {
@@ -77,6 +83,30 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
     } else {
         return null;
     }
+  }
+  private snapshotToObs(qs: QuerySnapshot<T>): T[] {
+    const datas: T[] = [];
+    qs.forEach((qds: QueryDocumentSnapshot<T>) => {
+      const data: T = qds.data();
+      if (data) {
+          // store id inside persistent object
+          data.id = qds.id;
+          this.adjustItemOnLoad(data);
+      }
+      datas.push(data);
+    });
+    return datas;
+  }
+  public filter(obs: Observable<T[]>, filter: PersistentDataFilter<T>) {
+    return obs.pipe(
+        map((result: T[]) => result.filter( (elem: T) => filter(elem)))
+    );
+  }
+  public stringContains(elem: string, text: string): boolean {
+    return elem !== undefined && text !== undefined && text.toLowerCase().indexOf(elem.toLowerCase()) >= 0;
+  }
+}
+export interface PersistentDataFilter<T extends PersistentObject> {
+  (data: T): boolean;
 }
 
-}

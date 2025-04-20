@@ -1,8 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
 import { UserService } from '../services/user.service';
-import { toSignal } from '@angular/core/rxjs-interop'
-import { map } from 'rxjs';
-import { Person } from '../data.model';
 
 @Component({
   standalone: false,
