@@ -96,7 +96,7 @@ export class TournamentDaysEditComponent {
             id: part.id,
             dayId: part.dayId,
             timeslots: part.timeslots.map(timeslot => {
-              return { id: timeslot.id, start: timeslot.start, duration: timeslot.duration, end: timeslot.end};
+              return { id: timeslot.id, start: timeslot.start, duration: timeslot.duration, end: timeslot.end, playingSlot: timeslot.playingSlot};
             }),
             allFieldsAvaillable: part.allFieldsAvaillable,
             availableFieldIds: part.availableFieldIds.map(id => id)

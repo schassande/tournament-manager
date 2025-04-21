@@ -1,4 +1,3 @@
-import { RefereeAllocation, RefereeAllocationStatistics } from './data.model';
 export interface WithId {
   id: string; // unique identifier
 }

@@ -122,7 +122,8 @@ export class TournamentDayEditComponent {
           id: '1',
           start: lastTimeslot.end,
           duration: lastTimeslot.duration,
-          end: this.dateService.addMilli(lastTimeslot.end, lastTimeslot.duration)
+          end: this.dateService.addMilli(lastTimeslot.end, lastTimeslot.duration),
+          playingSlot: lastTimeslot.playingSlot,
         }],
         allFieldsAvaillable: part.allFieldsAvaillable,
         availableFieldIds: part.availableFieldIds.map(f => f)
@@ -162,7 +163,8 @@ export class TournamentDayEditComponent {
       const newTimeslot: Timeslot = { id: '1',
         start: timeslot.end,
         duration: timeslot.duration, end:
-        this.dateService.addMilli(timeslot.end, timeslot.duration)
+        this.dateService.addMilli(timeslot.end, timeslot.duration),
+        playingSlot: timeslot.playingSlot
       };
       part.timeslots.splice(tsIdx + 1, 0, newTimeslot);
 
@@ -279,7 +281,8 @@ export class TournamentDayEditComponent {
           id: '1',
           start: defaultTimeSlotStart,
           duration: defaultDuration,
-          end: this.dateService.addMilli(defaultTimeSlotStart, defaultDuration)
+          end: this.dateService.addMilli(defaultTimeSlotStart, defaultDuration),
+          playingSlot: true
         }],
         allFieldsAvaillable: true,
         availableFieldIds: []

@@ -152,7 +152,7 @@ export class TournamentDivisionEditComponent {
         divisionName: division.name,
         name: 'Team '+teamId,
         shortName: 'T'+teamId,
-        players: []
+        playerIds: []
       };
       division.teams.push(team);
       this.divisionchanged.emit(division);
@@ -205,7 +205,7 @@ export class TournamentDivisionEditComponent {
               divisionName: division.name,
               name: row.length>0 ? row[0] : 'Team '+teamId,
               shortName: row.length>1 ? row[1] : 'T'+teamId,
-              players: []
+              playerIds: []
             });
           }
         });
@@ -244,7 +244,7 @@ export class TournamentDivisionEditComponent {
               divisionName: division.name,
               name: 'Team '+teamId,
               shortName: row.length>0 ? row[0] : 'T'+teamId,
-              players: []
+              playerIds: []
             });
           }
         });
