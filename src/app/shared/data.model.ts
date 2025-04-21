@@ -1,3 +1,4 @@
+import { RefereeAllocation, RefereeAllocationStatistics } from './data.model';
 export interface WithId {
   id: string; // unique identifier
 }
@@ -20,19 +21,21 @@ export interface Tournament extends PersistentObject{
   fields: Field[]
   days: Day[];
   divisions: Division[];
-  managers :{
-    role: AttendeeRole;
-    attendeeId: string;
-    limit?: {
-      dayId?: string;
-      partDayId?: string;
-      divisionIds?: string[];
-      refereeeCategories?: RefereeCategory[];
-    }
-  }[];
+  managers :TournamentManager[];
   currentScheduleId?: string;
   currentDrawId?: string;
   allowPlayerReferees?: boolean; // true if the tournament has player referees
+}
+
+export interface TournamentManager {
+  role: AttendeeRole;
+  attendeeId: string;
+  limit?: {
+    dayId?: string;
+    partDayId?: string;
+    divisionIds?: string[];
+    refereeeCategories?: RefereeCategory[];
+  }
 }
 
 export interface Field extends WithId{
@@ -47,6 +50,7 @@ export interface Timeslot extends WithId {
   start: number; // start time of the timeslot
   duration: number; // duration of the timeslot
   end: number; // end time of the timeslot
+  playingSlot: boolean;
 }
 
 export interface Day extends WithId {
@@ -64,12 +68,12 @@ export type RefereeCategory =
   | 'O' // Open
   | 'S' // Senior
   | 'M'; // Master
-export interface Division extends WithId, BasicDivision {
-  teams: Team[]; // list of teams in the division
-}
 export interface BasicDivision {
   name: string; // name of the division
   shortName: string; // short name of the division
+}
+export interface Division extends WithId, BasicDivision {
+  teams: Team[]; // list of teams in the division
 }
 export const BasicDivisions: BasicDivision[] = [
   {name: 'Mens open',      shortName: 'MO'},
@@ -110,13 +114,13 @@ export interface Team extends WithId {
   name: string; // name of the team
   shortName: string; // short name of the team
   divisionName: string; // name of the division
-  players?: Attendee[]; // list of players in the team
+  playerIds?: string[]; // list of players in the team
 }
 export interface TeamDivision extends Team {
   divisionShortName: string;
 }
 
-export interface Attendee extends PersistentObject{
+export interface Attendee extends PersistentObject {
   tournamentId: string; // unique identifier of the tournament
   personId: string; // unique identifier
   roles: AttendeeRole[]; // roles of the attendee (cumulative from partDays field)
@@ -128,28 +132,32 @@ export interface Attendee extends PersistentObject{
     teamId: string; // unique identifier of the team
     num?: number; // number of the player
   };
-  referee? : {
-    badge: number; // badge of the referee
+  referee? : RefereeInfo;
+  refereeCoach? : RefereeCoachInfo;
+  partDays: AttendeePartDayInfo[];
+  comments?: string;
+}
+export interface AttendeePartDayInfo {
+  dayId: string; // unique identifier of the day
+  partDayId: string; // unique identifier of the part day
+  roles: AttendeeRole[]; // roles of the attendee
+}
+export interface RefereeInfo {
+  badge: number; // badge of the referee
+  badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
+  upgrade: { // Looking for upgrade of the referee
+    badge: number; // badge of the referee. 0 means no upgrade
     badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-    upgrade: { // Looking for upgrade of the referee
-      badge: number; // badge of the referee. 0 means no upgrade
-      badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-    };
-    category: RefereeCategory; // category of the referee
   };
-  refereeCoach? : {
-    badge: number; // badge of the referee coach
-    badgeSystem: RefereeCoachBadgeSystem; // badge system of the referee coach
-    upgrade?: { // Looking for upgrade of the referee Coach
-      badge: number; // badge of the referee  Coach
-      badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-    };
+  category: RefereeCategory; // category of the referee
+}
+export interface RefereeCoachInfo {
+  badge: number; // badge of the referee coach
+  badgeSystem: RefereeCoachBadgeSystem; // badge system of the referee coach
+  upgrade?: { // Looking for upgrade of the referee Coach
+    badge: number; // badge of the referee  Coach
+    badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
   };
-  partDays: {
-    dayId: string; // unique identifier of the day
-    partDayId: string; // unique identifier of the part day
-    roles: AttendeeRole[]; // roles of the attendee
-  }[];
 }
 export type AttendeeRole = 'Referee' | 'Player' | 'Coach' | 'PlayerCoach' | 'PlayerReferee'
   | 'CoachReferee' | 'PlayerCoachReferee' | 'RefereeUpgrade' | 'RefereeRanker' | 'RefereeCoachLeader'
@@ -168,23 +176,8 @@ export interface Person extends PersistentObject {
   gender?: Gender,
   photoUrl?: string;
   phone?: string; // phone of  the person
-  referee? : {
-    badge: number; // badge of the referee
-    badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-    upgrade: { // Looking for upgrade of the referee
-      badge: number; // badge of the referee
-      badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-    };
-    category: RefereeCategory; // category of the referee
-  };
-  refereeCoach? : {
-    badge: number; // badge of the referee coach
-    badgeSystem: RefereeCoachBadgeSystem; // badge system of the referee coach
-    upgrade?: { // Looking for upgrade of the referee Coach
-      badge: number; // badge of the referee  Coach
-      badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-    };
-  };
+  referee? : RefereeInfo;
+  refereeCoach? : RefereeCoachInfo;
 }
 
 export interface Referee {
@@ -240,45 +233,85 @@ export interface GameEvent extends PersistentObject {
   player2Id?: string; // player id involved in the event
   player2TeamId?: string; // team if of the player involved in the event
 }
-export interface GameAllocation extends PersistentObject {
+export interface GameAttendeeAllocation extends PersistentObject {
   tournamentId: string; // unique identifier of the tournament
-  scheduleId: string; // unique identifier of the schedule
-  divisionId: string; // unique identifier of the division
-  dayId: string; // unique identifier of the day
-  partDayId: string; //
+  refereeAllocationId?: string; // unique identifier of the referee allocation
   gameId: string; // unique identifier of the game
   attendeeId: string; // unique identifier of the referee
-  role: AttendeeRole; // role of the referee
+  attendeeRole: AttendeeRole; // role of the attendee
   half: number; // half of the game where the attendee is allocated
 }
 
-export interface PartDayAllocation extends PersistentObject {
+export interface RefereeAllocation extends PersistentObject {
+  name: string; // unique identifier of the game
   tournamentId: string; // unique identifier of the tournament
-  dayId: string; // unique identifier of the day
-  partDayId: string; //
-  authorId: string; // unique identifier of the author (Person)
-  scheduleId?: string; // unique identifier of the schedule
+  dayId: string;
+  parDayId?: string;
+  refereeAllocatorAttendeeIds: string[]; // unique identifier of the author of the referee allocator
+  refereeCoachAllocatorAttendeeIds: string[]; // unique identifier of the author of the referee coach allocator
 }
+
+export interface AllocationStatistics extends PersistentObject {
+  tournamentId: string; // unique identifier of the tournament
+  refereeAllocationId: string; // unique identifier of the referee allocation
+  refereeStatistics: RefereeAllocationAllStatistics[];
+  nbGames: number; // number of games
+
+}
+
+export interface RefereeAllocationStatistics {
+  coaching: {
+    nbCoachedGames: number; // number of games coached by a referee coach
+    averageCoachingLevel: number; // Average level of the coaching
+  };
+  buddies: {
+    buddyAttendeeId: string;
+    nbGames: number; // number of games allocated to the buddy
+  }[];
+  teams: {
+    teamId: string; // unique identifier of the team
+    divisionId: string; // unique identifier of the division
+    nbGames: number;
+  }[];
+  nbGamesOnBadField: number; // number of games on bad fields
+  nbGamesOnVideao: number; // number of streamed games
+  firstTimeSlot: number; // first time slot of the game
+}
+
+export interface RefereeAllocationAllStatistics extends RefereeAllocationStatistics {
+  refereeAttendeeId: string;
+  partDays: RefereePartDayAllocationStatistics[];
+}
+
+export interface RefereePartDayAllocationStatistics extends RefereeAllocationStatistics {
+  dayId: string;
+  partDayId?: string;
+  gameIds: {
+    gameId: string; // unique identifier of the game
+    divisionId: string; // unique identifier of the division
+    divisionShortName: string
+    timeSlotId: string; // unique identifier of the timeslot
+  }[]; // list of game ids allocated to the referee
+  coachedGames: { // list of game ids coached by the referee coach
+    gameId: string; // unique identifier of the game
+    refereeCoachAttendeeIds: string[]; // List of coach during the games
+  }[];
+}
+
 
 export interface Schedule extends PersistentObject {
   tournamentId: string; // unique identifier of the tournament
   drawId: string; // unique identifier of the draw
   name: string; // name of the schedule
-  authorId: string; // unique identifier of the author (Person)
-  byDay : {
-    dayId: string;
-    byPart: {
-      parDayId: string;
-      bySlots: {
-        timeSlotId: string;
-        nonPlayingSlot: boolean;
-        byFields?: {
-          fieldId: string;
-          gameId: string;
-        }[]
-      }[];
-    }[];
-  }[];
+  authorAttendeeId: string; // unique identifier of the author (Attendee)
+  scheduledGames : ScheduleGame[];
+}
+export interface ScheduleGame {
+  dayId: string;
+  parDayId: string;
+  timeSlotId: string;
+  fieldId: string;
+  gameId: string;
 }
 
 export interface SlotType extends PersistentObject{
@@ -300,7 +333,6 @@ export interface Draw extends PersistentObject{
 }
 
 export interface TimeSlotConfig {
-  tournamentId: string;
   dayId: string;
   partDayId: string;
   startTime: number;
@@ -311,7 +343,6 @@ export interface TimeSlotConfig {
 
 export interface DivisionDraw extends WithId {
   divisionId: string;
-  drawId: string;
   steps: Step[];
 }
 export interface Step extends WithId {
@@ -322,20 +353,20 @@ export interface Step extends WithId {
   groups: Group[];
 }
 
-export interface Group extends WithId {
-  name: string;
-  type: GroupType;
-  inputTeamRankedIds: string[];
-  outputTeamRankedIds: string[];
-  gameIds: string[];
-}
-
 export interface StepType {
   nbteams: number;
   name: string;
   nbGames: number;
   nbGroup: number;
   groups: StepGroup[];
+}
+
+export interface Group extends WithId {
+  name: string;
+  type: GroupType;
+  inputTeamRankedIds: string[];
+  outputTeamRankedIds: string[];
+  gameIds: string[];
 }
 
 export interface StepGroup {
@@ -370,4 +401,6 @@ export interface RoundGame extends WithId {
   teamBSourceRoundGameId: string
 }
 export type DefaultGroupName = 'Cup' | 'Plate' | 'Bowl' | 'Shield' | 'Spoon' | 'Saucer';
+export const defaultGroupNames: DefaultGroupName[] = [ 'Cup', 'Plate', 'Bowl', 'Shield', 'Spoon', 'Saucer'];
+
 export type TeamSelectionMode = 'Random' | 'BestTogether' | 'SpreadBest';

@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="1017px" preserveAspectRatio="none" style="width:869px;height:1017px;" version="1.1" viewBox="0 0 869 1017" width="869px" zoomAndPan="magnify"><defs/><g><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="838" x="5" y="17.457">An error has occured : net.sourceforge.plantuml.vizjs.GraphvizJsRuntimeException: java.util.concurrent.ExecutionException: java.lang.NullPointerException</text><text fill="#000000" font-family="sans-serif" font-size="12" font-style="italic" lengthAdjust="spacingAndGlyphs" textLength="177" x="5" y="32.5508">I can't change the law of physics!</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="47.6445"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="231" x="5" y="62.7383">Diagram size: 227 lines / 6809 characters.</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="77.832"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="331" x="5" y="92.9258">PlantUML (1.2019.06) cannot parse result from dot/GraphViz.</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="312" x="5" y="108.0195">This version of PlantUML is 2157 days old, so you should</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="299" x="11" y="123.1133">consider upgrading from http://plantuml.com/download</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="138.207"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="417" x="5" y="153.3008">Please go to http://plantuml.com/graphviz-dot to check your GraphViz version.</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="168.3945"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="271" x="5" y="183.4883">Java Runtime: Java(TM) SE Runtime Environment</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="216" x="5" y="198.582">JVM: Java HotSpot(TM) 64-Bit Server VM</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="156" x="5" y="213.6758">Java Version: 1.8.0_202-b08</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="172" x="5" y="228.7695">Operating System: Windows 10</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="92" x="5" y="243.8633">OS Version: 10.0</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="144" x="5" y="258.957">Default Encoding: Cp1252</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="69" x="5" y="274.0508">Language: fr</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="64" x="5" y="289.1445">Country: FR</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="126" x="5" y="304.2383">Machine: FR-DJ2GM44</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="166" x="5" y="319.332">PLANTUML_LIMIT_SIZE: 4096</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="84" x="5" y="334.4258">Processors: 14</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="152" x="5" y="349.5195">Max Memory: 7,507,279,872</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="148" x="5" y="364.6133">Total Memory: 506,462,208</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="146" x="5" y="379.707">Free Memory: 349,930,912</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="151" x="5" y="394.8008">Used Memory: 156,531,296</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="122" x="5" y="409.8945">Thread Active Count: 2</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="424.9883"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="132" x="5" y="440.082">This may be caused by :</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="107" x="8" y="455.1758">- a bug in PlantUML</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="128" x="8" y="470.2695">- a problem in GraphViz</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="485.3633"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="263" x="5" y="500.457">You should send this diagram and this image to</text><text fill="#000000" font-family="sans-serif" font-size="12" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="120" x="271" y="500.457">plantuml@gmail.com</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="11" x="394" y="500.457">or</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="37" x="5" y="515.5508">post to</text><text fill="#000000" font-family="sans-serif" font-size="12" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="125" x="45" y="515.5508">http://plantuml.com/qa</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="102" x="173" y="515.5508">to solve this issue.</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="349" x="5" y="530.6445">You can try to turn arround this issue by simplifing your diagram.</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="545.7383"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="715" x="5" y="560.832">net.sourceforge.plantuml.vizjs.GraphvizJsRuntimeException: java.util.concurrent.ExecutionException: java.lang.NullPointerException</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="400" x="11" y="575.9258">net.sourceforge.plantuml.vizjs.GraphvizJs.createFile3(GraphvizJs.java:96)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="445" x="11" y="591.0195">net.sourceforge.plantuml.svek.DotStringFactory.getSvg(DotStringFactory.java:315)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="526" x="11" y="606.1133">net.sourceforge.plantuml.svek.GeneralImageBuilder.buildImage(GeneralImageBuilder.java:199)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="635" x="11" y="621.207">net.sourceforge.plantuml.svek.CucaDiagramFileMakerSvek.createFileInternal(CucaDiagramFileMakerSvek.java:105)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="587" x="11" y="636.3008">net.sourceforge.plantuml.svek.CucaDiagramFileMakerSvek.createFile(CucaDiagramFileMakerSvek.java:71)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="551" x="11" y="651.3945">net.sourceforge.plantuml.cucadiagram.CucaDiagram.exportDiagramInternal(CucaDiagram.java:379)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="563" x="11" y="666.4883">net.sourceforge.plantuml.classdiagram.ClassDiagram.exportDiagramInternal(ClassDiagram.java:194)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="448" x="11" y="681.582">net.sourceforge.plantuml.UmlDiagram.exportDiagramNow(UmlDiagram.java:202)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="467" x="11" y="696.6758">net.sourceforge.plantuml.AbstractPSystem.exportDiagram(AbstractPSystem.java:135)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="493" x="11" y="711.7695">net.sourceforge.plantuml.SourceStringReader.outputImage(SourceStringReader.java:154)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="321" x="11" y="726.8633">net.sourceforge.plantuml.Pipe.managePipe(Pipe.java:110)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="317" x="11" y="741.957">net.sourceforge.plantuml.Run.managePipe(Run.java:359)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="274" x="11" y="757.0508">net.sourceforge.plantuml.Run.main(Run.java:166)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="11" y="772.1445"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="445" x="5" y="787.2383">Caused by java.util.concurrent.ExecutionException: java.lang.NullPointerException</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="304" x="11" y="802.332">java.util.concurrent.FutureTask.report(Unknown Source)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="289" x="11" y="817.4258">java.util.concurrent.FutureTask.get(Unknown Source)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="400" x="11" y="832.5195">net.sourceforge.plantuml.vizjs.GraphvizJs.createFile3(GraphvizJs.java:91)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="445" x="11" y="847.6133">net.sourceforge.plantuml.svek.DotStringFactory.getSvg(DotStringFactory.java:315)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="526" x="11" y="862.707">net.sourceforge.plantuml.svek.GeneralImageBuilder.buildImage(GeneralImageBuilder.java:199)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="635" x="11" y="877.8008">net.sourceforge.plantuml.svek.CucaDiagramFileMakerSvek.createFileInternal(CucaDiagramFileMakerSvek.java:105)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="587" x="11" y="892.8945">net.sourceforge.plantuml.svek.CucaDiagramFileMakerSvek.createFile(CucaDiagramFileMakerSvek.java:71)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="551" x="11" y="907.9883">net.sourceforge.plantuml.cucadiagram.CucaDiagram.exportDiagramInternal(CucaDiagram.java:379)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="563" x="11" y="923.082">net.sourceforge.plantuml.classdiagram.ClassDiagram.exportDiagramInternal(ClassDiagram.java:194)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="448" x="11" y="938.1758">net.sourceforge.plantuml.UmlDiagram.exportDiagramNow(UmlDiagram.java:202)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="467" x="11" y="953.2695">net.sourceforge.plantuml.AbstractPSystem.exportDiagram(AbstractPSystem.java:135)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="493" x="11" y="968.3633">net.sourceforge.plantuml.SourceStringReader.outputImage(SourceStringReader.java:154)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="321" x="11" y="983.457">net.sourceforge.plantuml.Pipe.managePipe(Pipe.java:110)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="317" x="11" y="998.5508">net.sourceforge.plantuml.Run.managePipe(Run.java:359)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="274" x="11" y="1013.6445">net.sourceforge.plantuml.Run.main(Run.java:166)</text><image height="21" width="27" x="842" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABsAAAAVCAYAAAC33pUlAAAAT0lEQVR42mNgGJHgrYzKfxCmlfqBs4xYQ6hiCV0tgxlCKh68luHSTMhwsiyli2XkBhtZwTogllErgQx+y8jN/IPHMkqzAlXLRrpYNgoIAQAkCo+wEIpKJwAAAABJRU5ErkJggg==" y="6"/><!--
+@startuml
+interface WithId {
+    +id: string
+}
+interface PersistentObject extends WithId {
+    +lastChange: number
+}
+interface Tournament extends PersistentObject {
+    +name: string
+    +description: string
+    +startDate: number
+    +endDate: number
+    +nbDay: number
+    +venue: string
+    +city: string
+    +countryId: string
+    +regionId: string
+    +timeZone: string
+    +fields: Field[]
+    +days: Day[]
+    +divisions: Division[]
+    +managers: { role: AttendeeRole; attendeeId: string; limit?: { dayId?: string | undefined; partDayId?: string | undefined; divisionIds?: string[] | undefined; refereeeCategories?: RefereeCategory[] | undefined; } | undefined; }[]
+    +currentScheduleId?: string | undefined
+    +currentDrawId?: string | undefined
+    +allowPlayerReferees?: boolean | undefined
+}
+interface Field extends WithId {
+    +name: string
+    +video: boolean
+    +quality: FieldQuality
+    +orderView: number
+}
+interface Timeslot extends WithId {
+    +start: number
+    +duration: number
+    +end: number
+}
+interface Day extends WithId {
+    +date: number
+    +parts: PartDay[]
+}
+interface PartDay extends WithId {
+    +dayId: string
+    +timeslots: Timeslot[]
+    +allFieldsAvaillable: boolean
+    +availableFieldIds: string[]
+}
+interface Division extends WithId, BasicDivision {
+    +teams: Team[]
+}
+interface BasicDivision {
+    +name: string
+    +shortName: string
+}
+interface Team extends WithId {
+    +name: string
+    +shortName: string
+    +divisionName: string
+    +players?: Attendee[] | undefined
+}
+interface TeamDivision extends Team {
+    +divisionShortName: string
+}
+interface Attendee extends PersistentObject {
+    +tournamentId: string
+    +personId: string
+    +roles: AttendeeRole[]
+    +isPlayer: boolean
+    +isReferee: boolean
+    +isRefereeCoach: boolean
+    +isTournamentManager: boolean
+    +player?: { teamId: string; num?: number | undefined; } | undefined
+    +referee?: { badge: number; badgeSystem: RefereeBadgeSystem; upgrade: {    badge: number;    badgeSystem: RefereeBadgeSystem;}; category: RefereeCategory; } | undefined
+    +refereeCoach?: { badge: number; badgeSystem: RefereeCoachBadgeSystem; upgrade?: { badge: number; badgeSystem: RefereeBadgeSystem; } | undefined; } | undefined
+    +partDays: { dayId: string; partDayId: string; roles: AttendeeRole[]; }[]
+}
+interface Person extends PersistentObject {
+    +userAuthId: string
+    +firstName: string
+    +lastName: string
+    +shortName: string
+    +email: string
+    +regionId: string
+    +countryId: string
+    +gender?: Gender | undefined
+    +photoUrl?: string | undefined
+    +phone?: string | undefined
+    +referee?: { badge: number; badgeSystem: RefereeBadgeSystem; upgrade: {    badge: number;    badgeSystem: RefereeBadgeSystem;}; category: RefereeCategory; } | undefined
+    +refereeCoach?: { badge: number; badgeSystem: RefereeCoachBadgeSystem; upgrade?: { badge: number; badgeSystem: RefereeBadgeSystem; } | undefined; } | undefined
+}
+interface Referee {
+    +attendee: Attendee
+    +isPR: boolean
+    +person?: Person | undefined
+    +team?: Team | undefined
+}
+interface Region extends PersistentObject {
+    +name: string
+    +countries: Country[]
+}
+interface Country extends WithId {
+    +name: string
+    +shortName: string
+    +badgeSystem?: RefereeBadgeSystem | undefined
+}
+interface Game extends PersistentObject {
+    +tournamentId: string
+    +scheduleId: string
+    +divisionId: string
+    +dayId: string
+    +partDayId: string
+    +timeslotId: string
+    +fieldId: string
+    +homeTeamId: string
+    +awayTeamId: string
+    +score?: { homeTeamScore: number; awayTeamScore: number; } | undefined
+    +scheduleInfo?: { divisionDrawId: string; stepId: string; groupId: string; roundId: string; roundGameId: string; } | undefined
+}
+interface GameEvent extends PersistentObject {
+    +gameId: string
+    +type: GameEventType
+    +time: number
+    +player1Id?: string | undefined
+    +player1TeamId?: string | undefined
+    +player2Id?: string | undefined
+    +player2TeamId?: string | undefined
+}
+interface GameAllocation extends PersistentObject {
+    +tournamentId: string
+    +scheduleId: string
+    +divisionId: string
+    +dayId: string
+    +partDayId: string
+    +gameId: string
+    +attendeeId: string
+    +role: AttendeeRole
+    +half: number
+}
+interface PartDayAllocation extends PersistentObject {
+    +tournamentId: string
+    +dayId: string
+    +partDayId: string
+    +authorId: string
+    +scheduleId?: string | undefined
+}
+interface Schedule extends PersistentObject {
+    +tournamentId: string
+    +drawId: string
+    +name: string
+    +authorId: string
+    +byDay: { dayId: string; byPart: {    parDayId: string;    bySlots: {        timeSlotId: string;        nonPlayingSlot: boolean;        byFields?: {            fieldId: string;            gameId: string;        }[];    }[];}[]; }[]
+}
+interface SlotType extends PersistentObject {
+    +name: string
+    +nbPeriod: number
+    +periodDuration: number
+    +breakDuration: number
+    +interGameDuration: number
+    +extraTimeDuration: number
+    +totalDuration: number
+    +playTime: number
+}
+interface Draw extends PersistentObject {
+    +tournamentId: string
+    +timeSlotconfigs: TimeSlotConfig[]
+    +authorId: string
+    +divisionDraws: DivisionDraw[]
+}
+interface TimeSlotConfig {
+    +tournamentId: string
+    +dayId: string
+    +partDayId: string
+    +startTime: number
+    +endTime: number
+    +slotType: SlotType
+    +slotDuration: number
+}
+interface DivisionDraw extends WithId {
+    +divisionId: string
+    +drawId: string
+    +steps: Step[]
+}
+interface Step extends WithId {
+    +position: number
+    +name: string
+    +type: StepType
+    +teamSelectionMode: TeamSelectionMode
+    +groups: Group[]
+}
+interface Group extends WithId {
+    +name: string
+    +type: GroupType
+    +inputTeamRankedIds: string[]
+    +outputTeamRankedIds: string[]
+    +gameIds: string[]
+}
+interface StepType {
+    +nbteams: number
+    +name: string
+    +nbGames: number
+    +nbGroup: number
+    +groups: StepGroup[]
+}
+interface StepGroup {
+    +type: GroupType
+}
+interface GroupType {
+    +name: string
+    +nbTeams: number
+    +nbGames: number
+    +sourceCode: string
+    +rounds: Round[]
+    +nbRankedTeams: number
+}
+interface Round extends WithId {
+    +rank: number
+    +name?: string | undefined
+    +roundGames: RoundGame[]
+}
+interface RoundGame extends WithId {
+    +name: string
+    +teamASourceType: "GameWinner" | "GameLoser" | "InputRank"
+    +teamASourceRoundGameId: string
+    +teamBSourceType: "GameWinner" | "GameLoser" | "InputRank"
+    +teamBSourceRoundGameId: string
+}
+@enduml
+
+PlantUML version 1.2019.06(Fri May 24 19:10:25 CEST 2019)
+(GPL source distribution)
+Java Runtime: Java(TM) SE Runtime Environment
+JVM: Java HotSpot(TM) 64-Bit Server VM
+Java Version: 1.8.0_202-b08
+Operating System: Windows 10
+OS Version: 10.0
+Default Encoding: Cp1252
+Language: fr
+Country: FR
+--></g></svg><?xml version="1.0" encoding="UTF-8" standalone="no"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentScriptType="application/ecmascript" contentStyleType="text/css" height="279px" preserveAspectRatio="none" style="width:498px;height:279px;" version="1.1" viewBox="0 0 498 279" width="498px" zoomAndPan="magnify"><defs/><g><text fill="#000000" font-family="sans-serif" font-size="12" font-weight="bold" lengthAdjust="spacingAndGlyphs" textLength="128" x="5" y="17.457">Welcome to PlantUML!</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="32.5508"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="251" x="5" y="47.6445">If you use this software, you accept its license.</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="91" x="5" y="63.3125">(details by typing</text><text fill="#000000" font-family="monospace" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="49" x="99" y="62.3457">license</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="49" x="151" y="63.3125">keyword)</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="78.4063"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="251" x="5" y="93.5">You can start with a simple UML Diagram like:</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="108.5938"/><text fill="#000000" font-family="monospace" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="119" x="5" y="123.2949">Bob-&gt;Alice: Hello</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="139.3555"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="13" x="5" y="154.4492">Or</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="169.543"/><text fill="#000000" font-family="monospace" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="91" x="5" y="184.2441">class Example</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="200.3047"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="306" x="5" y="215.3984">You will find more information about PlantUML syntax on</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" text-decoration="underline" textLength="104" x="314" y="215.3984">http://plantuml.com</text><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="230.4922"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="245.5859"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="260.6797"/><text fill="#000000" font-family="sans-serif" font-size="12" lengthAdjust="spacingAndGlyphs" textLength="0" x="8" y="275.7734"/><image height="71" width="80" x="418" xlink:href="data:image/png;base64,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" y="207.4102"/><!--
+PlantUML version 1.2019.06(Fri May 24 19:10:25 CEST 2019)
+(GPL source distribution)
+Java Runtime: Java(TM) SE Runtime Environment
+JVM: Java HotSpot(TM) 64-Bit Server VM
+Java Version: 1.8.0_202-b08
+Operating System: Windows 10
+OS Version: 10.0
+Default Encoding: Cp1252
+Language: fr
+Country: FR
+--></g></svg>
