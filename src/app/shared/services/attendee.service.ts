@@ -5,6 +5,7 @@ import { AbstractPersistentDataService } from '../abstract-persistent-data.servi
 import { query, where } from '@angular/fire/firestore';
 
 export const nonRefereeRoles: AttendeeRole[] = ['Player', 'Coach', 'CoachReferee', 'RefereeUpgrade', 'RefereeRanker', 'TournamentManager', 'GameAllocator', 'ResultManager'];
+export const nonRefereeCoachRoles: AttendeeRole[] = ['Player', 'Coach', 'Referee', 'TournamentManager', 'GameAllocator', 'ResultManager'];
 
 @Injectable({
   providedIn: 'root'
@@ -47,5 +48,8 @@ export class AttendeeService extends AbstractPersistentDataService<Attendee>{
   }
   isOnlyReferee(attendee: Attendee): boolean {
     return attendee.roles.filter(role =>  nonRefereeRoles.indexOf(role) >= 0).length === 0;
+  }
+  isOnlyRefereeCoach(attendee: Attendee): boolean {
+    return attendee.roles.filter(role =>  nonRefereeCoachRoles.indexOf(role) >= 0).length === 0 ;
   }
 }

@@ -25,8 +25,8 @@ import { ConfirmationService } from 'primeng/api';
 
     <h2>List of referees</h2>
     <div class="chapterSection" *ngIf="referees()">
-      <div *ngIf="tournament()!.allowPlayerReferees" class="addAllTeamPRPanel">
-        <p-button (click)="addAllTeamPR()" severity="secondary" icon="pi pi-add" label="Add a player for each team" class="table-buttons"></p-button>
+      <div  class="buttonPanel">
+        <p-button (click)="addAllTeamPR()" severity="secondary" icon="pi pi-add" label="Add a player for each team" class="table-buttons" *ngIf="tournament()!.allowPlayerReferees"></p-button>
         <p-button (click)="addReferee()" icon="pi pi-add" label="Add a referee"></p-button>
       </div>
       <p-table [value]="referees()" stripedRows showGridlines [size]="'small'" tableLayout="fixed">
@@ -41,9 +41,7 @@ import { ConfirmationService } from 'primeng/api';
               <th style="width:5%">Upgrade to</th>
               <th style="width:5%">Category</th>
               <th style="width:5%">Gender</th>
-              <th style="width:10%" (click)="addReferee()">
-                <i class="pi pi-plus action-add" aria-label="add referee"></i> Add
-              </th>
+              <th style="width:10%">Action</th>
             </tr>
         </ng-template>
         <ng-template #body let-referee let-ri="rowIndex">
@@ -121,7 +119,13 @@ import { ConfirmationService } from 'primeng/api';
                       (paste)="onPasteLevel($event, ri)"  (ngModelChange)="upgradeChanged(referee, $event)"
                       min="0" max="{{referee!.attendee!.referee!.upgrade?.badgeSystem || referee!.attendee!.referee!.badgeSystem}}"/>
                   </ng-template>
-                  <ng-template #output>{{ referee.attendee.referee.upgrade?.badge }}</ng-template>
+                  <ng-template #output>
+                    @if (referee.attendee.referee.upgrade?.badge === 0){
+                      <span>-</span>
+                    } @else {
+                      <span>{{ referee.attendee.referee.upgrade?.badge }}</span>
+                    }
+                  </ng-template>
                 </p-cellEditor>
               </td>
               <td [pEditableColumn]="referee.attendee.referee.category" pEditableColumnField="refereeCategory" style="text-align: center;">
@@ -152,8 +156,8 @@ import { ConfirmationService } from 'primeng/api';
             </tr>
         </ng-template>
       </p-table>
-      <div *ngIf="tournament()!.allowPlayerReferees" class="addAllTeamPRPanel">
-        <p-button (click)="addAllTeamPR()" severity="secondary" icon="pi pi-add" label="Add a player for each team" class="table-buttons"></p-button>
+      <div class="buttonPanel">
+        <p-button (click)="addAllTeamPR()" severity="secondary" icon="pi pi-add" label="Add a player for each team" class="table-buttons" *ngIf="tournament()!.allowPlayerReferees"></p-button>
         <p-button (click)="addReferee()" icon="pi pi-add" label="Add a referee"></p-button>
       </div>
     </div>
@@ -165,7 +169,7 @@ import { ConfirmationService } from 'primeng/api';
     .action { font-size: 1.3rem}
     .action-remove { margin-right: 10px; color: red;}
     .action-edit { margin-right: 10px; color: blue;}
-    .addAllTeamPRPanel { text-align: right; margin: 10px 0;}
+    .buttonPanel { text-align: right; margin: 10px 0;}
     .table-buttons { margin: 0 10px;}
     `
     ],

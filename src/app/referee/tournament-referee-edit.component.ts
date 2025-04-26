@@ -180,6 +180,7 @@ export class TournamentRefereeEditComponent implements OnInit{
   onSelectPerson(person: Person) {
     console.log('onSelectPerson', person);
     this.referee!.person = person;
+    this.referee!.attendee.personId = person.id;
     if (person.referee) this.referee!.attendee!.referee = person.referee
     if (person.refereeCoach) this.referee!.attendee!.refereeCoach = person.refereeCoach
   }

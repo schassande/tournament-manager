@@ -185,6 +185,10 @@ export interface Referee {
   person?: Person;
   team?: Team;
 }
+export interface RefereeCoach {
+  attendee: Attendee;
+  person?: Person;
+}
 
 export interface Region extends PersistentObject {
   name: string; // name of the region

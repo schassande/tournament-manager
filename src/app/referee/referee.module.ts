@@ -20,10 +20,15 @@ import { FieldsetModule } from 'primeng/fieldset';
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
+import { TournamentRefereeCoachComponent } from './tournament-referee-coach.component';
+import { TournamentRefereeCoachEditComponent } from './tournament-referee-coach-edit.component';
 
 @NgModule({
   declarations: [
-    TournamentRefereeComponent, TournamentRefereeEditComponent
+    TournamentRefereeComponent,
+    TournamentRefereeEditComponent,
+    TournamentRefereeCoachComponent,
+    TournamentRefereeCoachEditComponent
   ],
   imports: [
     RefereeRoutingModule,
