@@ -1,9 +1,9 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
-import { TournamentListComponent } from './tournament-list/tournament-list.component';
-import { TournamentEditComponent } from './tournament-edit/tournament-edit.component';
+import { TournamentListComponent } from './tournament-list.component';
+import { TournamentEditComponent } from './tournament-edit.component';
 import { AuthGuard } from '../shared/auth-guard';
-import { TournamentHomeComponent } from './tournament-home/tournament-home.component';
+import { TournamentHomeComponent } from './tournament-home.component';
 
 const routes: Routes = [
   { path: '',           component: TournamentListComponent, data: { title: 'List of tournaments' }},

@@ -4,8 +4,8 @@ import { IonicModule } from '@ionic/angular';
 import { SharedModule } from '../shared/shared.module';
 import { TournamentRoutingModule } from './tournament-routing.module';
 
-import { TournamentListComponent } from './tournament-list/tournament-list.component';
-import { TournamentEditComponent } from './tournament-edit/tournament-edit.component';
+import { TournamentListComponent } from './tournament-list.component';
+import { TournamentEditComponent } from './tournament-edit.component';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { DatePickerModule } from 'primeng/datepicker';
@@ -19,14 +19,13 @@ import { TournamentDayTimeslotEditComponent } from './tournament-day-timeslot-ed
 import { TournamentDayEditComponent } from './tournament-day-edit.component';
 import { TournamentDivisionsEditComponent } from './tournament-divisions-edit.component';
 import { TournamentDivisionEditComponent } from './tournament-division-edit.component';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeng/themes/aura';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { RatingModule } from 'primeng/rating';
 import { SelectModule } from 'primeng/select';
 import { MessageModule } from 'primeng/message';
-import { TournamentHomeComponent } from './tournament-home/tournament-home.component';
+import { TournamentHomeComponent } from './tournament-home.component';
 
 @NgModule({
   declarations: [

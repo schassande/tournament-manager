@@ -1,8 +1,8 @@
-import { UserService } from './../../shared/services/user.service';
-import { Country, Division, Person, Region, Timeslot, Tournament } from './../../shared/data.model';
+import { UserService } from './../shared/services/user.service';
+import { Country, Division, Person, Region, Timeslot, Tournament } from './../shared/data.model';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { TournamentService } from '../../shared/services/tournament.service';
+import { TournamentService } from '../shared/services/tournament.service';
 import { DateService } from 'src/app/shared/services/date.service';
 import { RegionService } from 'src/app/shared/services/region.service';
 import { map } from 'rxjs';
@@ -10,8 +10,79 @@ import { map } from 'rxjs';
 @Component({
   standalone: false,
   selector: 'app-tournament-edit',
-  templateUrl: './tournament-edit.component.html',
-  styleUrls: ['./tournament-edit.component.scss'],
+  template: `
+  <div *ngIf="tournament()" class="page">
+
+    <div style="margin: 20px; text-align: center;">
+      @for(error of errors(); track error) {
+        <p-message severity="error">{{ error }}</p-message>
+      }
+    </div>
+
+    <h2>General information</h2>
+    <div class="chapterSection">
+      <div class="form-field">
+        <label for="name">Name</label>
+        <input id="name" type="text" pInputText [(ngModel)]="tournament()!.name" required />
+      </div>
+      <div class="form-field">
+        <label for="description">Description</label>
+        <textarea id="description" pInputTextarea [(ngModel)]="tournament()!.description"></textarea>
+      </div>
+      <div class="form-field">
+        <label for="country">Country</label>
+        <p-select id="description" size="small" [options]="countries" [(ngModel)]="tournamentCountry"
+          appendTo="body" placeholder="Country" (onChange)="countrySelected($event.value)" />
+        </div>
+    </div>
+
+    <h2>Tournament fields</h2>
+    <div class="chapterSection">
+      <app-tournament-fields-edit
+        [(fields)]="tournament()!.fields">
+      </app-tournament-fields-edit>
+    </div>
+
+    <h2>Tournament days</h2>
+    <div class="chapterSection">
+      <app-tournament-days-edit
+        [tournament]="tournament()!"
+        (startDateChange)="onTournamentStartDateChange($event)"
+        (endDateChange)="onTournamentEndDateChange($event)">
+      </app-tournament-days-edit>
+    </div>
+
+    <h2>Divisions and teams</h2>
+    <div class="chapterSection">
+      <app-tournament-divisions-edit
+        [tournament]="tournament()!" (divisionsChanged)="onDivisionsChanged($event)" >
+      </app-tournament-divisions-edit>
+    </div>
+    <div style="height: 100px;"></div>
+  </div>
+  `,
+  styles: [`
+    .page {
+      margin: 0 auto;
+    }
+
+    .chapterSection .form-field {
+      margin: 5px 0;
+      vertical-align: middle;
+    }
+    .chapterSection .form-field label {
+      display: inline-block;
+      width: 150px;
+      text-align: right;
+      margin-right: 10px;
+      vertical-align: top;
+    }
+
+    .chapterSection .form-field textarea {
+      width: 450px;
+      height: 60px;
+    }
+  `],
 })
 export class TournamentEditComponent  implements OnInit {
   // Services

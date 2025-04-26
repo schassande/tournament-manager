@@ -1,7 +1,7 @@
 import { RegionService } from 'src/app/shared/services/region.service';
 import { map, Observable } from 'rxjs';
-import { Country, Region, Tournament } from './../../shared/data.model';
-import { TournamentService } from './../../shared/services/tournament.service';
+import { Country, Region, Tournament } from './../shared/data.model';
+import { TournamentService } from './../shared/services/tournament.service';
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { DateService } from 'src/app/shared/services/date.service';
@@ -9,8 +9,41 @@ import { DateService } from 'src/app/shared/services/date.service';
 @Component({
   standalone: false,
   selector: 'app-tournament-list',
-  templateUrl: './tournament-list.component.html',
-  styleUrls: ['./tournament-list.component.scss'],
+  template: `
+    <div>
+      <p-button label="New Tournament" (click)="createTournament()"/>
+      @let ts = tournaments | async;
+      @if(ts) {
+        <p-table [value]="ts" [tableStyle]="{ 'min-width': '50rem' }" size="small" showGridlines stripedRows
+        [paginator]="true" [rows]="10" selectionMode="single" [(selection)]="selectedTournament"
+        (onRowSelect)="onTournamentSelected()">
+          <ng-template #header>
+              <tr>
+                  <th>Region</th>
+                  <th>Country</th>
+                  <th>Name</th>
+                  <th pSortableColumn="code">Begin date <p-sortIcon field="startDate" /></th>
+                  <th>Nb days</th>
+                  <th></th>
+              </tr>
+          </ng-template>
+          <ng-template #body let-tournament>
+              <tr [pSelectableRow]="tournament">
+                <td>{{ tournament.region?.name }}</td>
+                <td>{{ tournament.country?.name }}</td>
+                <td>{{ tournament.name }}</td>
+                <td>{{ tournament.startDateStr }}</td>
+                <td>{{ tournament.days.length }}</td>
+                <td>
+                  <i class="pi pi-cog"  aria-label="edit tournament" (click)="editTournament(tournament)"></i>
+                </td>
+              </tr>
+          </ng-template>
+        </p-table>
+      }
+    </div>
+  `,
+  styles: [``],
 })
 export class TournamentListComponent {
 
