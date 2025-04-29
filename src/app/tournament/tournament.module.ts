@@ -26,6 +26,8 @@ import { RatingModule } from 'primeng/rating';
 import { SelectModule } from 'primeng/select';
 import { MessageModule } from 'primeng/message';
 import { TournamentHomeComponent } from './tournament-home.component';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { TournamentGamesComponent } from './tournament-games.component';
 
 @NgModule({
   declarations: [
@@ -37,7 +39,8 @@ import { TournamentHomeComponent } from './tournament-home.component';
     TournamentEditComponent,
     TournamentFieldsEditComponent,
     TournamentHomeComponent,
-    TournamentListComponent
+    TournamentListComponent,
+    TournamentGamesComponent
   ],
   imports: [
     FormsModule,
@@ -54,6 +57,7 @@ import { TournamentHomeComponent } from './tournament-home.component';
     ToggleSwitchModule,
     RatingModule,
     SelectModule,
+    SelectButtonModule,
     MessageModule
   ],
   providers: [
