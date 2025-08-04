@@ -28,6 +28,15 @@ export class DateService {
     //TODO use this.tournament?.timeZone
     return dayjs.unix(epoch).format('HH:mm');
   }
+  public toDuration(epoch: number):string {
+    const seconds = Math.floor(epoch / 1000);
+    const h = Math.floor(seconds / 3600);
+    let rest = seconds % 3600;
+    const min =  Math.floor(rest / 60);
+    rest = rest % 60;
+    const sec = rest;
+    return (h > 0 ? h + 'h':'') + (min > 0 ? min + 'min' : '') + (sec > 0 ? sec + 's' : '');
+  }
   public fromTime(dayEpoch: number, timeStr: string): number {
     const parts = timeStr.split(':')
     return dayjs.unix(dayEpoch)

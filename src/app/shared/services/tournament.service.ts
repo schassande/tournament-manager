@@ -1,5 +1,5 @@
+import { Team, Tournament } from 'src/app/shared/data.model';
 import { Injectable, signal } from '@angular/core';
-import { Tournament } from '../data.model';
 import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
 import { map, Observable, of } from 'rxjs';
 
@@ -40,5 +40,11 @@ export class TournamentService extends AbstractPersistentDataService<Tournament>
   }
   public getCurrentTournament(): Tournament|null {
     return this.currentTournament$();
+  }
+
+  public getTeam(tournament: Tournament, teamId: string) {
+    let res: Team|undefined;
+    tournament.divisions.find(division => res = division.teams.find(team => team.id === teamId));
+    return res;
   }
 }

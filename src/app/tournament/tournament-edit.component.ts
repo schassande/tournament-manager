@@ -47,6 +47,7 @@ import { map } from 'rxjs';
     <div class="chapterSection">
       <app-tournament-days-edit
         [tournament]="tournament()!"
+        (dayChange)="onDayChange()"
         (startDateChange)="onTournamentStartDateChange($event)"
         (endDateChange)="onTournamentEndDateChange($event)">
       </app-tournament-days-edit>
@@ -150,6 +151,13 @@ export class TournamentEditComponent  implements OnInit {
     });
   }
 
+  onDayChange() {
+    this.tournament.update(tournament => {
+      this.save();
+      return tournament;
+    });
+  }
+
   private save() {
     if (!this.tournament()) return;
     if (!this.checkTournamentBeforeSave(this.tournament()!)) return;
@@ -232,14 +240,14 @@ export class TournamentEditComponent  implements OnInit {
         parts: [{
           id: '1',
           dayId: '1',
-          timeslots: ts.map((t,idx) => { return { id: (idx+1).toString(), start: t[0], duration: t[1], end: t[2]} as Timeslot; }),
+          timeslots: ts.map((t,idx) => { return { id: (idx+1).toString(), start: t[0], duration: t[1], end: t[2], playingSlot: true}  }),
           allFieldsAvaillable: true,
           availableFieldIds: []
         }]
       }],
       divisions: [
         {
-          id:'100', name: 'Mens Open', shortName: 'MO', teams: [
+          id:'100', name: 'Mens Open', shortName: 'MO', backgroundColor: 'blue', fontColor: 'white', teams: [
             {id:'101', divisionName: 'Mens Open', name: 'Team MO 1', shortName: 'MO1'},
             {id:'102', divisionName: 'Mens Open', name: 'Team MO 2', shortName: 'MO2'},
             {id:'103', divisionName: 'Mens Open', name: 'Team MO 3', shortName: 'MO3'},
@@ -247,7 +255,7 @@ export class TournamentEditComponent  implements OnInit {
           ]
         },
         {
-          id:'200', name: 'Womens Open', shortName: 'WO', teams: [
+          id:'200', name: 'Womens Open', shortName: 'WO', backgroundColor: 'pink', fontColor: 'black', teams: [
             {id:'201', divisionName: 'Mens Open', name: 'Team WO 1', shortName: 'WO1'},
             {id:'202', divisionName: 'Mens Open', name: 'Team WO 2', shortName: 'WO2'},
             {id:'203', divisionName: 'Mens Open', name: 'Team WO 3', shortName: 'wO3'},
@@ -255,7 +263,7 @@ export class TournamentEditComponent  implements OnInit {
           ]
         },
         {
-          id:'300', name: 'Mixed Open', shortName: 'XO', teams: [
+          id:'300', name: 'Mixed Open', shortName: 'XO', backgroundColor: 'yellow', fontColor: 'black', teams: [
             {id:'301', divisionName: 'Mixed Open', name: 'Team XO 1', shortName: 'XO1'},
             {id:'302', divisionName: 'Mixed Open', name: 'Team XO 2', shortName: 'XO2'},
             {id:'303', divisionName: 'Mixed Open', name: 'Team XO 3', shortName: 'xO3'},

@@ -55,7 +55,8 @@ import { TournamentRefereeCoachEditComponent } from './tournament-referee-coach-
                 </p-cellEditor>
               </td>
 
-              <td [pEditableColumn]="coach.person?.shortName" pEditableColumnField="shortName" style="text-align: center;">
+              <td [pEditableColumn]="coach.person?.shortName" pEditableColumnField="shortName"
+                style="text-align: center; color: {{coach!.attendee!.refereeCoach!.fontColor}}; background-color: {{coach!.attendee!.refereeCoach!.backgroundColor}}">
                 <p-cellEditor>
                   <ng-template #input>
                     <input pInputText type="text" [(ngModel)]="coach.person.shortName"
@@ -73,7 +74,7 @@ import { TournamentRefereeCoachEditComponent } from './tournament-referee-coach-
                       (paste)="onPasteLevel($event, ri)" (change)="attendeeChanged(coach)"
                       min="0" max="{{coach!.attendee!.refereeCoach!.badgeSystem}}"/>
                   </ng-template>
-                  <ng-template #output>{{ coach.attendee.refereeCoach.badge }}/{{ coach.attendee.refereeCoach.badgeSystem }}</ng-template>
+                  <ng-template #output>L{{ coach.attendee.refereeCoach.badge }}/{{ coach.attendee.refereeCoach.badgeSystem }}</ng-template>
                 </p-cellEditor>
               </td>
               <td [pEditableColumn]="coach.attendee.refereeCoach.upgrade?.badge" pEditableColumnField="refereeCoachUpgrade" style="text-align: center;">
@@ -87,7 +88,7 @@ import { TournamentRefereeCoachEditComponent } from './tournament-referee-coach-
                     @if (coach.attendee.refereeCoach.upgrade?.badge === 0){
                       <span>-</span>
                     } @else {
-                      <span>{{ coach.attendee.refereeCoach.upgrade?.badge }}</span>
+                      <span>L{{ coach.attendee.refereeCoach.upgrade?.badge }}</span>
                     }
                   </ng-template>
                 </p-cellEditor>
@@ -198,7 +199,9 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentComponen
       refereeCoach: {
         badge: 0,
         badgeSystem: defaultBadgeSystem,
-        upgrade : { badge: 0, badgeSystem: defaultBadgeSystem }
+        upgrade : { badge: 0, badgeSystem: defaultBadgeSystem },
+        fontColor: 'x000000',
+        backgroundColor: 'xffffff'
       },
       roles: [],
       partDays: [],
@@ -218,7 +221,9 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentComponen
       refereeCoach: {
         badge: 0,
         badgeSystem: defaultBadgeSystem,
-        upgrade : { badge: 0, badgeSystem: defaultBadgeSystem }
+        upgrade : { badge: 0, badgeSystem: defaultBadgeSystem },
+        fontColor: 'x000000',
+        backgroundColor: 'xffffff'
       },
     };
     this.personService.save(person).pipe(

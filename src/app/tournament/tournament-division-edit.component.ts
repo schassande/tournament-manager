@@ -16,7 +16,7 @@ import { BasicDivision, BasicDivisions, Division, Team, Tournament } from '../sh
       </ng-template>
       <ng-template #footer>
         <tr>
-          <td [pEditableColumn]="division().name" pEditableColumnField="name" style="text-align: center;">
+          <td [pEditableColumn]="division().name" pEditableColumnField="name" style="text-align: center; background-color: {{division().backgroundColor}}; color: {{division().fontColor}}">
             <p-cellEditor>
               <ng-template #input>
               <p-select id="{{division().id}}" inputId="division{{division().id}}" size="small"
@@ -24,16 +24,21 @@ import { BasicDivision, BasicDivisions, Division, Team, Tournament } from '../sh
                 [editable]="true" placeholder="Division name" maxlength="20"
                 (onChange)="divisionNameSelected($event.value)" />
               </ng-template>
-              <ng-template #output>{{ division().name }}</ng-template>
+              <ng-template #output>
+                <div style="background-color: {{division().backgroundColor}}; color: {{division().fontColor}}">{{ division().name }}</div>
+              </ng-template>
             </p-cellEditor>
           </td>
           <td [pEditableColumn]="division().shortName" pEditableColumnField="shortName" style="text-align: center;">
             <p-cellEditor>
-              <ng-template #input><input pInputText type="text" [(ngModel)]="division().shortName" minlength ="5"/></ng-template>
+              <ng-template #input><input pInputText type="text" [(ngModel)]="division().shortName" minlength ="5" (ngModelChange)="emitDivisionChanged()"/></ng-template>
               <ng-template #output style="text-align: center;">{{ division().shortName }}</ng-template>
             </p-cellEditor>
           </td>
-          <td></td>
+          <td>
+            <ngx-colors ngx-colors-trigger [(ngModel)]="division().fontColor" (ngModelChange)="emitDivisionChanged()"></ngx-colors>
+            <ngx-colors ngx-colors-trigger [(ngModel)]="division().backgroundColor" (ngModelChange)="emitDivisionChanged()"></ngx-colors>
+          </td>
         </tr>
       </ng-template>
     </p-table>
@@ -91,6 +96,9 @@ export class TournamentDivisionEditComponent {
       this.selectedDivisionName = this.division().name;
     });
   }
+  emitDivisionChanged() {
+    this.divisionchanged.emit(this.division());
+  }
   divisionNameSelected(newDivisionName:string) {
     this.selectedDivisionName = newDivisionName;
     this.division.update(d => {
@@ -99,6 +107,7 @@ export class TournamentDivisionEditComponent {
       if (bd) {
         d.shortName = bd.shortName;
       }
+      this.emitDivisionChanged();
       return d;
     });
   }

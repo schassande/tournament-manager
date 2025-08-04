@@ -15,6 +15,7 @@ import { TournamentService } from '../services/tournament.service';
         <ion-item (click)="route('/referee/tournament/' + selectedTournament()!.id + '/referee')">Referees</ion-item>
         <ion-item (click)="route('/referee/tournament/' + selectedTournament()!.id + '/coach')">Referee coaches</ion-item>
         <ion-item (click)="route('/tournament/' + selectedTournament()!.id + '/game')">Games</ion-item>
+        <ion-item (click)="route('/referee/tournament/' + selectedTournament()!.id + '/allocation')">Referee Allocations</ion-item>
       </div>
     </ion-item-group>
     <ion-item-group>

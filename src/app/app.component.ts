@@ -5,6 +5,7 @@ import { RegionService } from './shared/services/region.service';
 import { Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { TournamentService } from './shared/services/tournament.service';
+import { NgSelectConfig } from '@ng-select/ng-select';
 
 @Component({
   standalone: false,

@@ -43,6 +43,7 @@ export class TournamentDaysEditComponent {
   days = signal<Day[]>([]);
   startDateChange = output<number>();
   endDateChange = output<number>();
+  dayChange = output<void>();
   dateService = inject(DateService);
 
   cdr = inject(ChangeDetectorRef);
@@ -76,6 +77,7 @@ export class TournamentDaysEditComponent {
   onDayChanged(day: Day) {
     this.days.update((days) => {
       this.cdr.detectChanges();
+      this.dayChange.emit();
       return days;
     });
   }

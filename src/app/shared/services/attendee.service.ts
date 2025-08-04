@@ -14,6 +14,14 @@ export class AttendeeService extends AbstractPersistentDataService<Attendee>{
 
   protected override getCollectionName(): string { return 'attendee'; }
 
+  protected override adjustItemOnLoad(item: Attendee): Attendee {
+    if (item.refereeCoach && (!item.refereeCoach.fontColor || !item.refereeCoach.backgroundColor)) {
+      item.refereeCoach.fontColor= 'x000000';
+      item.refereeCoach.backgroundColor= 'xffffff';
+      this.save(item).subscribe()
+    }
+    return item;
+  }
   findByPerson(tournamentId: string, personId: string): Observable<Attendee[]> {
     return this.query(
       query(this.itemsCollection(),

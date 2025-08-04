@@ -16,8 +16,13 @@ import { Component, effect, inject, input, output } from '@angular/core';
       </p-inputnumber>
     </span>
     <span class="actions">
-      <i class="pi pi-plus action-add"      aria-label="add time slot"    (click)="addTimeSlotAfter()"></i>
-      <i class="pi pi-trash action-remove"  aria-label="remove time slot" (click)="removeTimeSlot()"></i>
+      @if (timeslotPlaying()) {
+        <i class="pi pi-play-circle action action-playing" aria-label="toggle to non playing" title="Playing"  (click)="togglePlaying()"></i>
+      } @else {
+        <i class="pi pi-pause-circle action action-playing" aria-label="toggle to playing" title="Break" (click)="togglePlaying()"></i>
+      }
+      <i class="pi pi-plus action action-add"      aria-label="add time slot"    title="Add time slot after" (click)="addTimeSlotAfter()"></i>
+      <i class="pi pi-trash action action-remove"  aria-label="remove time slot" title="Remove this time slot"    (click)="removeTimeSlot()"></i>
     </span>
   </div>`,
   styles: [`
@@ -25,8 +30,10 @@ import { Component, effect, inject, input, output } from '@angular/core';
     .timeslotDuration { padding: 5px; }
     .timeslotAction {}
     .actions { float: right; margin-top: 18px;}
-    .action-add { font-size: 1rem; color: green; margin-right: 5px; }
-    .action-remove { font-size: 1rem; color: red; }
+    .action {font-size: 1.1rem; margin-right: 5px; cursor: pointer; }
+    .action-add {  color: green; }
+    .action-remove { color: red; }
+    .action-playing { color: blue; }
   `],
   standalone: false
 })
@@ -36,6 +43,7 @@ export class TournamentDayTimeslotEditComponent {
   timeslotId = input.required<string>();
   timeslotStart = input.required<number>();
   timeslotDuration = input.required<number>();
+  timeslotPlaying = input.required<boolean>();
 
   /** The use askes to add a new timeslot just after the current timeslot */
   onAddTimeSlotAfter = output<void>();
@@ -53,6 +61,8 @@ export class TournamentDayTimeslotEditComponent {
    * Timeslot has been already updated (start & end).
    */
   onTimeSlotStartChange = output<number>();
+
+  onPlayingChange = output<boolean>();
 
   /** Duration in minutes */
   duration: number= 0;
@@ -76,7 +86,8 @@ export class TournamentDayTimeslotEditComponent {
   }
   addTimeSlotAfter() { this.onAddTimeSlotAfter.emit(); }
   removeTimeSlot() { this.onRemoveTimeSlot.emit(); }
-  onDurationChange() {
-    this.onDuractionChange.emit(this.duration * 60 * 1000);
+  onDurationChange() { this.onDuractionChange.emit(this.duration * 60 * 1000); }
+  togglePlaying() {
+    this.onPlayingChange.emit(!this.timeslotPlaying());
   }
 }

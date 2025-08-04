@@ -53,6 +53,9 @@ html, body, ion-app, .ion-page {
   overflow: auto;
   background-color: rgb(229, 231, 235);
 }
+body {
+  position: relative;
+}
 
 h2 {
   font-size: 1.5rem;
@@ -65,4 +68,12 @@ h2 {
 
 .chapterSection {
   margin: 10px;
+}
+
+@import "~@ng-select/ng-select/themes/default.theme.css";
+.ng-select.auto-grow {
+  max-width: inherit;
+  .ng-dropdown-panel {
+    width: auto;
+  }
 }

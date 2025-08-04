@@ -39,7 +39,9 @@ import { Day, PartDay, Timeslot } from '../shared/data.model';
                 [timeslotId]="timeslot.id"
                 [timeslotDuration]="timeslot.duration"
                 [timeslotStart]="timeslot.start"
+                [timeslotPlaying]="timeslot.playingSlot"
                 (onAddTimeSlotAfter)="addTimeSlotAfter(part.id, timeslot.id)"
+                (onPlayingChange)="onPlayingChange(part.id, timeslot.id, $event)"
                 (onRemoveTimeSlot)="removeTimeSlot(part.id, timeslot.id)"
                 (onDuractionChange)="onTimeslotDurationChange(part.id, timeslot.id, $event)"
                 (onTimeSlotStartChange)="onTimeslotStartChange(part.id, timeslot.id, $event)">
@@ -187,6 +189,19 @@ export class TournamentDayEditComponent {
 
       part.timeslots.splice(tsIdx, 1);
       this.renameTimeslots(part);
+      this.onDayChanged.emit();
+      return day;
+    });
+  }
+  onPlayingChange(partId: string, timeslotId: string, playing:boolean) {
+    this.day.update( day => {
+      const partIdx = day.parts.findIndex(p => p.id === partId);
+      if (partIdx < 0) return day;
+      const part = day.parts[partIdx];
+      const tsIdx = part.timeslots.findIndex(ts => ts.id === timeslotId);
+      if (tsIdx < 0) return day;
+      const ts = part.timeslots[tsIdx];
+      ts.playingSlot = playing;
       this.onDayChanged.emit();
       return day;
     });

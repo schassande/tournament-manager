@@ -28,6 +28,7 @@ import { MessageModule } from 'primeng/message';
 import { TournamentHomeComponent } from './tournament-home.component';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { TournamentGamesComponent } from './tournament-games.component';
+import { NgxColorsModule } from 'ngx-colors';
 
 @NgModule({
   declarations: [
@@ -51,6 +52,7 @@ import { TournamentGamesComponent } from './tournament-games.component';
     ButtonModule,
     CardModule,
     TableModule,
+    NgxColorsModule,
     DatePickerModule,
     InputNumberModule,
     InputMaskModule,

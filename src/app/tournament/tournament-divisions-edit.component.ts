@@ -62,6 +62,8 @@ export class TournamentDivisionsEditComponent {
         id: this.computeDivisionId(tournament),
         name: bd.name,
         shortName: bd.shortName,
+        backgroundColor: bd.backgroundColor,
+        fontColor: bd.fontColor,
         teams: []
       });
       this.divisionsChanged.emit(tournament.divisions);
@@ -99,7 +101,7 @@ export class TournamentDivisionsEditComponent {
   }
   private computeBasicDivision(tournament: Tournament): BasicDivision {
     let i = 0;
-    let bd: BasicDivision = { name: '', shortName: ''};
+    let bd: BasicDivision = { name: '', shortName: '', backgroundColor: '', fontColor: ''};
     do {
       i++;
       bd = BasicDivisions[i];

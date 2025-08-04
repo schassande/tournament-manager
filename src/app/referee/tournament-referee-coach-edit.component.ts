@@ -93,6 +93,12 @@ import { Country, Gender, Person, RefereeCoach, Tournament } from '../shared/dat
         style="margin-left: 5px; width: 2rem;"
         *ngIf="refereeCoachUpgrade"/>
     </div>
+    <div class="form-field">
+      <label for="background">Color</label>
+      <ngx-colors class="colorPicker" ngx-colors-trigger [(ngModel)]="coach!.attendee!.refereeCoach!.fontColor"></ngx-colors>
+      <ngx-colors class="colorPicker" ngx-colors-trigger [(ngModel)]="coach!.attendee!.refereeCoach!.backgroundColor"></ngx-colors>
+      <span style="margin-left: 10px; padding: 10px; color: {{coach!.attendee!.refereeCoach!.fontColor}}; background-color: {{coach!.attendee!.refereeCoach!.backgroundColor}}">{{coach!.person!.shortName}}</span>
+    </div>
   </p-fieldset>
 }
 </div>`,
@@ -103,6 +109,7 @@ import { Country, Gender, Person, RefereeCoach, Tournament } from '../shared/dat
     .form-field label { width: 25%; display: inline-block; text-align: right; padding-right: 5px; }
     .categorySelect { width: 5rem; }
     .inputInfo { font-size: 0.8rem;  margin-left: 5px; font-style: italic;}
+    .colorPicker { display: inline-block; }
   `],
   standalone: false
 })

@@ -22,13 +22,24 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 import { TournamentRefereeCoachComponent } from './tournament-referee-coach.component';
 import { TournamentRefereeCoachEditComponent } from './tournament-referee-coach-edit.component';
+import { TournamentRefereesAllocationsComponent } from './allocation/tournament-referees-allocations.components';
+import { TournamentRefereesAllocationComponent } from './allocation/tournament-referees-allocation.component';
+import { CardModule } from 'primeng/card';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { GameRefereeAllocatorComponent } from './allocation/game-referee-allocator.component';
+import { NgxColorsModule } from 'ngx-colors';
+import { BadgeModule } from 'primeng/badge';
+import { OverlayBadgeModule } from 'primeng/overlaybadge';
 
 @NgModule({
   declarations: [
     TournamentRefereeComponent,
     TournamentRefereeEditComponent,
     TournamentRefereeCoachComponent,
-    TournamentRefereeCoachEditComponent
+    TournamentRefereeCoachEditComponent,
+    TournamentRefereesAllocationComponent,
+    TournamentRefereesAllocationsComponent,
+    GameRefereeAllocatorComponent
   ],
   imports: [
     RefereeRoutingModule,
@@ -36,7 +47,9 @@ import { TournamentRefereeCoachEditComponent } from './tournament-referee-coach-
     CommonModule,
     IonicModule,
     SharedModule,
+    NgxColorsModule,
     ButtonModule,
+    CardModule,
     TableModule,
     InputNumberModule,
     ToggleSwitchModule,
@@ -45,7 +58,9 @@ import { TournamentRefereeCoachEditComponent } from './tournament-referee-coach-
     FieldsetModule,
     AutoCompleteModule,
     ConfirmDialogModule,
-    MessageModule
+    MessageModule,
+    NgSelectModule,
+    BadgeModule, OverlayBadgeModule
   ],
   providers: [
     // provideAnimationsAsync(),

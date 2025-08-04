@@ -175,7 +175,7 @@ export class TournamentGamesComponent  extends AbstractTournamentComponent  {
         // console.log('games', games);
         this.parts.set(this.selectedDay!.value.parts.map((part: PartDay) => {
           const playingTimeSlots: TimeSlotView[] = part.timeslots
-            .filter((ts: Timeslot) => !ts.playingSlot)
+            .filter((ts: Timeslot) => ts.playingSlot)
             .map((ts: Timeslot) => {
               return { ...ts, startStr: this.dateService.toTime(ts.start), endStr: this.dateService.toTime(ts.end) };
             });
@@ -208,6 +208,8 @@ export class TournamentGamesComponent  extends AbstractTournamentComponent  {
   }
   private sortGames(gvs: GameView[]) {
     gvs.sort((a: GameView, b: GameView) => {
+      if (!a.timeslot) console.log(a);
+      if (!b.timeslot) console.log(b);
       let res = a.timeslot!.start - b.timeslot!.start;
       return res === 0 ? a.field!.orderView - b.field!.orderView : res;
     });
