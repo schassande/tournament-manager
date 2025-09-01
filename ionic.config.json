@@ -1,7 +1,0 @@
-{
-  "name": "tournament-manager",
-  "integrations": {
-    "capacitor": {}
-  },
-  "type": "angular"
-}

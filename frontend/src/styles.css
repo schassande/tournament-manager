@@ -1,0 +1,25 @@
+/* You can add global styles to this file, and also import other style files */
+@import "primeicons/primeicons.css";
+
+.application-page {
+  padding: 5px;
+  height: 100%;
+}
+
+:root {
+  --p-info-color: var(--p-button-info-background); /* ou un hex de votre choix */
+}
+
+.referee-highlight-0 {
+  --p-select-background: #eff542;
+}
+.referee-highlight-1 {
+  --p-select-background: #42eff5;
+}
+
+.selectable {
+  border: 2px solid blue !important;
+  border-radius: 8px;
+  padding: 4px;
+}
+
