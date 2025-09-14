@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, signal, Signal } from '@angular/core';
-import { Person } from '../data.model';
+import { Person } from '@tournament-manager/persistent-data-model';
 import { BehaviorSubject, catchError, from, map, mergeMap, Observable, of, ReplaySubject, Subject } from 'rxjs';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, UserCredential } from 'firebase/auth';
 import { PersonService } from './person.service';

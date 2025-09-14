@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { PersistentObject } from '../data.model';
+import { PersistentObject } from '@tournament-manager/persistent-data-model';
 import { from, map, Observable } from 'rxjs';
 import { Firestore, collection, collectionData, doc, setDoc, deleteDoc, docData, CollectionReference, DocumentData, Query } from '@angular/fire/firestore';
 import { getDocs, limit, query, QueryDocumentSnapshot, QuerySnapshot } from 'firebase/firestore';
@@ -9,7 +9,7 @@ import { getDocs, limit, query, QueryDocumentSnapshot, QuerySnapshot } from 'fir
 })
 export abstract class AbstractPersistentDataService<T extends PersistentObject>{
 
-  private firestore = inject(Firestore)
+  protected firestore = inject(Firestore)
 
   protected abstract getCollectionName(): string;
 

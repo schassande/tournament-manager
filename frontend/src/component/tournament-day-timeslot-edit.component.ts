@@ -1,4 +1,4 @@
-import { defaultSlotType, defaultSloTypes } from './../data.model';
+import { defaultSlotType, defaultSloTypes } from '@tournament-manager/persistent-data-model';
 import { CommonModule } from '@angular/common';
 import { DateService } from '../service/date.service';
 import { Component, effect, inject, input, output } from '@angular/core';
@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePickerModule } from 'primeng/datepicker';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { Select } from "primeng/select";
-import { SlotType } from '../data.model';
+import { SlotType } from '@tournament-manager/persistent-data-model';
 
 @Component({
   selector: 'app-tournament-day-timeslot-edit',

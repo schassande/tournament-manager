@@ -1,7 +1,7 @@
 import { UserService } from '../service/user.service';
 import { from, map, mergeMap, Observable } from 'rxjs';
 import { RegionService } from '../service/region.service';
-import { Country, Person, Region } from '../data.model';
+import { Country, Person, Region } from '@tournament-manager/persistent-data-model';
 import { Auth, createUserWithEmailAndPassword, UserCredential } from '@angular/fire/auth';
 import { PersonService } from '../service/person.service';
 

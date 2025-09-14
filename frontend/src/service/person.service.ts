@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Person } from '../data.model';
+import { Person } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService, PersistentDataFilter } from './abstract-persistent-data.service';
 import { Observable } from 'rxjs';
 import { query, Query, where } from '@angular/fire/firestore';

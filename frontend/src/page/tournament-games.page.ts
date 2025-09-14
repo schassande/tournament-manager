@@ -1,6 +1,6 @@
 import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { map } from 'rxjs';
-import { Day, Division, Game, PartDay, Field, Team, Timeslot } from '../data.model';
+import { Day, Division, Game, PartDay, Field, Team, Timeslot } from '@tournament-manager/persistent-data-model';
 import { AbstractTournamentPage } from '../component/tournament-abstract.page';
 import { DateService } from '../service/date.service';
 import { GameService } from '../service/game.service';

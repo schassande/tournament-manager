@@ -1,0 +1,9 @@
+{
+  "name": "tournament-manager",
+  "private": true,
+  "workspaces": [
+    "persistent-data-model",
+    "functions",
+    "frontend"
+  ]
+}

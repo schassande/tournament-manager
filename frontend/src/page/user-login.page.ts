@@ -1,6 +1,6 @@
 import { UserService } from '../service/user.service';
 import { Component, inject, signal } from '@angular/core';
-import { Person } from '../data.model';
+import { Person } from '@tournament-manager/persistent-data-model';
 import { Router } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';

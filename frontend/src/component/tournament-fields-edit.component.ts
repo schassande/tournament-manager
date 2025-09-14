@@ -1,6 +1,6 @@
 import { Component, model, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Field, FieldQuality } from '../data.model';
+import { Field, FieldQuality } from '@tournament-manager/persistent-data-model';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';

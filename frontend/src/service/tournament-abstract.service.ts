@@ -1,6 +1,6 @@
 import { computed, inject } from "@angular/core";
 import { TournamentService } from "./tournament.service";
-import { Tournament } from "../data.model";
+import { Tournament } from "@tournament-manager/persistent-data-model";
 import { Router } from "@angular/router";
 
 export abstract class AbstractTournamentPage {

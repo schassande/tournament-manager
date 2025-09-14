@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Country, Region } from '../data.model';
+import { colRegion, Country, Region } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 import { map, mergeMap, of } from 'rxjs';
 import { defaultRegions } from './regions.default';
@@ -9,7 +9,7 @@ import { defaultRegions } from './regions.default';
 })
 export class RegionService extends AbstractPersistentDataService<Region>{
 
-  protected override getCollectionName(): string { return 'region'; }
+  protected override getCollectionName(): string { return colRegion; }
   public readonly regions: Region[] = [];
   public readonly countries: Country[] = [];
 

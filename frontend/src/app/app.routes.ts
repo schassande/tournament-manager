@@ -25,8 +25,8 @@ export const routes: Routes = [
   { path: 'tournament/:tournamentId/referee', component: TournamentRefereeComponent, data: { title: 'Referees of the tournament' }, canActivate: [AuthGuard],  pathMatch: 'full' },
   { path: 'tournament/:tournamentId/coach', component: TournamentRefereeCoachComponent, data: { title: 'Referee Coaches of the tournament' }, canActivate: [AuthGuard] },
   { path: 'tournament/:tournamentId/game', component: TournamentGamesComponent, data: { title: 'Tournament games' }, canActivate: [AuthGuard] },
-  { path: 'tournament/:tournamentId/allocation', component: TournamentRefereesAllocationsComponent, data: { title: 'Referees Allocations' }, canActivate: [AuthGuard]},
-  { path: 'tournament/:tournamentId/allocation/:allocationId', component: TournamentRefereesAllocationComponent, data: { title: 'Referees Allocation' }, canActivate: [AuthGuard] },
+  { path: 'tournament/:tournamentId/allocation', component: TournamentRefereesAllocationsComponent, data: { title: 'Referees & Coaches Allocations' }, canActivate: [AuthGuard]},
+  { path: 'tournament/:tournamentId/allocation/:tournamentAllocationId/fragment/:fragmentAllocationId', component: TournamentRefereesAllocationComponent, data: { title: 'Referees & Coaches Allocation' }, canActivate: [AuthGuard] },
 
   { path: '',           redirectTo: '/home', pathMatch: 'full' }
 ];

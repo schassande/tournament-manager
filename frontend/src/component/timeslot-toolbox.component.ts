@@ -1,11 +1,9 @@
 import { TimeslotService } from './../service/timeslot.service';
-import { Day, defaultSlotType, defaultSloTypes, newSlotType, PartDay, Tournament } from './../data.model';
+import { Day, defaultSlotType, defaultSloTypes, newSlotType, SlotType, Tournament } from '@tournament-manager/persistent-data-model';
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, model, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Select } from "primeng/select";
-import { SlotType } from '../data.model';
-import { AbstractTournamentPage } from './tournament-abstract.page';
 import { ButtonModule } from 'primeng/button';
 
 @Component({

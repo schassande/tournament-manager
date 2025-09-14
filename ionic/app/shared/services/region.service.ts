@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Country, Region } from '../data.model';
+import { Country, Region } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
 import { map, mergeMap, of } from 'rxjs';
 import { defaultRegions } from './regions.default';

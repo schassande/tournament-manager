@@ -1,9 +1,8 @@
-import { computed } from '@angular/core';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { map, Observable } from 'rxjs';
-import { Country, Region, Tournament } from '../data.model';
+import { Country, Region, Tournament } from '@tournament-manager/persistent-data-model';
 import { TournamentService } from '../service/tournament.service';
 import { DateService } from '../service/date.service';
 import { RegionService } from '../service/region.service';
@@ -15,8 +14,8 @@ import { MultiSelectModule } from 'primeng/multiselect';
 import { FormsModule } from '@angular/forms';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
-import { ToggleSwitch, ToggleSwitchModule } from "primeng/toggleswitch";
-import { FilterMetadata, FilterService } from 'primeng/api';
+import { ToggleSwitchModule } from "primeng/toggleswitch";
+import { FilterService } from 'primeng/api';
 import { SelectModule } from 'primeng/select';
 
 @Component({

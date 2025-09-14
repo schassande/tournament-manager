@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Tournament } from '../data.model';
+import { Tournament } from '@tournament-manager/persistent-data-model';
 import { TournamentService } from '../service/tournament.service';
 
 @Component({

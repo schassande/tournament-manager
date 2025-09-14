@@ -1,6 +1,6 @@
 import { RegionService } from '../service/region.service';
 import { Component, inject, Input, OnInit } from '@angular/core';
-import { Country, Gender, Person, Referee, RefereeCategory, Team, TeamDivision, Tournament } from '../data.model';
+import { Country, Gender, Person, Referee, RefereeCategory, Team, TeamDivision, Tournament } from '@tournament-manager/persistent-data-model';
 import { PersonService } from '../service/person.service';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { FieldsetModule } from 'primeng/fieldset';

@@ -1,6 +1,5 @@
 import { onRequest, Request } from "firebase-functions/v2/https";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import * as logger from "firebase-functions/logger";
+// import { onDocumentCreated } from "firebase-functions/v2/firestore";
 
 import * as auth                      from "firebase-admin/auth";
 import * as admin                      from "firebase-admin";
@@ -29,8 +28,8 @@ export interface Context {
     db: admin.firestore.Firestore,
     email: string;
 }
-const ctx: Context = { db: firestore, email: 'admin@coachreferee.com' };
-const secrets = ['APP_API_KEY', 'SMTP_EMAIL_PASSWORD']
+const ctx: Context = {db: firestore, email: "admin@coachreferee.com"};
+const secrets = ["APP_API_KEY", "SMTP_EMAIL_PASSWORD"];
 
 // ===================================================================
 // Triggered functions
@@ -47,7 +46,12 @@ const secrets = ['APP_API_KEY', 'SMTP_EMAIL_PASSWORD']
 // Functions exposed over HTTPS
 //export const sendCoaching = onRequest({secrets}, (request:Request, response: express.Response) =>
 //    requestWithCorsAndId(request, response, sendCoachingLib.func));
-
+/**
+ * Checks the token and auth user
+ * @param request
+ * @param response
+ * @param coreFunction
+ */
 export async function requestWithCorsAndId(request:Request, response: express.Response, coreFunction:(request:Request, response: express.Response, ctx: Context) =>Promise<any>): Promise<any> {
     console.log('Incoming request=' + request.method
         + ', headers=' + JSON.stringify(request.headers)

@@ -1,5 +1,5 @@
 import { Component, inject, Input, OnInit } from '@angular/core';
-import { Country, Gender, Person, RefereeCoach, Tournament } from '../data.model';
+import { Country, Gender, Person, RefereeCoach, Tournament } from '@tournament-manager/persistent-data-model';
 import { RegionService } from '../service/region.service';
 import { PersonService } from '../service/person.service';
 import { AutoCompleteModule } from 'primeng/autocomplete';

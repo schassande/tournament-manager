@@ -1,5 +1,5 @@
 {
-  "name": "tournament-manager-front-end",
+  "name": "@tournament-manager/front-end",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
@@ -27,7 +27,8 @@
     "primeng": "^20.0.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.15.0"
+    "zone.js": "~0.15.0",
+     "@tournament-manager/persistent-data-model": "*"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^20.1.6",

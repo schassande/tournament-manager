@@ -1,7 +1,7 @@
 import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
-import { Country, defaultSlotType, Division, Person, Tournament } from '../data.model';
+import { Country, defaultSlotType, Division, Person, Tournament } from '@tournament-manager/persistent-data-model';
 import { UserService } from '../service/user.service';
 import { TournamentService } from '../service/tournament.service';
 import { DateService } from '../service/date.service';

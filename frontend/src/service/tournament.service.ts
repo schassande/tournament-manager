@@ -1,4 +1,4 @@
-import { Team, Tournament } from '../data.model';
+import { colTournament, Team, Tournament } from '@tournament-manager/persistent-data-model';
 import { Injectable, signal } from '@angular/core';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 import { map, Observable, of } from 'rxjs';
@@ -12,7 +12,7 @@ export class TournamentService extends AbstractPersistentDataService<Tournament>
   private currentTournament$ = signal<Tournament|null>(null);
   public currentTournament = this.currentTournament$.asReadonly();
 
-  protected override getCollectionName(): string { return 'tournament'; }
+  protected override getCollectionName(): string { return colTournament; }
 
   public loadCurrentTournamentFromLocalStorage(): Observable<Tournament|undefined> {
     const tournamentId = localStorage.getItem('currentTournamentId');

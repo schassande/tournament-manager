@@ -1,6 +1,6 @@
 import { TableModule } from 'primeng/table';
 import { Component, effect, input, model, output } from '@angular/core';
-import { BasicDivisions, Division, Team, Tournament } from '../data.model';
+import { BasicDivisions, Division, Team, Tournament } from '@tournament-manager/persistent-data-model';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';

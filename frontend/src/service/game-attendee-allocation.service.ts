@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { query, where } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
-import { GameAttendeeAllocation } from '../data.model';
+import { colGameAttendeeAllocation, GameAttendeeAllocation } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 
 
@@ -10,7 +10,7 @@ import { AbstractPersistentDataService } from './abstract-persistent-data.servic
 })
 export class GameAttendeeAllocationService extends AbstractPersistentDataService<GameAttendeeAllocation> {
 
-  protected override getCollectionName(): string { return 'game-attendee-allocation'; }
+  protected override getCollectionName(): string { return colGameAttendeeAllocation; }
 
   byGame(tournamentId: string, gameId: string): Observable<GameAttendeeAllocation[]> {
     return this.query(query(this.itemsCollection(),

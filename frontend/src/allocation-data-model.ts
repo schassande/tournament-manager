@@ -1,4 +1,4 @@
-import { Day, Division, Field, Game, GameAttendeeAllocation, PartDay, Referee, RefereeCoach, Team, Timeslot } from "./data.model";
+import { Day, Division, Field, Game, GameAttendeeAllocation, PartDay, Referee, RefereeCoach, Team, Timeslot } from "@tournament-manager/persistent-data-model";
 
 export interface DayView extends Day {
   label: string;

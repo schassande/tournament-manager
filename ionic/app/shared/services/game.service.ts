@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
-import { Game } from '../data.model';
+import { Game } from '@tournament-manager/persistent-data-model';
 import { Observable } from 'rxjs';
 import { query, where } from '@angular/fire/firestore';
 

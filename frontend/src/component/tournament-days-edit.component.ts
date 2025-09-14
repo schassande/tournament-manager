@@ -1,5 +1,5 @@
 import { TimeslotToolbooxComponent } from './timeslot-toolbox.component';
-import { Day, PartDay, Timeslot, Tournament } from './../data.model';
+import { Day, PartDay, Timeslot, Tournament } from '@tournament-manager/persistent-data-model';
 import { DateService } from '../service/date.service';
 import { ChangeDetectorRef, Component, effect, inject, model, output, signal } from '@angular/core';
 import { TournamentDayEditComponent } from '../component/tournament-day-edit.component';

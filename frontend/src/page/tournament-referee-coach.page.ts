@@ -5,7 +5,7 @@ import { AbstractTournamentPage } from '../component/tournament-abstract.page';
 import { AttendeeService } from '../service/attendee.service';
 import { PersonService } from '../service/person.service';
 import { RegionService } from '../service/region.service';
-import { Attendee, Person, RefereeBadgeSystem, RefereeCoach } from '../data.model';
+import { Attendee, Person, RefereeBadgeSystem, RefereeCoach } from '@tournament-manager/persistent-data-model';
 import { TournamentRefereeCoachEditComponent } from '../component/tournament-referee-coach-edit.component';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';

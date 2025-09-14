@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, computed, effect, inject, input, model, output, } from '@angular/core';
 import { DateService } from '../service/date.service';
-import { Day, defaultSlotType, PartDay, Timeslot, SlotType } from '../data.model';
+import { Day, defaultSlotType, PartDay, Timeslot, SlotType } from '@tournament-manager/persistent-data-model';
 import { CardModule } from 'primeng/card';
 import { FormsModule } from '@angular/forms';
 import { DatePickerModule } from 'primeng/datepicker';

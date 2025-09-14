@@ -1,16 +1,15 @@
-import { CommonModule } from '@angular/common';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
+import { Component, computed, effect, inject, signal, OnInit, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { forkJoin, map, mergeMap, Observable, of, take } from 'rxjs';
 
 import { AbstractTournamentPage } from '../component/tournament-abstract.page';
-import { Day, Division, Field, Game, GameAttendeeAllocation, PartDay, Referee, RefereeAllocation, RefereeCoach, Team, Timeslot } from '../data.model';
+import { Day, Division, Field, Game, GameAttendeeAllocation, PartDay, Referee, TournamentRefereeAllocation, FragmentRefereeAllocation, RefereeCoach, Team, Timeslot, FragmentRefereeAllocationDesc } from '@tournament-manager/persistent-data-model';
 import { DayView, FieldView, GameAttendeeAllocationView, GameView, PartView, TimeSlotView } from '../allocation-data-model';
 
 import { DateService } from '../service/date.service';
 import { GameAttendeeAllocationService } from '../service/game-attendee-allocation.service';
 import { GameService } from '../service/game.service';
-import { RefereeAllocationService } from '../service/referee-allocation.service';
 import { RefereeService } from '../service/referee.service';
 import { GameRefereeAllocatorComponent, SearchableReferee, SearchableCoach, toSearchableCoaches, toSearchableReferees } from '../component/game-referee-allocator.component';
 import { FormsModule } from '@angular/forms';
@@ -18,78 +17,102 @@ import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { AllocationAction, ClipboardItem, SelectionDescriptor, SelectionService } from '../service/selection.service';
+import { FragmentRefereeAllocationService } from '../service/fragment-referee-allocation.service';
+import { TournamentRefereeAllocationService } from '../service/tournament-referee-allocation.service';
 
 @Component({
   selector: 'app-tournament-referees-allocation',
-  imports: [CommonModule, FormsModule, GameRefereeAllocatorComponent, InputTextModule, SelectModule, ToggleSwitchModule],
+  imports: [CommonModule, DatePipe, FormsModule, GameRefereeAllocatorComponent, InputTextModule, SelectModule, ToggleSwitchModule],
   template: `
   @if(day() && allocation()) {
-    <h2>Allocation of the referees and referees coaches on day {{day()?.label}}</h2>
-    <div style="text-align: center; margin-bottom: 10px;">
-      <span><label>Name: </label><input type="text" pInputText [(ngModel)]="allocation()!.name" (change)="allocationNameChanged()" size="small"/></span>
-      <span style="margin-left: 10px; font-size: 0.8em;">{{referees().length}} referees and {{coaches().length}} referee coaches.</span>
-      <p-toggleswitch [(ngModel)]="showCoaches" style="vertical-align: middle; margin-left: 10px;" size="small"></p-toggleswitch>
-    </div>
-
     <div style="text-align: center;">
-      <div style="width: 55px; display: inline-block; text-align: center; font-weight: bold;">Day {{day()!.dayNb}}</div>
-      @if (showReferees()) {
-        @for(hlrId of highlightedRefereeIds(); let idx=$index; track idx) {
-          <p-select [options]="referees()" [ngModel]="highlightedRefereeIds()[idx]" (onChange)="onHhighlightedRefereeChange($event.value, idx)"
-            optionValue="id"
-            style="width: 250px; margin-right: 10px;"
-            [filter]="true" filterBy="search" size="small"
-            placeholder="Select referee to highlight"
-            [showClear]="true"
-            class="referee-highlight-{{idx}}">
-            <ng-template #item let-referee>
-              {{refereeToString(referee)}}
-            </ng-template>
-            <ng-template #selectedItem let-referee>
-              {{refereeToString(referee)}}
-            </ng-template>
-          </p-select>
+      @if (days().length > 1 || (days().length === 1 && days()[0].day.parts.length > 1)) {
+        @for(dd of days(); track dd.day.id) {
+          <div class="day-panel {{dd.current ? 'day-panel-current':''}}">
+            <div>{{dd.day.id}}: {{dd.date | date: 'EEEE'}}</div>
+            <div style="margin: 5px 0;">
+              @if (dd.fragmentAllocationDesc) {
+                <a (click)="routeToFragmentAllocation(dd.fragmentAllocationDesc.id)" style="margin: 0 5px;">Full</a>
+              }
+              @for(p of dd.partDescs; track p.id) {
+                <a (click)="routeToFragmentAllocation(p.id)" style="margin: 0 5px;">Part {{p.partDayId}}</a>
+              }
+            </div>
+          </div>
         }
       }
-    </div>
-    @for(part of day()!.partViews; track part.id) {
-      @if (day()!.partViews.length > 1) {
-      <h3>Part {{ part.id }}</h3>
-      }
-      <table style="margin: auto;">
-        <tr class="tableRowTitle">
-          <th>Slot</th>
-          @for(field of part.fields; track field.id) {
-            <th class="fieldCol">{{ field.name }}</th>
+      <div style="margin-bottom: 10px;">
+        <span><label>Name: </label><input type="text" pInputText [(ngModel)]="allocation()!.name" (change)="allocationNameChanged()" size="small"/></span>
+        <span style="margin-left: 10px; font-size: 0.8em;">{{referees().length}} referees and {{coaches().length}} referee coaches.</span>
+        <p-toggleswitch [(ngModel)]="showCoaches" style="vertical-align: middle; margin-left: 10px;" size="small"></p-toggleswitch>
+      </div>
+
+      <div>
+        <div style="width: 55px; display: inline-block; text-align: center; font-weight: bold;">
+          Day {{day()!.dayNb}}
+          @if (day()!.parts.length > 1 && day()!.partViews.length === 1) {
+            <div>Part {{ day()!.partViews[0].id }}</div>
           }
-        </tr>
-        @for(ts of part.timeSlotViews; track ts.id) {
-          <tr class="tableRowItem">
-            <td class="timeslotCell">{{ts.startStr}}</td>
-            @if (ts.playingSlot) {
-              @for(field of ts.fields; track field.id) {
-                <td [ngClass]="{ 'noGameCell': !field.game,  'gameCell': field.game, 'selectable':selection() && !field.game && selection()?.cellType === 'EmptySlot' && selection()?.fieldId === field.id && selection()?.timeslotId === ts.id }" class="fieldCol {{gameCellStyle()}}" >
-                  @if (field.game) {
-                    <app-game-referee-allocator [game]="field.game" [coaches]="coaches()"
-                      [showCoaches]="showCoaches()" [showReferees]="showReferees()" [showRefereeLevel]="showRefereeLevel()"
-                      [showBadgeSystem]="showBadgeSystem()" [showDivisionColor]="showDivisionColor()"
-                      [referees]="referees()" [allocation]="allocation()!"
-                      [highlightedRefereeIds]="highlightedRefereeIds()">
-                    </app-game-referee-allocator>
-                  }
-                </td>
-              }
-            } @else {
-              <td style="text-align: center;">{{ ts.durationStr }}</td>
+        </div>
+        @if (showReferees()) {
+          @for(hlrId of highlightedRefereeIds(); let idx=$index; track idx) {
+            <p-select [options]="referees()" [ngModel]="highlightedRefereeIds()[idx]" (onChange)="onHhighlightedRefereeChange($event.value, idx)"
+              optionValue="id"
+              style="width: 246px; margin: 0 2px;"
+              [filter]="true" filterBy="search" size="small"
+              placeholder="Select referee to highlight"
+              [showClear]="true"
+              class="referee-highlight-{{idx}}">
+              <ng-template #item let-referee>
+                {{refereeToString(referee)}}
+              </ng-template>
+              <ng-template #selectedItem let-referee>
+                {{refereeToString(referee)}}
+              </ng-template>
+            </p-select>
+          }
+        }
+      </div>
+      @for(part of day()!.partViews; track part.id) {
+        @if (day()!.partViews.length > 1) {
+        <h3>Part {{ part.id }}</h3>
+        }
+        <table style="margin: 0 auto;">
+          <tr class="tableRowTitle">
+            <th>Slot</th>
+            @for(field of part.fields; track field.id) {
+              <th class="fieldCol">{{ field.name }}</th>
             }
           </tr>
-        }
-      </table>
-    }
+          @for(ts of part.timeSlotViews; track ts.id) {
+            <tr class="tableRowItem">
+              <td class="timeslotCell">{{ts.startStr}}</td>
+              @if (ts.playingSlot) {
+                @for(field of ts.fields; track field.id) {
+                  <td [ngClass]="{ 'noGameCell': !field.game,  'gameCell': field.game, 'selectable':selection() && !field.game && selection()?.cellType === 'EmptySlot' && selection()?.fieldId === field.id && selection()?.timeslotId === ts.id }" class="fieldCol {{gameCellStyle()}}" >
+                    @if (field.game) {
+                      <app-game-referee-allocator [game]="field.game" [coaches]="coaches()"
+                        [showCoaches]="showCoaches()" [showReferees]="showReferees()" [showRefereeLevel]="showRefereeLevel()"
+                        [showBadgeSystem]="showBadgeSystem()" [showDivisionColor]="showDivisionColor()"
+                        [referees]="referees()" [allocation]="allocation()!"
+                        [highlightedRefereeIds]="highlightedRefereeIds()">
+                      </app-game-referee-allocator>
+                    }
+                  </td>
+                }
+              } @else {
+                <td style="text-align: center;">{{ ts.durationStr }}</td>
+              }
+            </tr>
+          }
+        </table>
+      }
+    </div>
   }
   `,
   styles: [`
-    h2 { text-align: center; padding-top: 10px;}
+    a { text-decoration: underline; color: blue;}
+    h2, h3 { text-align: center; padding-top: 10px;}
     .fieldCol { width: 250px;}
     .noGameCell { background-color: #eeeeee; }
     .gameCell { background-color: #ffffff;  vertical-align: top;}
@@ -101,21 +124,37 @@ import { AllocationAction, ClipboardItem, SelectionDescriptor, SelectionService 
     .tableRowTitle th, .timeslotCell {
       padding: 10px 5px;
     }
+    .day-panel {
+      display: inline-block;
+      text-align: center;
+      margin: 10px 5px;
+      padding: 5px;
+      background-color: lightblue;
+      border-radius: 10px;
+      width: 150px;
+    }
+    .day-panel-current {
+      background-color: lightgray;
+    }
     `],
   standalone: true
 })
-export class TournamentRefereesAllocationComponent extends AbstractTournamentPage  {
+export class TournamentRefereesAllocationComponent extends AbstractTournamentPage {
 
-  private activatedRoute = inject(ActivatedRoute);
   private refereeService = inject(RefereeService);
   private dateService = inject(DateService);
   private gameService = inject(GameService);
   private gameAttendeeAllocationService = inject(GameAttendeeAllocationService);
-  private refereeAllocationService = inject(RefereeAllocationService);
+  private fragmentRefereeAllocationService = inject(FragmentRefereeAllocationService);
+  private tournamentRefereeAllocationService = inject(TournamentRefereeAllocationService);
   private selectionService = inject(SelectionService);
+  private route: ActivatedRoute = inject(ActivatedRoute);
 
   day = signal<DayView|undefined>(undefined);
-  allocation = signal<RefereeAllocation|undefined>(undefined);
+  days = signal<DayDesc[]>([]);
+
+  allocation = signal<FragmentRefereeAllocation|undefined>(undefined);
+  tournamentAllocation = signal<TournamentRefereeAllocation|undefined>(undefined);
   referees = signal<(SearchableReferee|undefined)[]>([])
   coaches = signal<(SearchableCoach|undefined)[]>([])
   showCoaches = signal<boolean>(true);
@@ -140,17 +179,41 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     super();
     effect(() => {
       if (this.tournament()) {
-        const refereeAllocationId = this.activatedRoute.snapshot.paramMap.get('allocationId') as string;
-        this.loadAllocation(refereeAllocationId).pipe(
-          mergeMap(() => this.loadAttendees()),
-          map(() => this.buildDayView()),
-          mergeMap((dayView:DayView) => this.loadGames(dayView)),
-          mergeMap((dayView:DayView) => this.loadRefereeAllocations(dayView)),
-          map((dayView:DayView) => this.day.set(dayView)),
-        ).subscribe();
+        this.loadData();
       }
     });
     window.addEventListener('keydown', this.onKeyboard.bind(this));
+  }
+  loadData() {
+    this.route.params.subscribe(params => {
+      const fragmentRefereeAllocationId = params['fragmentAllocationId'] as string;
+      const tournamentRefereeAllocationId = params['tournamentAllocationId'] as string;
+      console.log('fragmentAllocationId',fragmentRefereeAllocationId, 'tournamentAllocationId', tournamentRefereeAllocationId)
+      this.loadFragmentAllocation(fragmentRefereeAllocationId).pipe(
+        mergeMap(() => this.loadTournamentAllocation(tournamentRefereeAllocationId)),
+        mergeMap(() => this.loadAttendees()),
+        map(() => this.buildDayView()),
+        mergeMap((dayView:DayView) => this.loadGames(dayView)),
+        mergeMap((dayView:DayView) => this.loadRefereeAllocations(dayView)),
+        map((dayView:DayView) => this.day.set(dayView)),
+        map(() => this.buildDayDescs())
+      ).subscribe();
+    });
+  }
+  goToPart(partDay: PartDay|undefined = undefined) {
+    let allocs = this.tournamentAllocation()!.fragmentRefereeAllocations.filter(fra => fra.dayId === this.day()!.id);
+    if (allocs.length === 0) {
+      return;
+    }
+    const partDayId = partDay ? partDay.id : undefined;
+    const alloc = allocs.find(a => a.partDayId === partDayId);
+    if (alloc) {
+      this.routeToFragmentAllocation(alloc.id);
+    }
+  }
+  routeToFragmentAllocation(fragmentAllocationId: string) {
+    this.router.navigate(['tournament', this.tournament()!.id, 'allocation',
+      this.tournamentAllocation()!.id, 'fragment',fragmentAllocationId ]);
   }
   onHhighlightedRefereeChange(refereeId: string|undefined, idx: number) {
     const previousValue = this.highlightedRefereeIds();
@@ -163,12 +226,21 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     this.highlightedRefereeIds.set(newValue);
     // console.debug('Highlighted[', idx,'] changed from', previousValue, 'to', this.highlightedRefereeIds()[idx]);
   }
-  private loadAllocation(refereeAllocationId: string): Observable<RefereeAllocation|undefined> {
+  private loadFragmentAllocation(refereeAllocationId: string): Observable<FragmentRefereeAllocation|undefined> {
     // console.debug('loadAllocation', refereeAllocationId);
-    return this.refereeAllocationService.byId(refereeAllocationId).pipe(
+    return this.fragmentRefereeAllocationService.byId(refereeAllocationId).pipe(
       map((allocation: any) => {
-        console.log('allocation', allocation);
+        console.log('Fragment allocation', allocation);
         this.allocation.set(allocation);
+        return allocation;
+      })
+    );
+  }
+  private loadTournamentAllocation(refereeAllocationId: string): Observable<TournamentRefereeAllocation|undefined> {
+    // console.debug('loadAllocation', refereeAllocationId);
+    return this.tournamentRefereeAllocationService.byId(refereeAllocationId).pipe(
+      map((allocation: any) => {
+        this.tournamentAllocation.set(allocation);
         return allocation;
       })
     );
@@ -206,11 +278,10 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   }
 
   private buildDayView(): DayView {
-    // console.debug('buildDayView');
     const dayId = this.allocation()!.dayId;
     const partDayId = this.allocation()!.partDayId;
     const day = this.tournament()!.days.find((day: Day) => day.id === dayId)!;
-    const partDays = partDayId ? day.parts.filter((partDay: PartDay) => partDay.dayId === dayId) : day.parts;
+    const partDays = partDayId ? day.parts.filter((partDay: PartDay) => partDay.id === partDayId) : day.parts;
     const dayView: DayView = {
       ...day,
       dayNb: 1 + this.tournament()!.days.findIndex((day: Day) => day.id === dayId),
@@ -219,6 +290,31 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     };
     // console.debug('buildDayView()=>', dayView);
     return dayView;
+  }
+
+  private buildDayDescs() {
+    this.days.set(this.tournament()!.days.map(day => {
+      const dayDesc: DayDesc = {
+        day,
+        date: this.dateService.epochToDate(day.date),
+        dayStr: this.dateService.toDate(day.date),
+        current: this.allocation()!.dayId === day.id,
+        partDescs: []
+      };
+      this.tournamentAllocation()!.fragmentRefereeAllocations.filter(fra => fra.dayId === day.id).forEach(fra => {
+        if (fra.partDayId === undefined) {
+          dayDesc.fragmentAllocationDesc = fra;
+        } else {
+          dayDesc.partDescs.push(fra);
+        }
+      });
+      dayDesc.partDescs.sort((pd1,pd2) => {
+        if (pd1.partDayId === undefined) return -1;
+        if (pd2.partDayId === undefined) return 1;
+        return pd1.partDayId.localeCompare(pd2.partDayId);
+      })
+      return dayDesc;
+    }));
   }
 
   private buildPartView(partDay: PartDay): PartView {
@@ -239,7 +335,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
       startStr: this.dateService.toTime(ts.start),
       endStr: this.dateService.toTime(ts.end),
       durationStr: this.dateService.toDuration(ts.duration),
-      fields: availableFields.map((field: Field) => { return { ...field }})
+      fields: availableFields.map((field: Field) => { return { ...field } as FieldView})
     };
   }
 
@@ -316,7 +412,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     );
   }
   allocationNameChanged() {
-    this.refereeAllocationService.save(this.allocation()!).pipe(take(1)).subscribe();
+    this.fragmentRefereeAllocationService.save(this.allocation()!).pipe(take(1)).subscribe();
   }
   onKeyboard(event: KeyboardEvent) {
     const select = this.selectionService.currentSelection();
@@ -559,4 +655,12 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
       this.selectionService.setCurrentSelection(newSelection);
     }
   }
+}
+interface DayDesc {
+  current: boolean;
+  day: Day;
+  date: Date;
+  dayStr: string;
+  fragmentAllocationDesc?: FragmentRefereeAllocationDesc;
+  partDescs: FragmentRefereeAllocationDesc[];
 }

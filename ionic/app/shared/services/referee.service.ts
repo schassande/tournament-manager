@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Referee, RefereeCoach, Tournament } from '../data.model';
+import { Referee, RefereeCoach, Tournament } from '@tournament-manager/persistent-data-model';
 import { forkJoin, map, mergeMap, Observable, of, take } from 'rxjs';
 import { AttendeeService } from './attendee.service';
 import { PersonService } from './person.service';

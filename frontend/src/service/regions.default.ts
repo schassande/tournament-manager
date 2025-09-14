@@ -1,4 +1,4 @@
-import { Region } from "../data.model";
+import { Region } from "@tournament-manager/persistent-data-model";
 
 export const defaultRegions: Region[] = [
   {

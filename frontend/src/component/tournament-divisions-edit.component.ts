@@ -1,6 +1,6 @@
 import { Component, computed, effect, model, output, signal } from '@angular/core';
-import { Tournament, BasicDivision, BasicDivisions } from '../data.model';
-import { Division } from '../data.model';
+import { Tournament, BasicDivision, BasicDivisions } from '@tournament-manager/persistent-data-model';
+import { Division } from '@tournament-manager/persistent-data-model';
 import { CardModule } from 'primeng/card';
 import { TournamentDivisionEditComponent } from './tournament-division-edit.component';
 

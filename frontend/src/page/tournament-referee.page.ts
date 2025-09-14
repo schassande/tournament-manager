@@ -1,9 +1,9 @@
 import { ListboxModule } from 'primeng/listbox';
 import { RegionService } from '../service/region.service';
-import { Gender, Referee, RefereeBadgeSystem, RefereeCategory, Team, TeamDivision} from '../data.model';
+import { Gender, Referee, RefereeBadgeSystem, RefereeCategory, Team, TeamDivision} from '@tournament-manager/persistent-data-model';
 import { Component, effect, inject, signal } from '@angular/core';
 import { forkJoin, map, mergeMap, Observable, of, take } from 'rxjs';
-import { Attendee, Person } from '../data.model';
+import { Attendee, Person } from '@tournament-manager/persistent-data-model';
 import { AttendeeService } from '../service/attendee.service';
 import { PersonService } from '../service/person.service';
 import { AbstractTournamentPage } from '../component/tournament-abstract.page';

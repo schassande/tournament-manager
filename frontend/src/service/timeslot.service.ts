@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Day, defaultSlotType, PartDay, SlotType, Timeslot } from '../data.model';
+import { Day, defaultSlotType, PartDay, SlotType, Timeslot } from '@tournament-manager/persistent-data-model';
 import { DateService } from './date.service';
 
 @Injectable({

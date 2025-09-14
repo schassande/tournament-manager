@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, input, OnDestroy, OnInit, signal }
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
-import { GameAttendeeAllocation, Referee, RefereeAllocation, RefereeCoach } from '../data.model';
+import { GameAttendeeAllocation, Referee, FragmentRefereeAllocation, RefereeCoach } from '@tournament-manager/persistent-data-model';
 import { GameAttendeeAllocationView, GameView } from '../allocation-data-model';
 
 import { GameAttendeeAllocationService } from '../service/game-attendee-allocation.service';
@@ -105,7 +105,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   game = input.required<GameView>();
   referees = input.required<(SearchableReferee|undefined)[]>()
   coaches = input.required<(SearchableCoach|undefined)[]>()
-  allocation = input.required<RefereeAllocation>();
+  allocation = input.required<FragmentRefereeAllocation>();
   showCoaches = input.required<boolean>();
   showReferees = input.required<boolean>();
   showRefereeLevel = input.required<boolean>();
@@ -284,7 +284,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           attendeePosition: idx,
           attendeeRole: 'Referee',
           tournamentId: this.game().game.tournamentId,
-          refereeAllocationId: this.allocation().id,
+          fragmentRefereeAllocationId: this.allocation().id,
           half: 0,
           gameId: this.game().game.id,
         }
@@ -351,7 +351,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           attendeePosition: 0, // always 0 for coaches
           attendeeRole: 'Coach',
           tournamentId: this.game().game.tournamentId,
-          refereeAllocationId: this.allocation().id,
+          fragmentRefereeAllocationId: this.allocation().id,
           half: 0,
           gameId: this.game().game.id,
         }
