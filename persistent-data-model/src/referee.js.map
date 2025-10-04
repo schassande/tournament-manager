@@ -1,0 +1,1 @@
+{"version":3,"file":"referee.js","sourceRoot":"","sources":["referee.ts"],"names":[],"mappings":";;AAkBA,8BAIC;AAMD,wCAEC;AAjBD;;;;GAIG;AACH,SAAgB,SAAS,CAAC,YAA0B;IAClD,OAAO,YAAY,KAAK,SAAS;WAC1B,YAAY,KAAK,eAAe;WAChC,YAAY,KAAK,oBAAoB,CAAC;AAC/C,CAAC;AACD;;;;GAIG;AACH,SAAgB,cAAc,CAAC,YAA0B;IACvD,OAAO,YAAY,KAAK,cAAc,CAAC;AACzC,CAAC"}

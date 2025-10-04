@@ -1,6 +1,6 @@
-import { Attendee, colAttendee } from '@tournament-manager/persistent-data-model';
+import {Attendee, colAttendee} from '@tournament-manager/persistent-data-model';
 import * as admin from 'firebase-admin';
-import { byIdRequired } from './common-persistence';
+import {byIdRequired} from './common-persistence';
 
 /**
  * It defines a cache of data used to limit the number of query to the database.

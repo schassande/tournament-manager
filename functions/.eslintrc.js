@@ -5,30 +5,39 @@ module.exports = {
     node: true,
   },
   extends: [
-    "eslint:recommended",
-    "plugin:import/errors",
-    "plugin:import/warnings",
-    "plugin:import/typescript",
-    "google",
-    "plugin:@typescript-eslint/recommended",
+    'eslint:recommended',
+    'plugin:import/errors',
+    'plugin:import/warnings',
+    'plugin:import/typescript',
+    'google',
+    'plugin:@typescript-eslint/recommended',
   ],
-  parser: "@typescript-eslint/parser",
+  parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: ["tsconfig.json", "tsconfig.dev.json"],
-    sourceType: "module",
+    project: ['tsconfig.json', 'tsconfig.dev.json'],
+    sourceType: 'module',
   },
   ignorePatterns: [
-    "/lib/**/*", // Ignore built files.
-    "/generated/**/*", // Ignore generated files.
+    '/lib/**/*', // Ignore built files.
+    '/generated/**/*', // Ignore generated files.
   ],
   plugins: [
-    "@typescript-eslint",
-    "import",
+    '@typescript-eslint',
+    'import',
   ],
   rules: {
-    "quotes": ["error"],
-    "operator-linebreak": ['before'],
-    "import/no-unresolved": 0,
-    "indent": ["error", 2],
+    'quotes': ['error'],
+    'import/no-unresolved': 0,
+    'indent': 'off',
+    'no-multi-spaces': 'off',
+    'operator-linebreak': 'off',
+    'valid-jsdoc': 'off',
+    'require-jsdoc': 'off',
+    'max-len': ['error', {'code': 150}],
+    'linebreak-style': 0,
+    '@typescript-eslint/no-explicit-any': 'off',
+    'arrow-parens': 'off',
+    'comma-dangle': 'off',
+    'no-multiple-empty-lines': 'off'
   },
 };

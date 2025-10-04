@@ -1,79 +1,113 @@
 import * as admin   from 'firebase-admin';
-import * as express from "express";
-import * as logger from "firebase-functions/logger";
-import { 
-  Attendee, 
+import * as express from 'express';
+import * as logger from 'firebase-functions/logger';
+import {
+  Attendee,
   colGame, colGameAttendeeAllocation, colTournamentRefereeAllocation, colFragmentRefereeAllocation,
-  colTournamentRefereeAllocationStatistics, colFragmentRefereeAllocationStatistics, colTournament, 
+  colTournamentRefereeAllocationStatistics, colFragmentRefereeAllocationStatistics, colTournament,
   Field, FragmentRefereeAllocation, FragmentRefereeAllocationStatistics,
-  Game, GameAttendeeAllocation, 
-  isReferee, 
-  isRefereeCoach, 
+  Game, GameAttendeeAllocation,
+  isReferee,
+  isRefereeCoach,
   Tournament, TournamentRefereeAllocation, TournamentRefereeAllocationStatistics,
-  CommonRefereeAllocationStatistics} from '@tournament-manager/persistent-data-model'
-import { checkParameter } from './common-parameters';
-import { byId, byIdRequired, create, dateToEpoch, deleteById, save } from './common-persistence';
-import { DataCache } from './data-cache';
+  CommonRefereeAllocationStatistics} from '@tournament-manager/persistent-data-model';
+import {byId, byIdRequired, create, dateToEpoch, deleteById, save} from './common-persistence';
+import {DataCache} from './data-cache';
 
 
 
-export let coachingsRouter = express.Router();
-
-// POST /api/tournament/:tournamentId/allocation/:allocationId/referee-stats?gameId=XXX
-coachingsRouter.get("/:id", async function getReferee(req: express.Request, res: express.Response) {
-    // if (!tool.ensureApiKey(req, res)) return;
-  const firestore: admin.firestore.Firestore = admin.firestore();
-  const id = req.params.id;
-  const elem = (await firestore.collection('coaching').doc(id).get()).data();
-  res.status(200).send(elem);
-});
+export const allocationStatisticsRouter = express.Router(); // eslint-disable-line new-cap
 
 /**
- * The allocation on a game has been changed. It required to compute the statistics of 
- * all current and previous attendes to the game.
- * @param fullAllocationId 
- * @param partAllocationId 
- * @param gameId 
- * @param removedAttendeeIds
- * @param firestore 
+ * GET
+ * /api/refereeAllocationStatistics/compute?tournamentAllocationId=XXX&fragmentAllocationId=XXX&refereeAttendeeIds=XXX,XXX,XXX
+ * Query Params:
+ * - tournamentAllocationId: string: Required, identifier of a TournamentRefereeAllocation
+ * - FragmentRefereeAllocation: string, Required, identifier of a FragmentRefereeAllocation
+ * - refereeAttendeeIds: string[]: list of referee Attendee.id. refereeAttendeeIds or gameId are required.
+ * - gameId: string; identifier of a Game. refereeAttendeeIds or gameId are required.
+ * return {
+ *   tournamentAllocationId: string,
+ *   fragmentAllocationId: string,
+ *   refereeAllocationStatistics: {
+ *       refereeAttendeeId: string;
+ *       fragmentAllocationRefereeStatistics: FragmentRefereeAllocationStatistics;
+ *       tournamentAllocationRefereeStatistics: TournamentRefereeAllocationStatistics;
+ *     }[]
+ * }
  */
-async function computeRefereeStatisticsOnGame(
-  tournamentAllocationId: string, 
-  fragmentAllocationId: string, 
-  gameId: string, 
-  removedAttendeeIds: string[],
-  firestore: admin.firestore.Firestore) {
-  
-  checkParameter(gameId, 'gameId');
-  const game: Game = await byIdRequired(colGame, gameId, firestore);
-  logger.debug('Game', JSON.stringify(game));
-  
-  const tournamentAllocation: TournamentRefereeAllocation = await byIdRequired(colTournamentRefereeAllocation, tournamentAllocationId, firestore)
+allocationStatisticsRouter.get('/compute', async function getReferee(req: express.Request, res: express.Response) {
+  // if (!tool.ensureApiKey(req, res)) return;
+      console.log('Incoming request=' + req.method
+        + ', headers=' + JSON.stringify(req.headers)
+        + ', body=' + JSON.stringify(req.body),
+        + ', process.APP_API_KEY='+process.env.APP_API_KEY!);
+
+  const tournamentAllocationId = req.params.tournamentAllocationId;
+  const fragmentAllocationId = req.params.fragmentAllocationId;
+  const refereeAttendeeIds: string[] = req.params.refereeAttendeeIds.split(',');
+  const gameId = req.params.gameId;
+  const firestore: admin.firestore.Firestore = admin.firestore();
+
+  if (gameId) {
+    const game: Game = await byIdRequired(colGame, gameId, firestore);
+    logger.debug('Game', JSON.stringify(game));
+
+    const attendedReferees: GameAttendeeAllocation[] = await getGameReferees(fragmentAllocationId, gameId, firestore);
+    attendedReferees.map(a => refereeAttendeeIds.push(a.attendeeId));
+  }
+
+  const allocStats = await computeRefereeStatistics(tournamentAllocationId, fragmentAllocationId, refereeAttendeeIds, firestore);
+  res.status(200).send({
+    tournamentAllocationId,
+    fragmentAllocationId,
+    refereeAllocationStatistics: allocStats
+  });
+});
+
+
+/**
+ * The allocation of referees has been changed. It required to compute the statistics.
+ * @param fullAllocationId
+ * @param partAllocationId
+ * @param refereeAttendeeIds
+ * @param firestore
+ */
+async function computeRefereeStatistics(
+  tournamentAllocationId: string,
+  fragmentAllocationId: string,
+  refereeAttendeeIds: string[],
+  firestore: admin.firestore.Firestore): Promise<RefereeAllocStats[]> {
+  const tournamentAllocation: TournamentRefereeAllocation = await byIdRequired(colTournamentRefereeAllocation, tournamentAllocationId, firestore);
   logger.debug('FullRefereeAllocation', JSON.stringify(tournamentAllocation));
-  const fragmentAllocation: FragmentRefereeAllocation = await byIdRequired(colFragmentRefereeAllocation, tournamentAllocationId, firestore)
+  const fragmentAllocation: FragmentRefereeAllocation = await byIdRequired(colFragmentRefereeAllocation, tournamentAllocationId, firestore);
   logger.debug('FullRefereeAllocation', JSON.stringify(fragmentAllocation));
-  if (tournamentAllocation.tournamentId !== game.tournamentId) {
-    throw new Error('Game identifier and Tournament allocation identifier do not correspond to the same tournament!');
+  if (tournamentAllocation.tournamentId !== fragmentAllocation.tournamentId) {
+    throw new Error('Fragment allocation identifier and Tournament allocation identifier do not correspond to the same tournament!');
   }
-  if (fragmentAllocation.tournamentId !== game.tournamentId) {
-    throw new Error('Game identifier and Fragment allocation identifier do not correspond to the same tournament!');
-  }
-  const tournament: Tournament = await byIdRequired(colTournament, tournamentAllocation.tournamentId, firestore)
+  const tournament: Tournament = await byIdRequired(colTournament, tournamentAllocation.tournamentId, firestore);
 
   const cache: DataCache = new DataCache(firestore);
-  
-  const attendedReferees: GameAttendeeAllocation[] = await getGameReferees(fragmentAllocation.id, gameId, firestore);
-  
-  const toRecomputeAttendeeIds = new Set((removedAttendeeIds ?  removedAttendeeIds : [])
-    .concat(attendedReferees.map(a => a.attendeeId)));
-  toRecomputeAttendeeIds.forEach(async attendeeId => {
+
+  return Promise.all(Array.from(new Set(refereeAttendeeIds)).map(async (attendeeId: string) => {
     // compute statistics for the referee over the fragment
     const newFragementStats = await computeRefereeStatistic(tournament, fragmentAllocation, attendeeId, cache);
     // save this new statistics (maybe replace)
-    await saveFragmentRefereeAllocationStatistics(newFragementStats, fragmentAllocationId,firestore);
+    const fragAllocStat = await saveFragmentRefereeAllocationStatistics(newFragementStats, fragmentAllocationId, firestore);
     // link the fragment to the Tournament stats (create if required)
-    await assignFragmentToTournamentRefereeAllocationStatistics(newFragementStats, tournamentAllocationId, firestore);
-  });
+    const tourAllocStat = await assignFragmentToTournamentRefereeAllocationStatistics(newFragementStats, tournamentAllocationId, firestore);
+    const refereeAllocStats: RefereeAllocStats = {
+      refereeAttendeeId: attendeeId,
+      fragmentAllocationRefereeStatistics: fragAllocStat,
+      tournamentAllocationRefereeStatistics: tourAllocStat,
+    };
+    return refereeAllocStats;
+  }));
+}
+interface RefereeAllocStats {
+  refereeAttendeeId: string;
+  fragmentAllocationRefereeStatistics: FragmentRefereeAllocationStatistics;
+  tournamentAllocationRefereeStatistics: TournamentRefereeAllocationStatistics;
 }
 /**
  * Save the stats about a referee
@@ -82,26 +116,26 @@ async function computeRefereeStatisticsOnGame(
  * @param firestore connection to the database
  */
 async function saveFragmentRefereeAllocationStatistics(
-  newFragementStats: FragmentRefereeAllocationStatistics, 
+  newFragementStats: FragmentRefereeAllocationStatistics,
   fragmentAllocationId: string,
-  firestore: admin.firestore.Firestore) {
-  const oldFragementStats = await getFragementRefereeAllocationStatistics(newFragementStats.refereeAttendeeId, fragmentAllocationId, firestore)
+  firestore: admin.firestore.Firestore): Promise<FragmentRefereeAllocationStatistics> {
+  const oldFragementStats = await getFragementRefereeAllocationStatistics(newFragementStats.refereeAttendeeId, fragmentAllocationId, firestore);
   if (oldFragementStats) {
     // keep the same identifier
     newFragementStats.id = oldFragementStats.id;
     // Replace the old object with the new one
     logger.debug('Modify the FragmentRefereeAllocationStatistics for the referee:', newFragementStats.refereeAttendeeId);
-    save(colFragmentRefereeAllocationStatistics, newFragementStats, firestore);
+    return save(colFragmentRefereeAllocationStatistics, newFragementStats, firestore);
   } else {
     logger.debug('Create a new FragmentRefereeAllocationStatistics for the referee:', newFragementStats.refereeAttendeeId);
-    create(colFragmentRefereeAllocationStatistics, newFragementStats, firestore);
+    return create(colFragmentRefereeAllocationStatistics, newFragementStats, firestore);
   }
 }
 
 /**
- * Assign the fragment referee stats (FragmentRefereeAllocationStatistics) to the tournament 
+ * Assign the fragment referee stats (FragmentRefereeAllocationStatistics) to the tournament
  * referee stats (TournamentRefereeAllocationStatistics). If the TournamentRefereeAllocationStatistics does exist
- * it is created. 
+ * it is created.
  * @param newFragementStats the new stats
  * @param tournamentAllocationId the identifier of the tournament allocation
  * @param firestore connection to the database
@@ -109,10 +143,10 @@ async function saveFragmentRefereeAllocationStatistics(
 async function assignFragmentToTournamentRefereeAllocationStatistics(
   newFragementStats: FragmentRefereeAllocationStatistics,
   tournamentAllocationId: string,
-  firestore: admin.firestore.Firestore) {
+  firestore: admin.firestore.Firestore): Promise<TournamentRefereeAllocationStatistics> {
   let tStats = await getTournamentRefereeAllocationStatistics(
-    newFragementStats.refereeAttendeeId, tournamentAllocationId, firestore)
-  const createObject:boolean = !tStats;
+    newFragementStats.refereeAttendeeId, tournamentAllocationId, firestore);
+  const createObject:boolean = tStats === undefined;
   if (tStats) {
     const otherIds = tStats.fragmentsStatisticsIds.filter(fsId => fsId !== newFragementStats.id);
     const allFragStats: FragmentRefereeAllocationStatistics[] = await Promise.all(
@@ -129,7 +163,7 @@ async function assignFragmentToTournamentRefereeAllocationStatistics(
       refereeAttendeeId: newFragementStats.refereeAttendeeId,
       tournamentRefereeAllocationId: tournamentAllocationId,
       tournamentStatistics: {...newFragementStats}
-    }
+    };
   }
 
   // Link the fragment stats to the tournament stats
@@ -140,17 +174,17 @@ async function assignFragmentToTournamentRefereeAllocationStatistics(
   // Save the tournament stats
   if (createObject) {
     logger.debug('Create a new TournamentRefereeAllocationStatistics for the referee:', tStats.refereeAttendeeId);
-    create(colTournamentRefereeAllocationStatistics, tStats, firestore);
+    return create(colTournamentRefereeAllocationStatistics, tStats, firestore);
   } else {
     logger.debug('Modify the TournamentRefereeAllocationStatistics for the referee:', tStats.refereeAttendeeId);
-    save(colTournamentRefereeAllocationStatistics, tStats, firestore);
+    return save(colTournamentRefereeAllocationStatistics, tStats, firestore);
   }
 }
 /**
  * Compute the tournament stats based on a list of Fragment stats
  * @param tournamentStats the tournament stats to recompute
  * @param fragStats the list of fragment stats
- * @returns 
+ * @returns
  */
 async function computeTournamentRefereeAllocationStatistics(
   tournamentStats: TournamentRefereeAllocationStatistics,
@@ -192,13 +226,13 @@ async function computeTournamentRefereeAllocationStatistics(
       }
     });
     if ((tStats.coaching.nbCoachedGames + fs.coaching.nbCoachedGames) > 0) {
-      tStats.coaching.averageCoachingLevel = 
+      tStats.coaching.averageCoachingLevel =
         ((tStats.coaching.averageCoachingLevel * tStats.coaching.nbCoachedGames)
-        + (fs.coaching.averageCoachingLevel * fs.coaching.nbCoachedGames)) 
+        + (fs.coaching.averageCoachingLevel * fs.coaching.nbCoachedGames))
         / (tStats.coaching.nbCoachedGames + fs.coaching.nbCoachedGames);
       tStats.coaching.nbCoachedGames += fs.coaching.nbCoachedGames;
     }
-    
+
     tStats.firstTimeSlotIdx = Math.min(tStats.firstTimeSlotIdx, fs.firstTimeSlotIdx);
     tStats.lastTimeSlotIdx = Math.max(tStats.lastTimeSlotIdx, fs.lastTimeSlotIdx);
 
@@ -217,21 +251,21 @@ async function computeTournamentRefereeAllocationStatistics(
 }
 
 /**
- * Create the referee statistics (RefereeAllocationStatisticsPartDay) for a referee over a 
+ * Create the referee statistics (RefereeAllocationStatisticsPartDay) for a referee over a
  * PartRefereeAllocation in a tournament.
- * Algo: It search all games in the allocation where the referee is allocated. Then for each game 
+ * Algo: It search all games in the allocation where the referee is allocated. Then for each game
  * it builds the satistics about this referee.
- * 
+ *
  * @param tournament is the tournament
- * @param partAllocation is PartRefereeAllocation 
+ * @param partAllocation is PartRefereeAllocation
  * @param attendeeId is the identifier of the referee (Attendee.id)
  * @param cache is a data cache used to limit database accesses.
  * @returns A complete statistic (RefereeAllocationStatisticsPartDay) of a referee over a PartRefereeAllocation in a tournament.
  */
 async function computeRefereeStatistic(
-  tournament: Tournament, 
-  fragmentAllocation: FragmentRefereeAllocation, 
-  attendeeId: string, 
+  tournament: Tournament,
+  fragmentAllocation: FragmentRefereeAllocation,
+  attendeeId: string,
   cache: DataCache): Promise<FragmentRefereeAllocationStatistics> {
   // Step 1: Load all gameIds of the referee
   const gameIds: string[] = await getAttendeeGameIds(fragmentAllocation.id, attendeeId, cache.firestore);
@@ -256,9 +290,9 @@ async function computeRefereeStatistic(
     },
     buddiesBadgeAvg: 0,
     buddies: [], // { buddyAttendeeId: string; nbGames: number; badge: number;}
-    teams: [], //{ teamId: string; divisionId: string; nbGames: number; }
+    teams: [], // { teamId: string; divisionId: string; nbGames: number; }
     games: [] // { gameId: string; divisionId: string; divisionShortName: string; timeSlotId: string; refereeCoachAttendeeIds: string[];}
-  }
+  };
 
   // Step 2: Load all referees and coach of all games and adjust statistics
   gameIds.forEach(async gameId => {
@@ -273,17 +307,17 @@ async function computeRefereeStatistic(
 }
 
 function computebuddiesBadgeAvg(stats: CommonRefereeAllocationStatistics) {
-  const buddiesLevelData = [0,0];
+  const buddiesLevelData = [0, 0];
   stats.buddies.forEach(bs => {
-    if (bs.badge !== undefined){
+    if (bs.badge !== undefined) {
       buddiesLevelData[0] += bs.badge;
       buddiesLevelData[1]++;
     }
   });
-  stats.buddiesBadgeAvg = buddiesLevelData[1] === 0 ? 0 : buddiesLevelData[0] / buddiesLevelData[1]; 
+  stats.buddiesBadgeAvg = buddiesLevelData[1] === 0 ? 0 : buddiesLevelData[0] / buddiesLevelData[1];
 }
 /**
- * Complete the referee statistics with information about a game. 
+ * Complete the referee statistics with information about a game.
  * This game is linked to a PartRefereeAllocation and a tournament.
  * @param attendeeId is the identifier of the attendee (referee)
  * @param refStats is the current statistic of the referee for the RefereeAllocationStatisticsPartDay
@@ -293,8 +327,8 @@ function computebuddiesBadgeAvg(stats: CommonRefereeAllocationStatistics) {
  * @param cache is the data cache used to limit the query on the database.
  */
 async function completeRefereStatsWithGame(
-  attendeeId: string, 
-  refStats: FragmentRefereeAllocationStatistics, 
+  attendeeId: string,
+  refStats: FragmentRefereeAllocationStatistics,
   tournament: Tournament,
   gameId: string,
   partAllocation: FragmentRefereeAllocation,
@@ -312,8 +346,8 @@ async function completeRefereStatsWithGame(
   const teamIds = [game.homeTeamId, game.awayTeamId];
 
   refStats.lastAttendeeAlloc = Math.max(
-    refStats.lastAttendeeAlloc, 
-    attendees.map(a => a.lastChange).reduce((a,b) => Math.max(a,b)));
+    refStats.lastAttendeeAlloc,
+    attendees.map(a => a.lastChange).reduce((a, b) => Math.max(a, b)));
 
   // field info
   const field: Field = tournament.fields.find(field => field.id === game.fieldId)!;
@@ -323,7 +357,7 @@ async function completeRefereStatsWithGame(
   // game info
   refStats.gameIds.push(game.id);
   refStats.games.push({
-    gameId: game.id, 
+    gameId: game.id,
     divisionId: division.id,
     divisionShortName: division.shortName,
     timeSlotId: game.timeslotId,
@@ -336,15 +370,15 @@ async function completeRefereStatsWithGame(
 
   // coaching
   if (refereeCoaches.length > 0) {
-    const avg =  average(refereeCoaches.map((rc: Attendee) => rc.refereeCoach!.badge))
+    const avg =  average(refereeCoaches.map((rc: Attendee) => rc.refereeCoach!.badge));
     if (refStats.coaching.nbCoachedGames === 0) {
       refStats.coaching.averageCoachingLevel = avg;
     } else {
-      refStats.coaching.averageCoachingLevel = 
-        (refStats.coaching.averageCoachingLevel * refStats.coaching.nbCoachedGames + avg) 
+      refStats.coaching.averageCoachingLevel =
+        (refStats.coaching.averageCoachingLevel * refStats.coaching.nbCoachedGames + avg)
         / (refStats.coaching.nbCoachedGames+1);
     }
-    refStats.coaching.nbCoachedGames++
+    refStats.coaching.nbCoachedGames++;
   }
 
   // buddies
@@ -355,7 +389,7 @@ async function completeRefereStatsWithGame(
       if (buddyStat) {
         buddyStat.nbGames++;
       } else {
-        buddyStat = { buddyAttendeeId, nbGames: 1};
+        buddyStat = {buddyAttendeeId, nbGames: 1};
         if (r.referee) {
           buddyStat.badge = r.referee.badge;
         }
@@ -366,7 +400,7 @@ async function completeRefereStatsWithGame(
 
   // teams
   teamIds.forEach(teamId => {
-    let teamStat = refStats.teams.find(t => t.teamId === teamId);
+    const teamStat = refStats.teams.find(t => t.teamId === teamId);
     if (teamStat) {
       teamStat.nbGames++;
     } else {
@@ -375,7 +409,7 @@ async function completeRefereStatsWithGame(
   });
 }
 function average(numbers: number[]): number {
-  return numbers.length > 0 ? numbers.reduce((a,b) => a+b) / numbers.length : 0;
+  return numbers.length > 0 ? numbers.reduce((a, b) => a+b) / numbers.length : 0;
 }
 
 function computeGameTimeSlotIdx(game: Game, tournament: Tournament): number {
@@ -397,13 +431,13 @@ async function getGameAttendees(
   partAllocationId: string,
   gameId: string,
   firestore: admin.firestore.Firestore): Promise<GameAttendeeAllocation[]> {
-  let query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colGameAttendeeAllocation)
+  const query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colGameAttendeeAllocation)
     .where('refereeAllocationId', '==', partAllocationId)
     .where('gameId', '==', gameId);
   return (await query.get()).docs.filter(e => e.exists).map(e => e.data() as GameAttendeeAllocation);
 }
 /**
- * Fetch all Referee Attendees (full time referees, player referees ...) 
+ * Fetch all Referee Attendees (full time referees, player referees ...)
  * @param partAllocationId identifier of a PartRefereeAllocation
  * @param gameId is a game idenfier
  * @param firestore is the database connection
@@ -411,34 +445,34 @@ async function getGameAttendees(
  */
 async function getGameReferees(
   partAllocationId: string,
-  gameId: string, 
+  gameId: string,
   firestore: admin.firestore.Firestore): Promise<GameAttendeeAllocation[]> {
   const attendees = await getGameAttendees(partAllocationId, gameId, firestore);
   return attendees.filter(ar => isReferee(ar.attendeeRole));
 }
 
 /**
- * Fetch all Referee coaches Attendees (full time, partial ...) 
+ * Fetch all Referee coaches Attendees (full time, partial ...)
  * @param partAllocationId identifier of a PartRefereeAllocation
  * @param gameId is a game idenfier
  * @param firestore is the database connection
  * @returns an array of GameAttendeeAllocation. All referee coaches of the game.
  */
 async function getAttendeeGameIds(
-  allocationId: string, 
-  attendeeId: string, 
+  allocationId: string,
+  attendeeId: string,
   firestore: admin.firestore.Firestore): Promise<string[]> {
-  let query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colGameAttendeeAllocation)
+  const query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colGameAttendeeAllocation)
     .where('refereeAllocationId', '==', allocationId)
     .where('attendeeId', '==', attendeeId);
   return (await query.get()).docs.filter(e => e.exists).map(e => e.data() as GameAttendeeAllocation).map(ar => ar.gameId);
 }
 
 async function getFragementRefereeAllocationStatistics(
-  attendeeId: string, 
+  attendeeId: string,
   fragmentRefereeAllocationId: string,
   firestore: admin.firestore.Firestore): Promise<FragmentRefereeAllocationStatistics|undefined> {
-  let query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colFragmentRefereeAllocationStatistics)
+  const query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colFragmentRefereeAllocationStatistics)
     .where('refereeAttendeeId', '==', attendeeId)
     .where('fragmentRefereeAllocationId', '==', fragmentRefereeAllocationId);
   const list = (await query.get()).docs.filter(e => e.exists).map(e => e.data() as FragmentRefereeAllocationStatistics);
@@ -448,7 +482,7 @@ async function getFragementRefereeAllocationStatistics(
     return list[0];
   } else {
     logger.error(list.length +' FragmentRefereeAllocationStatistics instance for a referee in an allocation, return the more recent object.');
-    const moreRecent = list.reduce((a1,a2) => a1.lastAttendeeAlloc > a2.lastAttendeeAlloc ? a1 : a2);
+    const moreRecent = list.reduce((a1, a2) => a1.lastAttendeeAlloc > a2.lastAttendeeAlloc ? a1 : a2);
     list.forEach(async a => {
       if (a.id !== moreRecent.id) {
         logger.error('Deleting duplicat FragmentRefereeAllocationStatistics instance for a referee in an allocation: identifier='+a.id);
@@ -457,14 +491,13 @@ async function getFragementRefereeAllocationStatistics(
     });
     return moreRecent;
   }
-
 }
 
 async function getTournamentRefereeAllocationStatistics(
-  attendeeId: string, 
+  attendeeId: string,
   tournamentRefereeAllocationId: string,
   firestore: admin.firestore.Firestore): Promise<TournamentRefereeAllocationStatistics|undefined> {
-  let query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colTournamentRefereeAllocationStatistics)
+  const query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colTournamentRefereeAllocationStatistics)
     .where('refereeAttendeeId', '==', attendeeId)
     .where('tournamentRefereeAllocationId', '==', tournamentRefereeAllocationId);
   const list = (await query.get()).docs.filter(e => e.exists).map(e => e.data() as TournamentRefereeAllocationStatistics);
@@ -474,7 +507,7 @@ async function getTournamentRefereeAllocationStatistics(
     return list[0];
   } else {
     logger.error(list.length +' TournamentRefereeAllocationStatistics instance for a referee in an allocation, return the more recent object.');
-    const moreRecent = list.reduce((a1,a2) => a1.lastChange > a2.lastChange ? a1 : a2);
+    const moreRecent = list.reduce((a1, a2) => a1.lastChange > a2.lastChange ? a1 : a2);
     list.forEach(async a => {
       if (a.id !== moreRecent.id) {
         logger.error('Deleting duplicat TournamentRefereeAllocationStatistics instance for a referee in an allocation: identifier='+a.id);
@@ -483,5 +516,4 @@ async function getTournamentRefereeAllocationStatistics(
     });
     return moreRecent;
   }
-
 }
