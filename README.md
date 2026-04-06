@@ -1,14 +1,26 @@
 # tournament-manager
-Touch Rugby tournament manager
 
+Touch Rugby tournament manager.
+
+## Documentation
+
+- [Documentation technique](c:/data/perso/dev/tournament-manager/sources/doc/dev.md)
+- [Fonctionnalites](c:/data/perso/dev/tournament-manager/sources/doc/features.md)
+- [Pages de l'application](c:/data/perso/dev/tournament-manager/sources/doc/pages.md)
+- [Modele de donnees](c:/data/perso/dev/tournament-manager/sources/doc/datamodel.md)
+- [Backend Firebase Functions](c:/data/perso/dev/tournament-manager/sources/doc/functions.md)
+
+## Notes metier
 
 Referee = Attendee [+ Person]
-  No person means it is a player referee
-  Person can be 
-  - No account full time referee
-  - Referee with an account (full time or partial time). 
 
-Lors du 1er déploiement, définir le secret: APP_API_KEY:
+- Sans `Person`, il s'agit d'un player referee.
+- Avec `Person`, il peut s'agir d'un arbitre temps plein sans compte applicatif ou d'un arbitre rattache a un compte.
+
+## Premier deploiement
+
+Definir le secret `APP_API_KEY` :
+
+```powershell
 firebase functions:secrets:set APP_API_KEY
-vkg4<B>t4t£s&E}R"}OT8042$&F;%9:k8P,Y{5(£6L#){Ldxvc
-
+```
