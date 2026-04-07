@@ -1,4 +1,2 @@
 
-
-Objectif: creation d'une documentation du projet
-
+- Ajouter les AGENTS.md (front, back, model)
