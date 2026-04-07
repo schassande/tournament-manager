@@ -1,7 +1,6 @@
 # TODO list du projet Tournament Maager
 
 ## Priorité 1
-- Ajouter les AGENTS.md (front, back, model)
 - Documenter les interfaces en détail
 - Utiliser l'email comme id d'une personne/attendee
 - Attribut search dans les attendee
