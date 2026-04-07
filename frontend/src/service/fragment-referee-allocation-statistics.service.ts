@@ -2,8 +2,7 @@ import { Injectable } from '@angular/core';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 import { colFragmentRefereeAllocation, colFragmentRefereeAllocationStatistics, FragmentRefereeAllocation, FragmentRefereeAllocationStatistics } from '@tournament-manager/persistent-data-model';
 import { Observable } from 'rxjs';
-import { query, where } from '@angular/fire/firestore';
-import { doc, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, getDocs, query, where, writeBatch } from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root'

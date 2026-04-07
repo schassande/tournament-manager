@@ -10,7 +10,6 @@ import { CardModule } from 'primeng/card';
 import { DividerModule } from 'primeng/divider';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { browserLocalPersistence, browserSessionPersistence, setPersistence } from 'firebase/auth';
 
 @Component({
   standalone: true,

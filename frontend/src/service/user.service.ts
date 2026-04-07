@@ -1,9 +1,8 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Person } from '@tournament-manager/persistent-data-model';
 import { catchError, from, map, mergeMap, Observable, of } from 'rxjs';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, UserCredential } from 'firebase/auth';
+import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, UserCredential } from '@angular/fire/auth';
 import { PersonService } from './person.service';
-import { Auth } from '@angular/fire/auth';
 import { UserLocalStorageService } from './user-local-storage.service';
 import { toObservable } from '@angular/core/rxjs-interop';
 

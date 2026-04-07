@@ -1,8 +1,7 @@
-import { inject, Injectable } from '@angular/core';
+import { EnvironmentInjector, inject, Injectable, runInInjectionContext } from '@angular/core';
 import { PersistentObject } from '@tournament-manager/persistent-data-model';
 import { from, map, Observable } from 'rxjs';
-import { Firestore, collection, collectionData, doc, setDoc, deleteDoc, docData, CollectionReference, DocumentData, Query } from '@angular/fire/firestore';
-import { getDocs, limit, query, QueryDocumentSnapshot, QuerySnapshot } from 'firebase/firestore';
+import { Firestore, collection, collectionData, doc, setDoc, deleteDoc, docData, CollectionReference, DocumentData, Query, getDocs, limit, query, QueryDocumentSnapshot, QuerySnapshot } from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root'
@@ -10,6 +9,7 @@ import { getDocs, limit, query, QueryDocumentSnapshot, QuerySnapshot } from 'fir
 export abstract class AbstractPersistentDataService<T extends PersistentObject>{
 
   protected firestore = inject(Firestore)
+  private environmentInjector = inject(EnvironmentInjector);
 
   protected abstract getCollectionName(): string;
 
@@ -19,13 +19,17 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
     return collection(this.firestore, this.getCollectionName());
   }
   public all(): Observable<T[]> {
-    return collectionData(this.itemsCollection(), { idField: 'id' }) as Observable<T[]>;
+    return this.runInContext(() =>
+      collectionData(this.itemsCollection(), { idField: 'id' }) as Observable<T[]>
+    );
   }
 
   public byId(id: string): Observable<T | undefined> {
     const path = `${this.getCollectionName()}/${id}`;
     const itemDoc = doc(this.firestore, path);
-    return docData(itemDoc, { idField: 'id' }) as Observable<T | undefined>;
+    return this.runInContext(() =>
+      docData(itemDoc, { idField: 'id' }) as Observable<T | undefined>
+    );
   }
   public save(item: T): Observable<T> {
     if (item.id) {
@@ -59,15 +63,18 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
   }
 
   public queryOne(q: Query): Observable<T|null> {
-    return from(getDocs(query(q, limit(1))) as Promise<QuerySnapshot<T>>).pipe(
+    return from(this.runInContext(() => getDocs(query(q, limit(1))) as Promise<QuerySnapshot<T>>)).pipe(
       map(this.snapshotOneToObs.bind(this))
     );
   }
 
   public query(q: Query): Observable<T[]> {
-    return from(getDocs(query(q)) as Promise<QuerySnapshot<T>>).pipe(
+    return from(this.runInContext(() => getDocs(query(q)) as Promise<QuerySnapshot<T>>)).pipe(
       map(this.snapshotToObs.bind(this))
     );
+  }
+  private runInContext<R>(callback: () => R): R {
+    return runInInjectionContext(this.environmentInjector, callback);
   }
   private snapshotOneToObs(qs: QuerySnapshot<T>): T|null {
     const datas: T[] = [];
