@@ -1,4 +1,4 @@
-import {PersistentObject} from '@tournament-manager/persistent-data-model';
+import {PersistentObject} from './persistent-data-model';
 import * as admin   from 'firebase-admin';
 import dayjs from 'dayjs';
 

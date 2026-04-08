@@ -3,12 +3,11 @@
 ## Priorité 1
 - Documenter les interfaces en détail
 - Utiliser l'email comme id d'une personne/attendee
-- Attribut search dans les attendee
+- Attribut search dans les person
 - Revue des firebase rule
 - Authentification google
 - Déploiement prod/dev
 - Réduction taille
-- Refaire l'isolation de la partie datamodel sans workspace
 
 ## Priorité 2
 - Configuration général du tournoi en onglet

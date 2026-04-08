@@ -2,11 +2,11 @@
 
 ## Vue d'ensemble
 
-Le projet est organise comme un monorepo npm avec 3 workspaces :
+Le projet est organise en trois repertoires TypeScript :
 
 - `frontend/` : application Angular 20 + PrimeNG.
 - `functions/` : backend Firebase Functions en TypeScript, expose via HTTP.
-- `persistent-data-model/` : bibliotheque TypeScript partagee entre le front et le back pour les types metier et les noms de collections Firestore.
+- `persistent-data-model/` : sources TypeScript partagees entre le front et le back pour les types metier et les noms de collections Firestore.
 
 A la racine on trouve aussi :
 
@@ -62,16 +62,11 @@ Depuis la racine :
 npm install
 ```
 
-Les dependances sont gerees via les workspaces npm.
+Les dependances s'installent independamment selon le repertoire concerne :
 
-## Compiler le modele partage
-
-Le package `persistent-data-model` doit etre compile pour le backend Firebase, car `functions` depend de `../persistent-data-model/dist`.
-
-```powershell
-cd persistent-data-model
-npm run build
-```
+- racine : outillage partage minimal du depot ;
+- `frontend/` : dependances Angular ;
+- `functions/` : dependances Firebase Functions.
 
 ## Compiler le frontend
 
@@ -79,6 +74,8 @@ npm run build
 cd frontend
 npm run build
 ```
+
+Le build Angular resolve `@tournament-manager/persistent-data-model` directement vers `../persistent-data-model/src`.
 
 Sortie generee :
 
@@ -97,6 +94,8 @@ npm start
 cd functions
 npm run build
 ```
+
+Le build TypeScript du backend compile aussi `../persistent-data-model/src` dans sa sortie `lib/`, ce qui evite toute dependance sur un build separe du datamodel.
 
 Pour developper avec emulation Functions :
 
@@ -125,9 +124,8 @@ npm run deploy
 
 Ce script :
 
-1. compile `persistent-data-model`
-2. compile `functions`
-3. lance `firebase deploy --only functions`
+1. compile `functions` ainsi que les sources partagees de `persistent-data-model/src`
+2. lance `firebase deploy --only functions`
 
 ## Deploiement Firestore
 
@@ -151,9 +149,7 @@ En l'etat actuel, le build de production du front est donc pret pour un deploiem
 Pour une livraison complete du projet actuel :
 
 ```powershell
-cd persistent-data-model
-npm run build
-cd ..\frontend
+cd frontend
 npm run build
 cd ..\functions
 npm run deploy
@@ -164,3 +160,4 @@ npm run deploy
 - Les variables Firebase du front sont configurees dans `frontend/src/environments/environment.ts` et `environment.prod.ts`.
 - Le front accede directement a Firestore avec AngularFire.
 - Le backend ne fournit actuellement qu'une API HTTP de calcul de statistiques d'allocation ; le reste du CRUD passe par Firestore depuis le frontend.
+- Decision technique : le datamodel partage n'est plus distribue comme package workspace. Le frontend le consomme via le mapping TypeScript et le backend l'embarque directement pendant sa compilation.

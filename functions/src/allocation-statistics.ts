@@ -10,7 +10,7 @@ import {
   isReferee,
   isRefereeCoach,
   Tournament, TournamentRefereeAllocation, TournamentRefereeAllocationStatistics,
-  CommonRefereeAllocationStatistics} from '@tournament-manager/persistent-data-model';
+  CommonRefereeAllocationStatistics} from './persistent-data-model';
 import {byId, byIdRequired, create, dateToEpoch, deleteById, save} from './common-persistence';
 import {DataCache} from './data-cache';
 

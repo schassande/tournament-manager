@@ -1,4 +1,4 @@
-import {Attendee, colAttendee} from '@tournament-manager/persistent-data-model';
+import {Attendee, colAttendee} from './persistent-data-model';
 import * as admin from 'firebase-admin';
 import {byIdRequired} from './common-persistence';
 
