@@ -17,7 +17,7 @@ import { TournamentService } from '../service/tournament.service';
   `,
   styles: [`
   `],
-  standalone: false
+  standalone: true
 })
 export class TournamentHomeComponent  implements OnInit {
 
