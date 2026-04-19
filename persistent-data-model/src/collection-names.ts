@@ -6,6 +6,8 @@ export const colGame = 'game';
 export const colGameAttendeeAllocation = 'game-attendee-allocation';
 /** Firebase collection name of Person */
 export const colPerson = 'person';
+/** Firebase collection name of the email to person identifier index */
+export const colEmailPersonId = 'email_personid';
 /** Firebase collection name of Region */
 export const colRegion = 'region';
 /** Firebase collection name of Tournament */

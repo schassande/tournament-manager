@@ -5,6 +5,7 @@ import * as admin                      from 'firebase-admin';
 import * as cors from 'cors';
 import * as express from 'express';
 import {allocationStatisticsRouter} from './allocation-statistics';
+import {createPerson} from './person/create-person';
 
 /**
  * Import function triggers from their respective submodules:
@@ -27,4 +28,4 @@ app.listen(port, () => {
 });
 
 export const api = onRequest({secrets}, app);
-
+export {createPerson};

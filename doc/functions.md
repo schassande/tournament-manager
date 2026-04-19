@@ -4,7 +4,7 @@
 
 Le backend Firebase actuel est tres concentre :
 
-- une seule Cloud Function exportee : `api`
+- deux Cloud Functions exportees : `api` et `createPerson`
 - cette fonction encapsule une application Express
 - une seule route metier est branchee aujourd'hui : `/refereeAllocationStatistics/compute`
 
@@ -20,6 +20,7 @@ Responsabilites :
 - cree une app Express
 - active CORS avec `origin: true`
 - monte le router `allocationStatisticsRouter`
+- exporte la callable function `createPerson`
 - exporte `api = onRequest({ secrets: ['APP_API_KEY'] }, app)`
 
 Point important :
@@ -39,6 +40,49 @@ Chemin de base :
 Sous-routes montees :
 
 - `/api/refereeAllocationStatistics/compute`
+
+## Fonction exposee : `createPerson`
+
+Type :
+
+- Cloud Function callable v2
+
+But :
+
+- creer un document `Person` cote serveur
+- garantir l'unicite de l'email via une transaction Firestore
+- alimenter la collection d'index `email_personid` lorsque l'email est renseigne
+
+Payload attendu :
+
+```json
+{
+  "person": {
+    "userAuthId": "...",
+    "firstName": "...",
+    "lastName": "...",
+    "shortName": "...",
+    "email": "...",
+    "regionId": "...",
+    "countryId": "...",
+    "gender": "M"
+  }
+}
+```
+
+Comportement :
+
+1. normalise l'email avec `trim()`
+2. si l'email est non vide, lit `email_personid/{email}` dans la transaction
+3. si une entree existe deja, renvoie une erreur `already-exists`
+4. cree le document `person/{generatedId}`
+5. cree `email_personid/{email}` avec `{ personId }` quand l'email est non vide
+
+Choix de conception explicite :
+
+- l'index `email_personid` n'est maintenu que pour les emails non vides
+- ce choix permet de conserver la creation de personnes techniques ou temporaires sans email, par exemple dans les ecrans arbitres et coaches
+- l'unicite par email est donc garantie pour les personnes dont l'email est renseigne a la creation
 
 ## Route HTTP : `/refereeAllocationStatistics/compute`
 
@@ -231,7 +275,12 @@ But :
 
 ## Etat actuel du backend
 
-Le backend Firebase est aujourd'hui specialise sur le calcul de statistiques d'allocation. Il ne porte pas encore :
+Le backend Firebase porte aujourd'hui :
+
+- une API HTTP Express pour les statistiques d'allocation
+- une callable function `createPerson` pour la creation transactionnelle de `Person`
+
+Il ne porte pas encore :
 
 - de CRUD HTTP pour les tournois
 - de CRUD HTTP pour les arbitres, matchs ou affectations
@@ -241,4 +290,5 @@ Le backend Firebase est aujourd'hui specialise sur le calcul de statistiques d'a
 En consequence, l'architecture actuelle est hybride :
 
 - frontend -> Firestore pour la majorite des operations metier
+- frontend -> Cloud Function callable pour la creation de `Person`
 - frontend -> Cloud Function HTTP pour les calculs de statistiques complexes

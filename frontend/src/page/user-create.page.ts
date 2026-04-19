@@ -1,9 +1,7 @@
 import { UserService } from '../service/user.service';
-import { from, map, mergeMap, Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { RegionService } from '../service/region.service';
-import { Country, Person, Region } from '@tournament-manager/persistent-data-model';
-import { Auth, createUserWithEmailAndPassword, UserCredential } from '@angular/fire/auth';
-import { PersonService } from '../service/person.service';
+import { Country, Person } from '@tournament-manager/persistent-data-model';
 
 
 import { Component, inject, signal } from '@angular/core';
@@ -191,8 +189,7 @@ export default class UserCreateComponent {
         regionId: this.regionService.regionByCountryId(newUser.countryId)!.id,
       };
 
-      this.userService.createUser(user, newUser.password).subscribe();
-
+      await firstValueFrom(this.userService.createUser(user, newUser.password));
       this.router?.navigateByUrl('/');
     } catch (e) {
       this.error.set('Error during user creation.');

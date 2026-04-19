@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Person } from '@tournament-manager/persistent-data-model';
-import { catchError, from, map, mergeMap, Observable, of } from 'rxjs';
+import { catchError, from, map, mergeMap, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, UserCredential } from '@angular/fire/auth';
 import { PersonService } from './person.service';
 import { UserLocalStorageService } from './user-local-storage.service';
@@ -65,16 +65,19 @@ export class UserService {
 
   public createUser(user: Person, password: string): Observable<Person> {
     return from(createUserWithEmailAndPassword(this.authService, user.email, password)).pipe(
-      map((userCred: UserCredential) => {
-        if (userCred.user.email) {
-          user.userAuthId = userCred.user.email
-        }
-      }),
-      mergeMap(() => this.personService.save(user)),
-      map(() => this.setLastUser(user.email, password)),
-      // auto login after account creation
-      mergeMap(() => this.login(user.email, password)),
-      map(() => user)
+      switchMap((userCred: UserCredential) => {
+        user.userAuthId = userCred.user.uid;
+        return this.personService.createOnServer(user).pipe(
+          tap((createdPerson) => {
+            this.currentCredential = userCred;
+            this.currentUser$.set(createdPerson);
+            this.setLastUser(user.email, password);
+          }),
+          catchError((err) => from(userCred.user.delete()).pipe(
+            switchMap(() => throwError(() => err))
+          ))
+        );
+      })
     )
   }
 

@@ -7,7 +7,6 @@
 - Revue des firebase rule
 - Authentification google
 - Déploiement prod/dev
-- Réduction taille
 
 ## Priorité 2
 - Configuration général du tournoi en onglet
@@ -58,7 +57,7 @@
 - Field map
 - Connexion referentiel Arbitre Touch France
 - Wizard creation de tournoi
-- Allocation auto
+- Allocation auto : https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search
 - Candidature Arbitre
 - Candidature Referee Coach
 - API

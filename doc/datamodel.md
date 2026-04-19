@@ -11,6 +11,7 @@ Les noms de collections Firestore declares dans le code sont :
 
 - `region`
 - `person`
+- `email_personid`
 - `tournament`
 - `attendee`
 - `game`
@@ -56,6 +57,25 @@ Usage :
 
 - support des comptes utilisateurs
 - fiche signaletique d'un arbitre temps plein ou d'un coach d'arbitres
+
+## `EmailPersonId`
+
+Index technique gere uniquement par le backend.
+
+Champs principaux :
+
+- identifiant du document : email de la personne
+- `personId`
+
+Usage :
+
+- garantir l'unicite de l'email a la creation d'une `Person`
+- retrouver rapidement l'identifiant de la personne associee a un email
+
+Contrainte :
+
+- l'index n'est cree que lorsque l'email est non vide
+- plusieurs `Person` sans email restent donc possibles
 
 ## `Tournament`
 
@@ -369,6 +389,7 @@ classDiagram
 Le coeur persistant actuel du projet repose sur 4 axes :
 
 1. referentiel : `Region`, `Person`
-2. configuration de tournoi : `Tournament`
-3. exploitation : `Attendee`, `Game`, `GameAttendeeAllocation`
-4. arbitrage : `TournamentRefereeAllocation`, `FragmentRefereeAllocation` et leurs statistiques
+2. index d'unicite : `EmailPersonId`
+3. configuration de tournoi : `Tournament`
+4. exploitation : `Attendee`, `Game`, `GameAttendeeAllocation`
+5. arbitrage : `TournamentRefereeAllocation`, `FragmentRefereeAllocation` et leurs statistiques

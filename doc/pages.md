@@ -56,7 +56,7 @@ Composant : `UserCreateComponent`
 Fonction :
 
 - creation d'un compte Firebase Auth
-- creation du document `Person` correspondant
+- creation du document `Person` correspondant via la callable function `createPerson`
 
 Champs principaux :
 
@@ -65,6 +65,13 @@ Champs principaux :
 - email / mot de passe
 - pays
 - genre
+
+Comportements notables :
+
+- le compte Auth est cree cote client
+- la fiche `Person` est ensuite creee cote serveur dans une transaction Firestore
+- l'email est verifie comme unique avant creation de la personne
+- en cas d'email deja attribue dans `person`, la creation de la fiche est refusee et le compte Auth nouvellement cree est supprime pour eviter un compte orphelin
 
 ## `/tournament`
 
