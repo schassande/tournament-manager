@@ -48,6 +48,7 @@ Champs principaux :
 - `userAuthId`
 - `firstName`, `lastName`, `shortName`
 - `email`, `phone`, `photoUrl`
+- `search`
 - `regionId`, `countryId`
 - `gender`
 - `referee`
@@ -57,6 +58,11 @@ Usage :
 
 - support des comptes utilisateurs
 - fiche signaletique d'un arbitre temps plein ou d'un coach d'arbitres
+
+Contrainte :
+
+- `search` est un champ denormalise mis a jour a chaque creation ou modification
+- sa valeur est la concatenation de `firstName`, `lastName`, `shortName` et `email`, separes par un espace
 
 ## `EmailPersonId`
 
@@ -265,6 +271,7 @@ classDiagram
       +lastName
       +shortName
       +email
+      +search
       +regionId
       +countryId
       +gender

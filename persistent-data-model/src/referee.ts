@@ -32,12 +32,16 @@ export function isRefereeCoach(attendeeRole: AttendeeRole): boolean {
 
 export type Gender = 'M' | 'F';
 
+/**
+ * Reusable identity persisted in Firestore and attached to attendees.
+ */
 export interface Person extends PersistentObject {
   userAuthId: string;
   firstName: string; // first name of the person
   lastName: string; // name of the person
   shortName: string; // short name of the person
   email: string; // email of the person
+  search?: string; // concatenated search text built from identity fields
   regionId: string; // identifier of region of the person
   countryId: string; // identifier of country of the person
   gender?: Gender,
@@ -45,6 +49,19 @@ export interface Person extends PersistentObject {
   phone?: string; // phone of  the person
   referee? : RefereeInfo;
   refereeCoach? : RefereeCoachInfo;
+}
+
+/**
+ * Build the denormalized search text stored on a person.
+ * Empty values are ignored and non-empty values are separated with a single space.
+ * @param person person identity fields used to build the search text
+ * @returns search text ready to persist
+ */
+export function buildPersonSearch(person: Pick<Person, 'firstName' | 'lastName' | 'shortName' | 'email'>): string {
+  return [person.firstName, person.lastName, person.shortName, person.email]
+    .map((value) => typeof value === 'string' ? value.trim() : '')
+    .filter((value) => value.length > 0)
+    .join(' ');
 }
 
 export interface Referee {

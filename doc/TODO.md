@@ -2,8 +2,6 @@
 
 ## Priorité 1
 - Documenter les interfaces en détail
-- Utiliser l'email comme id d'une personne/attendee
-- Attribut search dans les person
 - Revue des firebase rule
 - Authentification google
 - Déploiement prod/dev

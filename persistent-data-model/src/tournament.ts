@@ -121,7 +121,7 @@ export interface AttendeePartDayInfo {
 export interface RefereeInfo {
   badge: number; // badge of the referee
   badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-  upgrade: { // Looking for upgrade of the referee
+  upgrade?: { // Looking for upgrade of the referee
     badge: number; // badge of the referee. 0 means no upgrade
     badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
   };

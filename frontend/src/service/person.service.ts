@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { Person } from '@tournament-manager/persistent-data-model';
+import { buildPersonSearch, Person } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService, PersistentDataFilter } from './abstract-persistent-data.service';
 import { from, map, Observable } from 'rxjs';
 import { query, Query, where } from '@angular/fire/firestore';
@@ -22,12 +22,14 @@ export class PersonService extends AbstractPersistentDataService<Person>{
   /**
    * Persist a person.
    * New persons are created via the backend callable to enforce email uniqueness.
+   * The denormalized search field is recomputed before every save.
    * Existing persons keep the current direct Firestore update flow.
    * @param item person to persist
    * @returns the persisted person
    */
   public override save(item: Person): Observable<Person> {
-    return item.id ? super.save(item) : this.createOnServer(item);
+    const personToSave = this.prepareForSave(item);
+    return personToSave.id ? super.save(personToSave) : this.createOnServer(personToSave);
   }
 
   /**
@@ -67,9 +69,23 @@ export class PersonService extends AbstractPersistentDataService<Person>{
     if (validText === null) {
       return () => false;
     } else {
-      return (person: Person) => this.stringContains(validText, person.shortName)
+      return (person: Person) => this.stringContains(validText, person.search ?? '')
+          || this.stringContains(validText, person.shortName)
           || this.stringContains(validText, person.firstName)
-          || this.stringContains(validText, person.lastName);
+          || this.stringContains(validText, person.lastName)
+          || this.stringContains(validText, person.email);
+    };
+  }
+
+  /**
+   * Recompute the denormalized search field before persisting a person.
+   * @param person person being persisted
+   * @returns a copy ready to save
+   */
+  private prepareForSave(person: Person): Person {
+    return {
+      ...person,
+      search: buildPersonSearch(person),
     };
   }
 }

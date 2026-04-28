@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 import {HttpsError, CallableRequest, onCall} from 'firebase-functions/v2/https';
-import {colEmailPersonId, colPerson, Gender, Person, RefereeCoachInfo, RefereeInfo} from '../persistent-data-model';
+import {buildPersonSearch, colEmailPersonId, colPerson, Gender, Person, RefereeCoachInfo, RefereeInfo} from '../persistent-data-model';
 import {dateToEpoch} from '../common-persistence';
 
 interface CreatePersonRequest {
@@ -36,6 +36,7 @@ export const createPerson = onCall<CreatePersonRequest>(async (request: Callable
       ...person,
       id: personRef.id,
       email: normalizedEmail,
+      search: buildPersonSearch({...person, email: normalizedEmail}),
       lastChange: dateToEpoch(new Date()),
     };
 
