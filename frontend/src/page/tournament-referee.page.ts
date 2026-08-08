@@ -668,7 +668,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
 
   upgradeChanged(referee: Referee, value:number) {
     if (referee.attendee.referee)
-      referee.attendee.referee.upgrade.badge = value;
+      referee.attendee.referee.upgrade!.badge = value;
     if (referee && referee.person) {
       referee.person.referee = referee.attendee.referee;
     }

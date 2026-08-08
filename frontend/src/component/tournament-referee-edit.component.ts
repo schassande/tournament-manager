@@ -177,7 +177,7 @@ export class TournamentRefereeEditComponent implements OnInit{
 
   private computeRefereeUpgrade() {
     if (!this.referee || !this.referee.attendee || !this.referee.attendee.referee) return;
-    this.refereeUpgrade = this.referee.attendee.referee.upgrade.badge === 0
+    this.refereeUpgrade = this.referee.attendee.referee.upgrade!.badge === 0
       || this.referee.attendee.referee.badge === this.referee.attendee.referee.badgeSystem;
 
   }
