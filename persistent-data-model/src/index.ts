@@ -1,6 +1,7 @@
 export * from "./referee-allocation";
 export * from "./constants";
 export * from "./persistence";
+export * from "./person";
 export * from "./referee";
 export * from "./schedule";
 export * from "./tournament";

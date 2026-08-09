@@ -205,7 +205,6 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentPage {
         backgroundColor: 'xffffff'
       },
       roles: [],
-      partDays: [],
       lastChange: 0
     };
     const person: Person = {

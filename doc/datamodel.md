@@ -10,6 +10,7 @@ Tous les objets persistants partagent la meme base :
 Les noms de collections Firestore declares dans le code sont :
 
 - `region`
+- `PlaformAdmin`
 - `person`
 - `email_personid`
 - `tournament`
@@ -39,6 +40,18 @@ Usage :
 - sert a alimenter les listes pays/regions du front
 - relie les `Person` et les `Tournament` a une zone geographique
 
+## `PlaformAdmin`
+
+Administrateur de la plateforme.
+
+Contraintes :
+
+- l'identifiant du document est l'email de l'administrateur ;
+- la lecture publique de `Region` est autorisée ;
+- la création, la modification et la suppression de `Region` sont réservées aux utilisateurs authentifiés dont l'email correspond à un document `PlaformAdmin` ;
+- un `PlaformAdmin` peut également modifier ou supprimer un `Tournament` ;
+- la collection `PlaformAdmin` est inaccessible depuis le client et doit être administrée par un backend ou un outil d'administration sécurisé.
+
 ## `Person`
 
 Identite reutilisable d'un utilisateur ou d'un officiel.
@@ -58,6 +71,12 @@ Usage :
 
 - support des comptes utilisateurs
 - fiche signaletique d'un arbitre temps plein ou d'un coach d'arbitres
+
+Droits :
+
+- une personne authentifiée peut modifier uniquement le document `Person` dont l'email correspond à son email authentifié ;
+- un `PlaformAdmin` peut modifier toute personne ;
+- la création et la suppression restent soumises aux règles Firestore générales actuelles.
 
 Contrainte :
 
@@ -93,7 +112,7 @@ Champs principaux :
 - dates : `startDate`, `endDate`, `nbDay`
 - localisation : `countryId`, `regionId`
 - structure : `fields[]`, `days[]`, `divisions[]`
-- gouvernance : `managers[]`
+- gouvernance : `managerAttendeeIds[]`, `managerEmails[]`
 - etat courant : `currentScheduleId`, `currentDrawId`
 - configuration arbitrage : `allowPlayerReferees`
 
@@ -105,7 +124,8 @@ Sous-objets embarques :
 - `Timeslot`
 - `Division`
 - `Team`
-- `TournamentManager`
+
+`managerAttendeeIds[]` contient les identifiants des participants qui administrent le tournoi. `managerEmails[]` contient les adresses email des managers ; il est utilisé par les règles Firestore pour autoriser la création, la modification et la suppression du tournoi. Les deux listes doivent rester alignées et utiliser les mêmes managers.
 
 Dans l'etat actuel du projet, une grande partie du parametage du tournoi est embarquee dans le document `Tournament` plutot que stockee dans des sous-collections.
 
@@ -118,12 +138,22 @@ Champs principaux :
 - `tournamentId`
 - `personId`
 - `roles[]`
+- `roleRestrictions[]` (optionnel)
 - indicateurs `isPlayer`, `isReferee`, `isRefereeCoach`, `isTournamentManager`
 - `player`
 - `referee`
 - `refereeCoach`
 - `partDays[]`
 - `comments`
+
+`roleRestrictions[]` précise les limites applicables à un rôle porté par l'attendee. Chaque restriction contient :
+
+- `role` : rôle concerné
+- `dayId` et `partDayId` (optionnels) : périmètre temporel ; l'absence de valeur signifie tous les jours ou toutes les parties
+- `divisionIds[]` (optionnel) : divisions autorisées
+- `refereeeCategories[]` (optionnel) : catégories d'arbitres autorisées
+
+Les écritures sur `Attendee` sont réservées aux managers du tournoi référencé par `tournamentId` ou à un `PlaformAdmin`. Une mise à jour ne peut pas changer `tournamentId`.
 
 Usage :
 
@@ -291,7 +321,8 @@ classDiagram
       +fields[]
       +days[]
       +divisions[]
-      +managers[]
+      +managerAttendeeIds[]
+      +managerEmails[]
       +allowPlayerReferees
     }
 
@@ -305,6 +336,7 @@ classDiagram
       +isReferee
       +isRefereeCoach
       +isTournamentManager
+      +roleRestrictions[]
       +player
       +referee
       +refereeCoach

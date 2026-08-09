@@ -1,5 +1,6 @@
 import { PersistentObject, WithId } from "./persistence";
-import { AttendeeRole, RefereeBadgeSystem, RefereeCategory, RefereeCoachBadgeSystem } from "./referee";
+import { AttendeeRole } from "./person";
+import { RefereeCategory, RefereeCoachInfo, RefereeInfo } from "./referee";
 
 export interface Tournament extends PersistentObject{
   name: string;
@@ -15,23 +16,11 @@ export interface Tournament extends PersistentObject{
   fields: Field[]
   days: Day[];
   divisions: Division[];
-  managers :TournamentManager[];
+  managerAttendeeIds :string[];
+  managerEmails :string[];
   currentScheduleId?: string;
   currentDrawId?: string;
   allowPlayerReferees?: boolean; // true if the tournament has player referees
-}
-
-export interface TournamentManager {
-  role: AttendeeRole;
-  attendeeId: string;
-  limit?: {
-    dayId?: string;
-    partDayId?: string;
-    divisionIds?: string[];
-    refereeeCategories?: RefereeCategory[];
-    allAllocations?: boolean;// indicate if the attendee has the allocation right on all allocation (true)
-    onlyTournamentRefereeAllocationId?: string; // when allAllocation is false, it specifies the allocation allowed by
-  }
 }
 
 export interface Field extends WithId{
@@ -99,7 +88,7 @@ export interface TeamDivision extends Team {
 export interface Attendee extends PersistentObject {
   tournamentId: string; // unique identifier of the tournament
   personId: string; // unique identifier
-  roles: AttendeeRole[]; // roles of the attendee (cumulative from partDays field)
+  roles: AttendeeRole[]; // roles of the attendee. it can have some restrictions
   isPlayer: boolean; // true if the attendee is a player
   isReferee: boolean; // true if the attendee is a referee
   isRefereeCoach: boolean; // true if the attendee is a referee coach
@@ -110,32 +99,15 @@ export interface Attendee extends PersistentObject {
   };
   referee? : RefereeInfo;
   refereeCoach? : RefereeCoachInfo;
-  partDays: AttendeePartDayInfo[];
+  roleRestrictions?: AttendeeRoleRestriction[]; // Define the exact rights of the attendee
   comments?: string;
 }
-export interface AttendeePartDayInfo {
-  dayId: string; // unique identifier of the day
-  partDayId: string; // unique identifier of the part day
-  roles: AttendeeRole[]; // roles of the attendee
-}
-export interface RefereeInfo {
-  badge: number; // badge of the referee
-  badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-  upgrade?: { // Looking for upgrade of the referee
-    badge: number; // badge of the referee. 0 means no upgrade
-    badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-  };
-  category: RefereeCategory; // category of the referee
-}
-export interface RefereeCoachInfo {
-  badge: number; // badge of the referee coach
-  badgeSystem: RefereeCoachBadgeSystem; // badge system of the referee coach
-  upgrade?: { // Looking for upgrade of the referee Coach
-    badge: number; // badge of the referee  Coach
-    badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
-  };
-  fontColor: string;
-  backgroundColor: string;
+export interface AttendeeRoleRestriction {
+  role: AttendeeRole; // roles of the attendee
+  dayId?: string; // unique identifier of the day. No value means all.
+  partDayId?: string; // unique identifier of the part day. No value means all.
+  divisionIds?: string[]; // list of limited division. No value means all.
+  refereeeCategories?: RefereeCategory[]; // list of limited referee categories. No value means all.
 }
 
 export interface TimeSlotConfig {

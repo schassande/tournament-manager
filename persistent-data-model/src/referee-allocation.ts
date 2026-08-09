@@ -1,5 +1,5 @@
 import { PersistentObject, WithId } from "./persistence";
-import { AttendeeRole } from "./referee";
+import { AttendeeRole } from "./person";
 
 export interface GameAttendeeAllocation extends PersistentObject {
   tournamentId: string; // identifier of the tournament

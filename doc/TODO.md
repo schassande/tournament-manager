@@ -1,10 +1,9 @@
 # TODO list du projet Tournament Maager
 
 ## Priorité 1
-- Documenter les interfaces en détail
-- Revue des firebase rule
 - Authentification google
 - Déploiement prod/dev
+- Games: import FIT
 
 ## Priorité 2
 - Configuration général du tournoi en onglet
@@ -35,7 +34,6 @@
 - Upgrade
 - Ranking
 - Scorecard
-- Games: import FIT
 
 ==> diffusion / communication / POC
 
@@ -63,3 +61,7 @@
   - Swagger
 - Creation de game
 - Games: export csv
+
+
+## DONE
+- 2026/08/09 : durcissement des règles firestore

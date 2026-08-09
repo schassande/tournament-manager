@@ -418,7 +418,6 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
         upgrade : { badge: 0, badgeSystem: defaultBadgeSystem }
       },
       roles: [],
-      partDays: [],
       lastChange: 0
     };
     if (team) {

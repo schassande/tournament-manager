@@ -13,6 +13,8 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
 
   protected abstract getCollectionName(): string;
 
+  protected autoIdAllocation = true;
+
   protected adjustItemOnLoad(item: T): T { return item;}
 
   protected itemsCollection(): CollectionReference<DocumentData,DocumentData> {
@@ -32,12 +34,20 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
     );
   }
   public save(item: T): Observable<T> {
-    if (item.id) {
-      console.log(`Updating ${this.getCollectionName()}:${item.id}...`);
-      return this.update(item);
+    if (this.autoIdAllocation) {
+      if (item.id) {
+        console.log(`Updating ${this.getCollectionName()}:${item.id}...`);
+        return this.update(item);
+      } else {
+        console.log(`Creating ${this.getCollectionName()}:${item.id}...`);
+        return this.create(item);
+      }
     } else {
-      console.log(`Creating ${this.getCollectionName()}:${item.id}...`);
-      return this.create(item);
+      if (!item.id) {
+        throw new Error(`Persistent object of the collection '${this.getCollectionName()}' has no identifier provided.`)
+      }
+      console.log(`Saving ${this.getCollectionName()}:${item.id}...`);
+      return this.update(item);
     }
   }
 

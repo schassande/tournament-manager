@@ -218,7 +218,9 @@ export class TournamentEditComponent  implements OnInit {
       const errors = [];
       if (!tournament.name || tournament.name.length <4) errors.push('Tournament name is too short (4 characters minimum)');
       if (!tournament.regionId) errors.push('Tournament region is not defined');
-      if (tournament.managers.length === 0) errors.push('Tournament managers are not defined');
+      if (tournament.managerAttendeeIds.length === 0) errors.push('Tournament managers are not defined');
+      if (tournament.managerEmails.length === 0) errors.push('Emails of tournament manager are not defined');
+      if (tournament.managerAttendeeIds.length !== tournament.managerEmails.length) errors.push('Not the same number of Tournament managers and their email');
       if (!tournament.countryId) errors.push('Tournament country is not defined');
       if (tournament.divisions.length === 0) errors.push('At least one tournament division is required');
       if (tournament.fields.length === 0) errors.push('At least one tournament field is required');
@@ -299,7 +301,8 @@ export class TournamentEditComponent  implements OnInit {
           ]
         }
       ],
-      managers :[{ role: 'TournamentManager', attendeeId: currentUser.id }],
+      managerAttendeeIds :[ currentUser.id ],
+      managerEmails :[ currentUser.email],
     };
   }
 }
