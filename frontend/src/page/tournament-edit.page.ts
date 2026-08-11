@@ -15,11 +15,12 @@ import { MessageModule } from 'primeng/message';
 import { TournamentDivisionsEditComponent } from '../component/tournament-divisions-edit.component';
 import { TextareaModule } from 'primeng/textarea';
 import { InputTextModule } from 'primeng/inputtext';
+import { TabsModule } from 'primeng/tabs';
 
 @Component({
   selector: 'app-tournament-edit',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputTextModule, MessageModule, SelectModule, TextareaModule,
+  imports: [CommonModule, FormsModule, InputTextModule, MessageModule, SelectModule, TextareaModule, TabsModule,
     TournamentFieldsEditComponent, TournamentDaysEditComponent, TournamentDivisionsEditComponent],
   template: `
   @if (tournament()) {
@@ -31,8 +32,15 @@ import { InputTextModule } from 'primeng/inputtext';
       }
     </div>
 
-    <h2>General information</h2>
-    <div class="chapterSection">
+    <p-tabs [value]="activeTab()" (valueChange)="tabSelected($event)">
+      <p-tablist>
+        <p-tab value="general">General</p-tab>
+        <p-tab value="fields">Fields</p-tab>
+        <p-tab value="days">Days</p-tab>
+        <p-tab value="divisions">Divisions and teams</p-tab>
+      </p-tablist>
+      <p-tabpanels>
+        <p-tabpanel value="general">
       <div class="form-field">
         <label for="name">Name</label>
         <input id="name" type="text" pInputText [(ngModel)]="tournament()!.name" required />
@@ -47,31 +55,30 @@ import { InputTextModule } from 'primeng/inputtext';
           optionLabel="name" [filter]="true" filterBy="name"
           appendTo="body" placeholder="Country" (onChange)="countrySelected()" />
         </div>
-    </div>
+        </p-tabpanel>
 
-    <h2>Tournament fields</h2>
-    <div class="chapterSection">
+        <p-tabpanel value="fields">
       <app-tournament-fields-edit
         [(fields)]="tournament()!.fields">
       </app-tournament-fields-edit>
-    </div>
+        </p-tabpanel>
 
-    <h2>Tournament days</h2>
-    <div class="chapterSection">
+        <p-tabpanel value="days">
       <app-tournament-days-edit
         [tournament]="tournament()!"
         (dayChange)="onDayChange()"
         (startDateChange)="onTournamentStartDateChange($event)"
         (endDateChange)="onTournamentEndDateChange($event)">
       </app-tournament-days-edit>
-    </div>
+        </p-tabpanel>
 
-    <h2>Divisions and teams</h2>
-    <div class="chapterSection">
+        <p-tabpanel value="divisions">
       <app-tournament-divisions-edit
         [tournament]="tournament()!" (divisionsChanged)="onDivisionsChanged($event)" >
       </app-tournament-divisions-edit>
-    </div>
+        </p-tabpanel>
+      </p-tabpanels>
+    </p-tabs>
     <div style="height: 100px;"></div>
   </div>
   }
@@ -110,6 +117,7 @@ export class TournamentEditComponent  implements OnInit {
 
   // Properties
   tournament = signal<Tournament|null>(null);
+  activeTab = signal('general');
   country: Country|undefined;
   countries: Country[] = this.regionService.countries;
   errors = signal<string[]>([]);
@@ -122,10 +130,23 @@ export class TournamentEditComponent  implements OnInit {
     });
   }
   ngOnInit() {
+    this.activatedRoute.queryParamMap.subscribe(params => {
+      const tab = params.get('tab');
+      if (tab && this.tabs.includes(tab)) this.activeTab.set(tab);
+    });
     this.userService.currentUser$$.subscribe((currentUser) => {
       if (currentUser) this.init(currentUser);
     });
   }
+
+  /** Updates the active tab and persists it in the page URL. */
+  tabSelected(tab: string | number | undefined) {
+    if (typeof tab !== 'string' || !this.tabs.includes(tab)) return;
+    this.activeTab.set(tab);
+    this.router.navigate([], { relativeTo: this.activatedRoute, queryParams: { tab }, queryParamsHandling: 'merge' });
+  }
+
+  private readonly tabs = ['general', 'fields', 'days', 'divisions'];
 
   onDivisionsChanged(divisions: Division[]) {
     this.tournament.update(tournament => {

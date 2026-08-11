@@ -146,6 +146,8 @@ Comportements notables :
 - sauvegarde quasi immediate sur Firestore
 - validations minimales avant sauvegarde
 - mise a jour de `countryId` et `regionId` a partir du pays choisi
+- les sections d'edition sont organisees en onglets PrimeNG
+- l'onglet actif est conserve dans le parametre d'URL `tab` (`general`, `fields`, `days` ou `divisions`)
 
 ## `/tournament/:tournamentId/referee`
 
