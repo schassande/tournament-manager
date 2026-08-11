@@ -43,10 +43,12 @@ allocationStatisticsRouter.get('/compute', async function getReferee(req: expres
         + ', body=' + JSON.stringify(req.body),
         + ', process.APP_API_KEY='+process.env.APP_API_KEY!);
 
-  const tournamentAllocationId = req.params.tournamentAllocationId;
-  const fragmentAllocationId = req.params.fragmentAllocationId;
-  const refereeAttendeeIds: string[] = req.params.refereeAttendeeIds.split(',');
-  const gameId = req.params.gameId;
+  const tournamentAllocationId = queryString(req.query.tournamentAllocationId);
+  const fragmentAllocationId = queryString(req.query.fragmentAllocationId);
+  const refereeAttendeeIds = queryString(req.query.refereeAttendeeIds)
+    .split(',')
+    .filter((id) => id.length > 0);
+  const gameId = queryString(req.query.gameId);
   const firestore: admin.firestore.Firestore = admin.firestore();
 
   if (gameId) {
@@ -64,6 +66,21 @@ allocationStatisticsRouter.get('/compute', async function getReferee(req: expres
     refereeAllocationStatistics: allocStats
   });
 });
+
+/**
+ * Normalize an Express query parameter to a scalar string.
+ * @param value raw query parameter value
+ * @returns the first value when the parameter is repeated, or an empty string
+ */
+function queryString(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0];
+  }
+  return '';
+}
 
 
 /**

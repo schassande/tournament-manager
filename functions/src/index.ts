@@ -22,10 +22,6 @@ const app = express.default();
 app.disable('x-powered-by');
 app.use(corsTrue);
 app.use('/refereeAllocationStatistics', allocationStatisticsRouter);
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
-  console.log(`API running on port ${port}`);
-});
 
 export const api = onRequest({secrets}, app);
 export {createPerson};

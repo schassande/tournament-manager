@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Person } from '@tournament-manager/persistent-data-model';
 import { catchError, from, map, mergeMap, Observable, of, switchMap, tap, throwError } from 'rxjs';
-import { Auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, UserCredential } from '@angular/fire/auth';
+import { Auth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut, UserCredential } from '@angular/fire/auth';
 import { PersonService } from './person.service';
 import { UserLocalStorageService } from './user-local-storage.service';
 import { toObservable } from '@angular/core/rxjs-interop';
@@ -47,6 +47,43 @@ export class UserService {
         throw err;
       })
     )
+  }
+
+  /**
+   * Authenticate the user with Google and create the matching Person when needed.
+   * Google authentication deliberately does not use the email/password local persistence.
+   * @returns the authenticated or newly created person
+   */
+  public loginWithGoogle(): Observable<Person|null> {
+    const provider = new GoogleAuthProvider();
+
+    return from(signInWithPopup(this.authService, provider)).pipe(
+      switchMap((credential: UserCredential) => {
+        this.currentCredential = credential;
+        const googleUser = credential.user;
+        const email = googleUser.email?.trim();
+        if (!email) {
+          return throwError(() => new Error('Google authentication did not provide an email address.'));
+        }
+
+        return this.personService.byEmail(email).pipe(
+          switchMap((person) => person
+            ? of(person)
+            : this.personService.createOnServer(this.personFromGoogle(googleUser, email))
+          ),
+          tap((person) => this.currentUser$.set(person))
+        );
+      }),
+      catchError((err) => {
+        console.error('Google authentication failed', {
+          code: err?.code,
+          message: err?.message,
+          name: err?.name,
+          error: err,
+        });
+        return throwError(() => err);
+      })
+    );
   }
   public logout() {
     this.currentUser$.set(null);
@@ -103,5 +140,30 @@ export class UserService {
   private getUserKey(key: string): string {
     const user = this.currentUser$();
     return (user && user.id ? user.id +'.' : '') + key;
+  }
+
+  /**
+   * Map the Firebase Google profile to the minimum valid Person payload.
+   * @param user authenticated Firebase user
+   * @param email normalized email address
+   * @returns person payload ready for the createPerson callable
+   */
+  private personFromGoogle(user: UserCredential['user'], email: string): Person {
+    const [firstName = 'Google', ...lastNameParts] = (user.displayName ?? 'User').trim().split(/\s+/);
+    const lastName = lastNameParts.join(' ') || firstName;
+    const shortName = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
+    return {
+      id: '',
+      lastChange: 0,
+      userAuthId: user.uid,
+      firstName,
+      lastName,
+      shortName,
+      email,
+      regionId: 'Europe',
+      countryId: 'FRA',
+      photoUrl: user.photoURL ?? undefined,
+    };
   }
 }

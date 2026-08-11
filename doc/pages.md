@@ -39,13 +39,17 @@ Composant : `UserLoginComponent`
 Fonction :
 
 - formulaire de connexion email / mot de passe
+- connexion avec Google via une popup Firebase
 - option "remember me"
 - auto-login base sur les identifiants stockes en local
 
 Comportements notables :
 
 - appelle `UserService.login()`
+- appelle `UserService.loginWithGoogle()` pour la connexion Google
 - redirige vers `/home` en cas de succes
+- crée automatiquement une fiche `Person` si l’adresse Google n’existe pas encore
+- affiche un message générique en cas d’échec de la connexion Google
 - le lien "Forgotten password" est un placeholder
 - le lien de creation de compte pointe vers `/signup`, alors que la route declaree est `/user/create`
 

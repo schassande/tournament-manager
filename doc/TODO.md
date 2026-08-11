@@ -1,15 +1,11 @@
 # TODO list du projet Tournament Maager
 
-## Priorité 1
-- Authentification google
-- Déploiement prod/dev
-- Games: import FIT
-
 ## Priorité 2
 - Configuration général du tournoi en onglet
   - Passage à PrimeNG de la config general
 - Gestionnaire d'un tournoi
   - In tournament edit : Manager of the tournament => create attendee
+- Games: import FIT
 - Referees : bug teams sauvegarde ou chargement de teams
 - Gérer la disponibilité des Arbitres
   - Passage à PrimeNG
@@ -34,6 +30,7 @@
 - Upgrade
 - Ranking
 - Scorecard
+- Déploiement prod/dev
 
 ==> diffusion / communication / POC
 
@@ -65,3 +62,4 @@
 
 ## DONE
 - 2026/08/09 : durcissement des règles firestore
+- Authentification google

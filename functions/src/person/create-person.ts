@@ -64,7 +64,7 @@ function sanitizeCreatePersonRequest(data: CreatePersonRequest | undefined): Per
 
   const input = data.person as Partial<Person>;
 
-  return {
+  const person: Person = {
     id: '',
     lastChange: 0,
     userAuthId: requireString(input.userAuthId, 'userAuthId'),
@@ -74,12 +74,21 @@ function sanitizeCreatePersonRequest(data: CreatePersonRequest | undefined): Per
     email: requireString(input.email, 'email').trim(),
     regionId: requireString(input.regionId, 'regionId'),
     countryId: requireString(input.countryId, 'countryId'),
-    gender: optionalGender(input.gender),
-    photoUrl: optionalString(input.photoUrl),
-    phone: optionalString(input.phone),
-    referee: optionalRefereeInfo(input.referee),
-    refereeCoach: optionalRefereeCoachInfo(input.refereeCoach),
   };
+
+  const gender = optionalGender(input.gender);
+  const photoUrl = optionalString(input.photoUrl);
+  const phone = optionalString(input.phone);
+  const referee = optionalRefereeInfo(input.referee);
+  const refereeCoach = optionalRefereeCoachInfo(input.refereeCoach);
+
+  if (gender !== undefined) person.gender = gender;
+  if (photoUrl !== undefined) person.photoUrl = photoUrl;
+  if (phone !== undefined) person.phone = phone;
+  if (referee !== undefined) person.referee = referee;
+  if (refereeCoach !== undefined) person.refereeCoach = refereeCoach;
+
+  return person;
 }
 
 /**

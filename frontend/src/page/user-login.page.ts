@@ -82,6 +82,20 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
           <div class="form-row">
             <button pButton type="submit" label="Login" class="login-button" [disabled]="loading()"></button>
           </div>
+
+          <div class="form-row">
+            <button
+              pButton
+              type="button"
+              class="google-button"
+              [disabled]="loading()"
+              (click)="onGoogleLogin()"
+              aria-label="Sign in with Google"
+            >
+              <img class="google-logo" src="google-logo.svg" alt="" aria-hidden="true" />
+              <span>Sign in with Google</span>
+            </button>
+          </div>
         </form>
 
         <ng-template pTemplate="footer">
@@ -110,6 +124,9 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
     .forgotten-password { float: right; display: inline-block; }
     .error-message { padding: .5rem; border-radius: 0.75rem; }
     .login-button { width: 100%; margin-top: 10px; }
+    .google-button { width: 100%; margin-top: 10px; background: white; color: #3c4043; border: 1px solid #dadce0; }
+    .google-button:hover { background: #f8f9fa; }
+    .google-logo { width: 1.1rem; height: 1.1rem; margin-right: .6rem; }
     .footer { text-align: center; color: var(--text-color-secondary, #6b7280); }
     .p-error { color: var(--red-600, #dc2626); }
 
@@ -162,6 +179,26 @@ export class UserLoginComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Start the Google popup authentication flow. */
+  onGoogleLogin() {
+    this.error.set(null);
+    this.loading.set(true);
+
+    this.userService.loginWithGoogle().subscribe({
+      next: (user) => {
+        if (user) {
+          this.router.navigate(['/home']);
+        }
+      },
+      error: (err) => {
+        console.error('Échec de la connexion Google.', err);
+        this.error.set('Échec de la connexion Google.');
+        this.loading.set(false);
+      },
+      complete: () => this.loading.set(false),
+    });
   }
 
   onForgotPassword() {

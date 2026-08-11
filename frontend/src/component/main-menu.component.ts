@@ -120,7 +120,8 @@ export class MainMenuComponent {
     if (this.userService.isConnected()) {
       userMenu.toggle($event)
     } else {
-      this.userService.autoLogin().subscribe({error: (err) => this.router.navigateByUrl('/user/login')});
+      this.router.navigateByUrl('/user/login');  
+      //this.userService.autoLogin().subscribe({error: (err) => this.router.navigateByUrl('/user/login')});
     }
   }
   logout() {
