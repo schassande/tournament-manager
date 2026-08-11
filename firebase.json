@@ -1,4 +1,21 @@
 {
+  "hosting": {
+    "public": "frontend/dist/browser",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "predeploy": [
+      "npm --prefix frontend run build"
+    ]
+  },
   "functions": [
     {
       "codebase": "default",

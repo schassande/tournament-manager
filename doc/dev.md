@@ -10,7 +10,7 @@ Le projet est organise en trois repertoires TypeScript :
 
 A la racine on trouve aussi :
 
-- `firebase.json` : configuration Firebase actuelle. Elle ne declare aujourd'hui que `functions`.
+- `firebase.json` : configuration Firebase de Functions et Hosting.
 - `.firebaserc` : projet Firebase cible `tournament-manager-90045`.
 - `firestore.rules` et `firestore.indexes.json` : securite et index Firestore.
 - `doc/` : documentation projet.
@@ -137,12 +137,24 @@ firebase deploy --only firestore:rules
 
 ## Deploiement du frontend
 
-Le front peut etre compile en production, mais il n'existe pas encore de configuration de deploiement front dans `firebase.json` :
+Le frontend est configure pour Firebase Hosting avec :
 
-- pas de section `hosting`
-- pas de script de deploiement front a la racine ou dans `frontend/`
+- le repertoire publie `frontend/dist/browser` ;
+- une reecriture de toutes les routes vers `index.html`, necessaire au routage Angular cote client ;
+- un pre-deploiement qui lance automatiquement le build Angular de production.
 
-En l'etat actuel, le build de production du front est donc pret pour un deploiement manuel sur un hebergeur statique ou pour l'ajout futur d'un hosting Firebase.
+Depuis la racine du depot, apres authentification Firebase (`firebase login`), deployer manuellement le frontend avec :
+
+```powershell
+firebase deploy --only hosting
+```
+
+La commande utilise le projet Firebase selectionne dans `.firebaserc` (`tournament-manager-90045`). Le build peut aussi etre lance seul pour verifier la compilation :
+
+```powershell
+cd frontend
+npm run build
+```
 
 ## Flux de build recommande
 
@@ -151,7 +163,9 @@ Pour une livraison complete du projet actuel :
 ```powershell
 cd frontend
 npm run build
-cd ..\functions
+cd ..
+firebase deploy --only hosting
+cd functions
 npm run deploy
 ```
 
