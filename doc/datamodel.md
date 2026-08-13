@@ -125,7 +125,7 @@ Sous-objets embarques :
 - `Division`
 - `Team`
 
-`managerAttendeeIds[]` contient les identifiants des participants qui administrent le tournoi. `managerEmails[]` contient les adresses email des managers ; il est utilisé par les règles Firestore pour autoriser la création, la modification et la suppression du tournoi. Les deux listes doivent rester alignées et utiliser les mêmes managers.
+`managerAttendeeIds[]` contient les identifiants des participants qui administrent le tournoi. `managerEmails[]` contient les adresses email de tous les managers, qu'ils soient associés ou non à une `Person`/un `Attendee` ; il est utilisé par les règles Firestore pour autoriser la création, la modification et la suppression du tournoi. Un manager associé à un attendee doit donc être présent dans les deux listes, tandis qu'un manager uniquement identifié par son email est présent uniquement dans `managerEmails[]`.
 
 Dans l'etat actuel du projet, une grande partie du parametage du tournoi est embarquee dans le document `Tournament` plutot que stockee dans des sous-collections.
 

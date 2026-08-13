@@ -30,6 +30,18 @@ export class AttendeeService extends AbstractPersistentDataService<Attendee>{
       )
     );
   }
+
+  /**
+   * Loads only the attendees belonging to a tournament.
+   * @param tournamentId identifier of the tournament
+   * @returns attendees attached to the tournament
+   */
+  findByTournament(tournamentId: string): Observable<Attendee[]> {
+    return this.query(
+      query(this.itemsCollection(), where('tournamentId', '==', tournamentId))
+    );
+  }
+
   findTournamentManager(tournamentId: string): Observable<Attendee[]> {
     return this.query(
       query(this.itemsCollection(),

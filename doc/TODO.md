@@ -1,8 +1,6 @@
 # TODO list du projet Tournament Maager
 
 ## Priorité 2
-- Gestionnaire d'un tournoi
-  - In tournament edit : Manager of the tournament => create attendee
 - Games: import FIT
 - Referees : bug teams sauvegarde ou chargement de teams
 - Gérer la disponibilité des Arbitres
@@ -62,3 +60,5 @@
 - 2026/08/09 : durcissement des règles firestore
 - Authentification google
 - Configuration général du tournoi en onglet
+- Tournamanent manager (no restrictions supported yet)
+
