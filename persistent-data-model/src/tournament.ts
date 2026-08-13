@@ -139,7 +139,8 @@ export interface Game extends PersistentObject {
     groupId: string; // unique identifier of the group
     roundId: string; // unique identifier of the round
     roundGameId: string; // unique identifier of the round game
-  }
+  },
+  fitGameId?: number;
 }
 
 export type GameEventType = 'TRY' | 'CONVERSION' | 'PENALTY' | 'YELLOW_CARD' | 'RED_CARD' | 'INJURY' | 'SUBSTITUTION' | 'HALF_TIME' | 'FULL_TIME';

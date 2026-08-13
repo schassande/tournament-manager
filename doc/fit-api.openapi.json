@@ -1,0 +1,216 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "FIT Public API",
+    "description": "Observed read-only API of the Federation of International Touch website.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://www.internationaltouch.org/api/v1"
+    }
+  ],
+  "paths": {
+    "/competitions/": {
+      "get": {
+        "summary": "List competitions",
+        "operationId": "listCompetitions",
+        "parameters": [
+          { "$ref": "#/components/parameters/Format" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Competition list",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/CompetitionReference" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/competitions/{competitionSlug}/": {
+      "get": {
+        "summary": "Get a competition and its seasons",
+        "operationId": "getCompetition",
+        "parameters": [
+          { "$ref": "#/components/parameters/CompetitionSlug" },
+          { "$ref": "#/components/parameters/Format" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Competition details",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Competition" } } }
+          }
+        }
+      }
+    },
+    "/competitions/{competitionSlug}/seasons/{seasonSlug}/": {
+      "get": {
+        "summary": "Get a season and its divisions",
+        "operationId": "getSeason",
+        "parameters": [
+          { "$ref": "#/components/parameters/CompetitionSlug" },
+          { "$ref": "#/components/parameters/SeasonSlug" },
+          { "$ref": "#/components/parameters/Format" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Season details",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Season" } } }
+          }
+        }
+      }
+    },
+    "/competitions/{competitionSlug}/seasons/{seasonSlug}/divisions/{divisionSlug}/": {
+      "get": {
+        "summary": "Get a division, teams, stages and matches",
+        "operationId": "getDivision",
+        "parameters": [
+          { "$ref": "#/components/parameters/CompetitionSlug" },
+          { "$ref": "#/components/parameters/SeasonSlug" },
+          { "$ref": "#/components/parameters/DivisionSlug" },
+          { "$ref": "#/components/parameters/Format" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Division details",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Division" } } }
+          }
+        }
+      }
+    },
+    "/competitions/{competitionSlug}/seasons/{seasonSlug}/divisions/{divisionSlug}/stages/{stageSlug}/": {
+      "get": {
+        "summary": "Get a stage and its matches",
+        "operationId": "getStage",
+        "parameters": [
+          { "$ref": "#/components/parameters/CompetitionSlug" },
+          { "$ref": "#/components/parameters/SeasonSlug" },
+          { "$ref": "#/components/parameters/DivisionSlug" },
+          { "$ref": "#/components/parameters/StageSlug" },
+          { "$ref": "#/components/parameters/Format" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stage details",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Stage" } } }
+          }
+        }
+      }
+    },
+    "/clubs/{clubSlug}/": {
+      "get": {
+        "summary": "Get club metadata",
+        "operationId": "getClub",
+        "parameters": [
+          { "$ref": "#/components/parameters/ClubSlug" },
+          { "$ref": "#/components/parameters/Format" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Club details",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Club" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Format": { "name": "format", "in": "query", "required": false, "schema": { "type": "string", "enum": ["json"], "default": "json" } },
+      "CompetitionSlug": { "name": "competitionSlug", "in": "path", "required": true, "schema": { "type": "string" } },
+      "SeasonSlug": { "name": "seasonSlug", "in": "path", "required": true, "schema": { "type": "string" } },
+      "DivisionSlug": { "name": "divisionSlug", "in": "path", "required": true, "schema": { "type": "string" } },
+      "StageSlug": { "name": "stageSlug", "in": "path", "required": true, "schema": { "type": "string" } },
+      "ClubSlug": { "name": "clubSlug", "in": "path", "required": true, "schema": { "type": "string" } }
+    },
+    "schemas": {
+      "Reference": {
+        "type": "object",
+        "required": ["title", "slug", "url"],
+        "properties": {
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "url": { "type": "string", "format": "uri" }
+        }
+      },
+      "CompetitionReference": { "$ref": "#/components/schemas/Reference" },
+      "Competition": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Reference" },
+          { "type": "object", "properties": { "seasons": { "type": "array", "items": { "$ref": "#/components/schemas/Reference" } } } }
+        ]
+      },
+      "Season": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Reference" },
+          { "type": "object", "properties": {
+            "divisions": { "type": "array", "items": { "$ref": "#/components/schemas/Reference" } },
+            "referees": { "type": "array", "items": {} }
+          } }
+        ]
+      },
+      "Division": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Reference" },
+          { "type": "object", "properties": {
+            "teams": { "type": "array", "items": { "$ref": "#/components/schemas/Team" } },
+            "stages": { "type": "array", "items": { "$ref": "#/components/schemas/Stage" } }
+          } }
+        ]
+      },
+      "Club": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" }, "short_title": { "type": "string" }, "slug": { "type": "string" },
+          "abbreviation": { "type": "string" }, "status": { "type": "string" }, "url": { "type": "string", "format": "uri" },
+          "facebook": { "type": "string" }, "twitter": { "type": "string" }, "youtube": { "type": "string" }, "website": { "type": "string" }
+        }
+      },
+      "Team": {
+        "type": "object",
+        "required": ["id", "title", "slug"],
+        "properties": { "id": { "type": "integer" }, "title": { "type": "string" }, "slug": { "type": "string" }, "club": { "$ref": "#/components/schemas/Club" } }
+      },
+      "Stage": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Reference" },
+          { "type": "object", "properties": {
+            "matches": { "type": "array", "items": { "$ref": "#/components/schemas/Match" } },
+            "ladder_summary": { "type": "array", "items": { "$ref": "#/components/schemas/LadderEntry" } },
+            "pools": { "type": "array", "items": {} }
+          } }
+        ]
+      },
+      "Match": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" }, "uuid": { "type": "string", "format": "uuid" }, "round": { "type": "string" },
+          "date": { "type": "string", "format": "date" }, "time": { "type": "string", "format": "time" },
+          "datetime": { "type": "string", "format": "date-time" }, "is_bye": { "type": "boolean" }, "is_washout": { "type": "boolean" },
+          "home_team": { "type": "integer", "nullable": true }, "home_team_score": { "type": "integer", "nullable": true },
+          "away_team": { "type": "integer", "nullable": true }, "away_team_score": { "type": "integer", "nullable": true },
+          "stage_group": { "nullable": true }, "referees": { "type": "array", "items": {} },
+          "videos": { "type": "array", "nullable": true, "items": { "type": "string", "format": "uri" } },
+          "play_at": { "$ref": "#/components/schemas/PlayAt" }
+        }
+      },
+      "PlayAt": {
+        "type": "object",
+        "properties": { "id": { "type": "integer" }, "title": { "type": "string" }, "abbreviation": { "type": "string" }, "timezone": { "type": "string" } }
+      },
+      "LadderEntry": {
+        "type": "object",
+        "properties": {
+          "team": { "type": "integer" }, "stage_group": { "nullable": true }, "played": { "type": "integer" },
+          "win": { "type": "integer" }, "loss": { "type": "integer" }, "draw": { "type": "integer" }, "bye": { "type": "integer" },
+          "forfeit_for": { "type": "integer" }, "forfeit_against": { "type": "integer" }, "score_for": { "type": "integer" },
+          "score_against": { "type": "integer" }, "bonus_points": { "type": "integer" }, "difference": { "type": "string" },
+          "percentage": { "type": "string" }, "points": { "type": "string" }
+        }
+      }
+    }
+  }
+}

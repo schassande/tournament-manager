@@ -1,7 +1,7 @@
 # TODO list du projet Tournament Maager
 
 ## Priorité 2
-- Games: import FIT
+ Games: import FIT
 - Referees : bug teams sauvegarde ou chargement de teams
 - Gérer la disponibilité des Arbitres
   - Passage à PrimeNG
