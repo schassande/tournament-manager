@@ -103,6 +103,8 @@ These instructions apply to everything under `/frontend`.
 ## Project Conventions
 
 - Keep naming consistent with the current project vocabulary.
+- Write short memthods doing one objective with max 2-3 steps.
+- Comments code when the method is longer than 5 lines.
 - Check frontend impact when backend contracts change, and vice versa.
 - Use existing documentation files in `/doc` when possible instead of creating duplicates.
 
