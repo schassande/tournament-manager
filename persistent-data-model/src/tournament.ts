@@ -1,8 +1,8 @@
-import { PersistentObject, WithId } from "./persistence";
-import { AttendeeRole } from "./person";
-import { RefereeCategory, RefereeCoachInfo, RefereeInfo } from "./referee";
+import { PersistentObject, WithId } from './persistence';
+import { AttendeeRole } from './person';
+import { RefereeCategory, RefereeCoachInfo, RefereeInfo } from './referee';
 
-export interface Tournament extends PersistentObject{
+export interface Tournament extends PersistentObject {
   name: string;
   description: string;
   startDate: number;
@@ -13,17 +13,44 @@ export interface Tournament extends PersistentObject{
   countryId: string;
   regionId: string;
   timeZone: string;
-  fields: Field[]
+  fields: Field[];
   days: Day[];
   divisions: Division[];
-  managerAttendeeIds :string[];
-  managerEmails :string[];
+  managerAttendeeIds: string[];
+  managerEmails: string[];
   currentScheduleId?: string;
   currentDrawId?: string;
   allowPlayerReferees?: boolean; // true if the tournament has player referees
+  /** FIT competition selection and the user's persistent import naming rules. */
+  fit?: FitTournamentConfig;
 }
 
-export interface Field extends WithId{
+/** Persistent configuration used by the FIT import preparation page. */
+export interface FitTournamentConfig {
+  competitionSlug: string;
+  season: string;
+  /** IANA time zone used to display imported FIT match dates and times. */
+  targetTimeZone: string;
+  renaming: FitRenamingConfig;
+  /** ISO date-time of the last successful FIT download. */
+  lastImportDate: string;
+}
+
+/** User-defined name associated with an exact FIT value. */
+export interface FitRenaming {
+  fitName: string;
+  appName: string;
+}
+
+/** All persisted FIT naming options. Team names are keyed by their displayed FIT name. */
+export interface FitRenamingConfig {
+  divisions: FitRenaming[];
+  teams: FitRenaming[];
+  fields: FitRenaming[];
+  capitalizeTeamName: boolean;
+}
+
+export interface Field extends WithId {
   name: string;
   video: boolean;
   quality: FieldQuality;
@@ -31,7 +58,7 @@ export interface Field extends WithId{
 }
 export type FieldQuality = 1 | 2 | 3;
 
-export interface SlotType extends PersistentObject{
+export interface SlotType extends PersistentObject {
   name: string;
   nbPeriod: number;
   /** Duration of the period in minute */
@@ -93,12 +120,12 @@ export interface Attendee extends PersistentObject {
   isReferee: boolean; // true if the attendee is a referee
   isRefereeCoach: boolean; // true if the attendee is a referee coach
   isTournamentManager: boolean; // true if the attendee is a tournament manager
-  player? : {
+  player?: {
     teamId: string; // unique identifier of the team
     num?: number; // number of the player
   };
-  referee? : RefereeInfo;
-  refereeCoach? : RefereeCoachInfo;
+  referee?: RefereeInfo;
+  refereeCoach?: RefereeCoachInfo;
   roleRestrictions?: AttendeeRoleRestriction[]; // Define the exact rights of the attendee
   comments?: string;
 }
@@ -132,18 +159,27 @@ export interface Game extends PersistentObject {
   score?: {
     homeTeamScore: number; // score of the home team
     awayTeamScore: number; // score of the away team
-  }
+  };
   scheduleInfo?: {
     divisionDrawId: string; // unique identifier of the division draw
     stepId: string; // unique identifier of the step
     groupId: string; // unique identifier of the group
     roundId: string; // unique identifier of the round
     roundGameId: string; // unique identifier of the round game
-  },
+  };
   fitGameId?: number;
 }
 
-export type GameEventType = 'TRY' | 'CONVERSION' | 'PENALTY' | 'YELLOW_CARD' | 'RED_CARD' | 'INJURY' | 'SUBSTITUTION' | 'HALF_TIME' | 'FULL_TIME';
+export type GameEventType =
+  | 'TRY'
+  | 'CONVERSION'
+  | 'PENALTY'
+  | 'YELLOW_CARD'
+  | 'RED_CARD'
+  | 'INJURY'
+  | 'SUBSTITUTION'
+  | 'HALF_TIME'
+  | 'FULL_TIME';
 export interface GameEvent extends PersistentObject {
   gameId: string; // unique identifier of the game
   type: GameEventType; // type of the event

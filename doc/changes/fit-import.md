@@ -1,14 +1,17 @@
 # FIT games import
 
 ## Objectif
-Le site web de la FIT (Federation Of International Touch) publie le calendrier des matches de toutes les competiions/tournois. L'objectif de cette évolution est de réaliser l'import des informations d'une competition/Tournoi afin de compléter un tournoi existant. 
+
+Le site web de la FIT (Federation Of International Touch) publie le calendrier des matches de toutes les competiions/tournois. L'objectif de cette évolution est de réaliser l'import des informations d'une competition/Tournoi afin de compléter un tournoi existant.
 Les données sur le site web FIT peuvent changer. Ainsi la fonctionnalité doit permettre de mettre à jour un tournoi existant.
-Le fonctionnement est en 2 parties : 
-1) Le téléchargement des données
-2) La mise à jour de Tournament avec les données.
-pour l'instant seule la 1ère étape est à réaliser.
+Le fonctionnement est en 2 parties :
+
+1. Le téléchargement des données
+2. La mise à jour de Tournament avec les données.
+   pour l'instant seule la 1ère étape est à réaliser.
 
 ## Le site FIT
+
 Le site de la FIT expose une API public consultable par appel HTTP. Elle est décrite dans les fichiers : fit-api.md et fit-api.openapi.json
 
 ## Partie 1 : Le téléchargement des données
@@ -16,20 +19,23 @@ Le site de la FIT expose une API public consultable par appel HTTP. Elle est dé
 Lorsqu'un tournoi est sélectionné, le menu en haut à gauche contient une nouvelle entrée : "Import FIT". Cela fait apparaitre une nouvelle page dédiée à l'import d'une competition FIT.
 
 Cette page se décompose en 2 parties :
+
 - Zone formulaire en haut
 - zone données récupérées en dessous
 
 ### Zone formulaire
+
 Dans la zone formulaire il faut pouvoir selectionner la competition FIT et la saison via 2 Select (primeng). Les valeurs possibles sont récupérées en appelant directement l'API FIT.
-- Le 1er Select est la liste des compétitions 
+
+- Le 1er Select est la liste des compétitions
 - Le 2nd Select est la liste des saisons pour la competition selectionné dans le 1er Select
 
-Les 2 valeurs (competition slug et season) doivent être sauvegardé dans l'objet Tournament dans l'attribut optionnel 'fit'. 
-
+Les 2 valeurs (competition slug et season) doivent être sauvegardé dans l'objet Tournament dans l'attribut optionnel 'fit'.
 
 ### Données récupérées
 
 Une fois la competition et la saison définie, l'utilisateur peut cliquer sur un bouton "Télécharger" pour télécharger les données : toutes les divisions, toutes les équipes, tous les matchs. Les données téléchargées doivent être stockées dans un objet FITData :
+
 ```
 FITData {
   tournamentId: string;
@@ -55,7 +61,7 @@ FITData {
     teamAway: string;
     status: 'New' | 'Update' | 'Deleted'
     gameId: number;
-    changes: string[] 
+    changes: string[]
   }[]
 }
 ```
@@ -64,24 +70,25 @@ Plus tard cet objet sera rendu persistant.
 
 ### Zone de Données récupérées
 
-Une fois les données téléchargées depuis le site web de la FIT, il faut les afficher  sous la forme d'onglets : 
-- Onglet 'Division renaming' : Affichage d'un tableau  à 3 colonnes : FIT name, Automatic name, manual name. La première colonne est le nom de la division récupérée du site web FIT. La seconde colonne est un nom court automatiquement calculé. La dernière colonne est une colonne éditable pour définir le nom de la division choisi par l'utilisateur.
-- Onglet 'Team renaming' : Affichage d'un tableau à 4 colonnes : Division, FIT name, Automatic name, manual name. La première colonne est la division (FIT name). La seconde colonne est le nom de l'équipe récupérée du site web FIT. La Troisième colonne est un nom court d'équipe automatiquement calculé. La dernière colonne est une colonne éditable pour définir le nom de l'équipe choisi par l'utilisateur.
-- Onglet 'Field renaming' : Affichage d'un tableau  à 2 colonnes : FIT name, manual name. La première colonne est le nom d'un terrain récupérée du site web FIT. La dernière colonne est une colonne éditable pour définir le nom du terrain choisi par l'utilisateur.
-- onglet 'Teams' : Affichage d'un tableau avec en entête de colonne le nom de la division (nom renommé) et en dessous la liste des noms renommés des équipes de la division
-- onglet 'Timeslots' : Affichage d'un tableau avec en entête de colonne la date du jour et en dessous la liste des créneaux horaires des matches sur la journée (liste de valeur unique au format HH:mm triées chronologiquement)
-- un onglet par jour de compétition. Le titre de l'onglet est la date YYYY/MM/DD. Le contenu de l'onglet est la liste des matches affichés dans un tableau avec les colonnes suivantes :
-  * timeslot: string;
-  * field: string;
-  * division: string;
-  * gameType: string;
-  * resultRequired: boolean;
-  * teamHome: string;
-  * teamAway: string;
-  * status: 'New' | 'Update' | 'Deleted'
-  * gameId: number;
-  * changes: string[] 
+Une fois les données téléchargées depuis le site web de la FIT, il faut les afficher sous la forme d'onglets :
 
+- Onglet 'Division and team renaming' : affichage d'un TreeTable à 3 colonnes : FIT name, Automatic name, manual name. Chaque division est une ligne parent repliable ; ses équipes sont affichées comme lignes enfants. La première colonne contient le nom FIT et le toggler d'ouverture. La seconde colonne contient le nom automatique. La troisième colonne est éditable pour les divisions comme pour les équipes.
+- Onglet 'Field renaming' : affichage d'un tableau à 2 colonnes : FIT name, manual name. La première colonne est toujours le nom original du terrain récupéré du site FIT. La dernière colonne est une colonne éditable contenant le nom choisi par l'utilisateur, précédemment sauvegardé lorsqu'il existe.
+  Les terrains sont triés par ordre alphabétique sur leur nom FIT.
+- onglet 'Teams' : Affichage d'un tableau avec en entête de colonne le nom de la division (nom renommé) et en dessous la liste des noms renommés des équipes de la division
+- onglet 'Timeslots' : affichage d'un tableau avec une colonne par jour et une ligne par position dans la liste des créneaux du jour. Chaque colonne affiche sa propre liste de créneaux, sans alignement ni regroupement entre des valeurs identiques de jours différents ; une cellule est vide lorsque la colonne n'a plus de créneau à cette position. Les créneaux sont des valeurs uniques au format HH:mm triées chronologiquement dans chaque colonne.
+- un onglet par jour de compétition. Le titre de l'onglet est la date YYYY/MM/DD. Le contenu de l'onglet est la liste des matches affichés dans un tableau avec les colonnes suivantes :
+  Le nombre de matchs présents est affiché au-dessus de chaque tableau, y compris pour le groupe `Unassigned`.
+  - timeslot: string;
+  - field: string;
+  - division: string;
+  - gameType: string;
+  - resultRequired: boolean;
+  - teamHome: string;
+  - teamAway: string;
+  - status: 'New' | 'Update' | 'Deleted'
+  - gameId: number;
+  - changes: string[]
 
 ### Transformation de données
 
@@ -94,11 +101,11 @@ Le nom de la division fourni par le site web de la FIT est relativement long.
 Voici un algorythme pour calaculer automatiquement un nom court
 
 ```
-/** 
- * Converts a game division from FIT web site to a short name 
+/**
+ * Converts a game division from FIT web site to a short name
  * Ouput name is composed by:
  * First letter is one of these:
- * - M: Men, 
+ * - M: Men,
  * - W: Women,
  * - X: Mixed,
  * - B: Boy
@@ -132,9 +139,10 @@ function toCategory(txt) {
   return division;
 }
 ```
+
 #### Renommage du nom d'équipe
 
-Le calcul du nom de l'équipe est un peu complexe car il faut gérer différents cas de competition. Parfois il s'agit de nom de pays et parfois de nom de club. Le site web fourni differents noms et il faut choisir/prioriser. Voici un algorythme qui détermine le nom de l'équipe en fonction de l'objet team récupéré du site web et à partir du paramètre 'capitalize'. 
+Le calcul du nom de l'équipe est un peu complexe car il faut gérer différents cas de competition. Parfois il s'agit de nom de pays et parfois de nom de club. Le site web fourni differents noms et il faut choisir/prioriser. Voici un algorythme qui détermine le nom de l'équipe en fonction de l'objet team récupéré du site web et à partir du paramètre 'capitalize'.
 
 ```
 function getTeamName(capitalize: boolean): string {
@@ -165,12 +173,12 @@ function getTeamName(capitalize: boolean): string {
 }
 ```
 
-
 ### Modele de données : objet Tournament
 
 Voici une définition du nouvel attribut 'fit' dans Tournament avec tous ce qui sera nécessaire :
+
 ```
-fit?: { 
+fit?: {
   competitionSlug: string;
   season: string;
   renaming : {
@@ -183,10 +191,11 @@ fit?: {
 }
 
 interface Renaming {
-  fitName: string, 
+  fitName: string,
   appName: string
 }
 ```
+
 Modifies le modele pour ajouter ce nouvel attribut.
 
 ### Règles déduites de l'import Google Sheet
@@ -223,7 +232,7 @@ Pour chaque match :
 - `timeslot` est au format `HH:mm`.
 - `date` est au format `YYYY-MM-DD` dans le modèle interne et est affichée au format `YYYY/MM/DD` dans le titre de l'onglet.
 
-La date et l'heure doivent être calculées dans le fuseau du tournoi. `datetime` est utilisé lorsqu'il est disponible ; à défaut, `date` et `time` sont utilisés. Le fuseau du terrain FIT ne remplace pas le fuseau du tournoi sans conversion explicite.
+La date et l'heure doivent être calculées dans le fuseau cible sélectionné par l'utilisateur. `datetime` est utilisé lorsqu'il est disponible ; à défaut, `date` et `time` sont utilisés. Le fuseau du terrain FIT ne remplace pas le fuseau cible sans conversion explicite. Le fuseau cible est un identifiant IANA proposé par `Intl.supportedValuesOf('timeZone')`, complété par `UTC` si nécessaire, afin de proposer les fuseaux disponibles sur la planète. Les valeurs fixes de type `UTC+01:00` restent également acceptées pour les tournois existants.
 
 `gameType` est calculé à partir de `round` : un round commençant par `Round` ou par un nombre est de type `Pool`, sinon la valeur de `round` est conservée. `resultRequired` vaut `false` pour un match de type `Pool` et `true` pour les autres types. Cette règle devra être confirmée si la phase de mise à jour des matchs introduit une règle métier différente.
 
@@ -243,6 +252,8 @@ L'onglet `Teams` est construit à partir des équipes effectivement référencé
 
 L'onglet `Timeslots` contient, pour chaque date, les valeurs uniques de `timeslot`, triées chronologiquement. Les valeurs vides sont exclues de cet onglet. Les matchs sans date ou sans heure sont conservés dans la liste des matchs mais ne contribuent pas aux créneaux d'une journée.
 
+Dans chaque onglet de journée, les matchs sont triés par `timeslot` croissant (`HH:mm`), puis par `field`, puis par `gameId` pour stabiliser l'ordre des matchs ayant la même heure et le même terrain.
+
 #### Comparaison entre téléchargements
 
 La comparaison est informative dans cette première phase et ne modifie pas encore `Tournament`.
@@ -258,9 +269,9 @@ La liste `changes` contient les noms des propriétés modifiées et leurs ancien
 
 #### Etats de l'interface et validation
 
-Avant le téléchargement, les onglets de données ne sont pas affichés. Pendant le téléchargement, les Selects et le bouton sont désactivés et un indicateur de progression est affiché. En cas d'échec, les données précédemment affichées et les renommages non sauvegardés sont conservés.
+Avant le téléchargement, les onglets de données ne sont pas affichés. Pendant le téléchargement, les Selects et le bouton sont désactivés et un indicateur de progression est affiché. Pendant le chargement des saisons, le Select des saisons est désactivé, y compris lorsque la liste est vide. En cas d'échec, les données précédemment affichées et les renommages non sauvegardés sont conservés.
 
-Le téléchargement sauvegarde la compétition, la saison, les renommages et `lastImportDate` uniquement lorsque toutes les requêtes nécessaires ont abouti. Une compétition ou une saison modifiée exige un nouveau téléchargement avant que les données affichées soient considérées comme valides.
+Le téléchargement sauvegarde la compétition, la saison, le fuseau cible, les renommages et `lastImportDate` uniquement lorsque toutes les requêtes nécessaires ont abouti. Une compétition, une saison ou un fuseau cible modifié exige un nouveau téléchargement avant que les données affichées soient considérées comme valides.
 
 La page doit afficher explicitement les matchs exclus, les matchs incomplets et les erreurs de résolution d'équipe. Les champs éditables doivent être accessibles au clavier et disposer d'un libellé identifiable.
 
@@ -268,13 +279,41 @@ La page doit afficher explicitement les matchs exclus, les matchs incomplets et 
 
 Cette phase ne crée, ne supprime et ne modifie aucun `Game`, `Day`, `Timeslot`, `Field`, `Division` ou `Team` du tournoi. Elle prépare et affiche uniquement `FITData` et persiste la configuration FIT et les renommages. La mise à jour effective du tournoi fera l'objet de la partie 2 et devra préciser sa propre stratégie de fusion.
 
+## Implémentation de la partie 1
 
+La page est accessible depuis le menu du tournoi à l'adresse `/tournament/:tournamentId/fit-import`. Les appels vers le site FIT ne sont pas effectués directement par le navigateur : ils passent par l'API HTTP Firebase existante (`/api`) afin d'éviter la limitation CORS de `internationaltouch.org`. Le navigateur appelle donc uniquement le backend de l'application, qui relaie les requêtes FIT côté serveur. En développement, le proxy Angular redirige `/api` vers l'émulateur Firebase Functions ; en production, le rewrite Firebase Hosting redirige `/api/**` vers la fonction `api`.
+
+### Nouvelles fonctions backend prévues
+
+Les fonctions seront regroupées dans `functions/src/fit-import.ts` et exposées sous le router HTTP `fitImportRouter`, monté dans `functions/src/index.ts` sur `/fitImport`.
+
+- `fetchFitJson<T>(url: string): Promise<T>` : réalise une requête GET FIT avec `Accept: application/json`, vérifie le statut HTTP, parse le JSON et transforme les erreurs réseau, HTTP ou JSON invalide en erreur explicite. Cette fonction n'interprète jamais une erreur comme une collection vide.
+- `fitImportCompetitions(req, res)` : handler `GET /api/fitImport/competitions`, relaie la collection FIT des compétitions et retourne les références `title`, `slug` et `url`.
+- `fitImportSeasons(req, res)` : handler `GET /api/fitImport/competitions/:competitionSlug/seasons`, valide le slug, charge le détail FIT de la compétition et retourne ses saisons.
+- `loadFitDivision(division, competitionSlug, seasonSlug)` : charge une division depuis l'URL FIT retournée par l'API, puis charge les stages qui ne sont fournis que sous forme de référence URL.
+- `downloadFitData(req, res)` : handler `GET /api/fitImport/download?competitionSlug=...&season=...`, valide les paramètres, charge la saison, toutes les divisions, tous leurs stages et concatène les données FIT nécessaires au frontend. Il résout les références d'équipe à partir des équipes de chaque division et retourne une réponse JSON structurée ; il exclut les matchs `is_bye` et conserve `is_washout`.
+- `fitImportRouter` : router Express qui monte les trois handlers précédents et applique les réponses d'erreur JSON homogènes (`400` pour une requête invalide, `502` pour une erreur de l'API FIT, `500` pour une erreur interne).
+
+Le backend ne persiste pas `FITData` et ne modifie pas `Tournament`. Il ne fait pas les renommages dépendant de l'utilisateur ni la comparaison avec le téléchargement précédent : ces traitements restent côté frontend. Les paramètres sont validés côté backend et les slugs sont encodés avant d'être utilisés dans une URL FIT. Aucun secret n'est nécessaire pour cette API publique.
+
+### Contrat backend/frontend
+
+Le service Angular `FitImportService` appellera les routes applicatives suivantes :
+
+```text
+GET /api/fitImport/competitions
+GET /api/fitImport/competitions/{competitionSlug}/seasons
+GET /api/fitImport/download?competitionSlug={slug}&season={season}
+```
+
+La réponse de `download` contient les divisions, les équipes, les stages et les matchs FIT bruts nécessaires à la construction de `FITData`. Les erreurs contiennent au minimum `{ "error": "..." }` sans exposer de secret ni de détail interne. Le CORS reste configuré sur l'API Firebase existante, pas sur le site FIT.
+
+La page affiche les tableaux de renommage, équipes, créneaux et matchs et conserve `FITData` en mémoire. Seuls `Tournament.fit` et ses renommages sont sauvegardés après un téléchargement réussi. Les erreurs de requête conservent les données affichées précédemment.
+
+La zone d'information affiche également la date et l'heure du dernier téléchargement réussi, à partir de `Tournament.fit.lastImportDate`, au format `YYYY-MM-DD HH:mm:ss`.
+
+La comparaison entre téléchargements est informative : les matchs sont comparés par identifiant FIT, puis marqués `New`, `Update`, `Equal` ou `Deleted`. Les matchs bye sont exclus ; les matchs washout et les matchs incomplets sont conservés et signalés dans l'interface. La première phase ne modifie pas les objets métier du tournoi.
 
 ## Partie 2 : La mise à jour de Tournament avec les données.
 
 Cette partie sera réalisée ultérieuemement.
-
-
-
-
-

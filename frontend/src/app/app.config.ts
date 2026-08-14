@@ -1,4 +1,5 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
 import { provideRouter, TitleStrategy } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
@@ -22,6 +23,7 @@ export const appConfig: ApplicationConfig = {
     { provide: TitleStrategy, useClass: CustomTitleStrategy },
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
+    provideHttpClient(),
     provideAnimationsAsync(),
     providePrimeNG({ theme: { preset: Aura } }),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
@@ -30,6 +32,6 @@ export const appConfig: ApplicationConfig = {
     provideFunctions(() => getFunctions()),
     provideStorage(() => getStorage()),
     ConfirmationService,
-    DialogService
-  ]
+    DialogService,
+  ],
 };
