@@ -32,12 +32,16 @@ Dans la zone formulaire il faut pouvoir selectionner la competition FIT et la sa
 
 Les 2 valeurs (competition slug et season) doivent être sauvegardé dans l'objet Tournament dans l'attribut optionnel 'fit'.
 
+Lorsqu'au moins un `FITData` est disponible, le bouton `Download` est libellé `Refresh`. Un select supplémentaire permet de choisir un snapshot FITData précédent pour l'affichage ; la sélection ne déclenche pas de nouvel appel au site FIT.
+
 ### Données récupérées
 
 Une fois la competition et la saison définie, l'utilisateur peut cliquer sur un bouton "Télécharger" pour télécharger les données : toutes les divisions, toutes les équipes, tous les matchs. Les données téléchargées doivent être stockées dans un objet FITData :
 
 ```
 FITData {
+  id: string;
+  lastChange: number;
   tournamentId: string;
   importDate: string;
   competitionSlug: string;
@@ -66,7 +70,7 @@ FITData {
 }
 ```
 
-Plus tard cet objet sera rendu persistant.
+Chaque téléchargement réussi persiste cet objet dans la collection Firestore `fit-data`. La page recharge, pour le tournoi courant, le document dont `importDate` est le plus récent.
 
 ### Zone de Données récupérées
 
@@ -298,6 +302,8 @@ Le backend ne persiste pas `FITData` et ne modifie pas `Tournament`. Il ne fait 
 
 ### Contrat backend/frontend
 
+Les snapshots `FITData` sont persistés dans la collection Firestore `fit-data`. Chaque document contient un `tournamentId` et un `importDate`; au chargement de la page, le document le plus récent du tournoi est restauré. `Tournament.fit` conserve la configuration FIT et les renommages associés. L'index composite `tournamentId ASC` / `importDate DESC` de `firestore.indexes.json` est requis pour cette recherche.
+
 Le service Angular `FitImportService` appellera les routes applicatives suivantes :
 
 ```text
@@ -308,7 +314,7 @@ GET /api/fitImport/download?competitionSlug={slug}&season={season}
 
 La réponse de `download` contient les divisions, les équipes, les stages et les matchs FIT bruts nécessaires à la construction de `FITData`. Les erreurs contiennent au minimum `{ "error": "..." }` sans exposer de secret ni de détail interne. Le CORS reste configuré sur l'API Firebase existante, pas sur le site FIT.
 
-La page affiche les tableaux de renommage, équipes, créneaux et matchs et conserve `FITData` en mémoire. Seuls `Tournament.fit` et ses renommages sont sauvegardés après un téléchargement réussi. Les erreurs de requête conservent les données affichées précédemment.
+La page affiche les tableaux de renommage, équipes, créneaux et matchs. Chaque téléchargement réussi sauvegarde un snapshot complet `FITData` dans la collection Firestore `fit-data`, avec `tournamentId` et `importDate`. Au chargement de la page, le snapshot le plus récent du tournoi est restauré. `Tournament.fit` conserve la configuration courante et les renommages. Les erreurs de requête conservent les données affichées précédemment.
 
 La zone d'information affiche également la date et l'heure du dernier téléchargement réussi, à partir de `Tournament.fit.lastImportDate`, au format `YYYY-MM-DD HH:mm:ss`.
 

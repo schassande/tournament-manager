@@ -4,6 +4,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import {
   FitRenamingConfig,
+  PersistentObject,
   Tournament,
 } from '@tournament-manager/persistent-data-model';
 
@@ -73,7 +74,7 @@ export interface FitGame {
   incomplete: boolean;
   washout: boolean;
 }
-export interface FITData {
+export interface FITData extends PersistentObject {
   tournamentId: string;
   importDate: string;
   competitionSlug: string;
@@ -252,6 +253,8 @@ export class FitImportService {
       ),
     ).sort();
     return {
+      id: '',
+      lastChange: 0,
       tournamentId: tournament.id,
       importDate: new Date().toISOString(),
       competitionSlug: competition,

@@ -24,6 +24,7 @@ import {
   toCategory,
 } from '../service/fit-import.service';
 import { TournamentService } from '../service/tournament.service';
+import { FitDataService } from '../service/fit-data.service';
 
 interface RenameRow {
   fitName: string;
@@ -31,6 +32,11 @@ interface RenameRow {
   appName: string;
   kind: 'division' | 'team';
   division?: string;
+}
+
+interface FitDataOption {
+  id: string;
+  label: string;
 }
 
 /** Displays the FIT download and review workflow for the selected tournament. */
@@ -104,8 +110,21 @@ interface RenameRow {
         />
       </section>
       <section class="form-row">
+        <label for="fitSnapshot">Previous FIT data</label>
+        <p-select
+          inputId="fitSnapshot"
+          [options]="fitDataOptions()"
+          optionLabel="label"
+          optionValue="id"
+          [(ngModel)]="selectedFitDataId"
+          (onChange)="fitDataSelected()"
+          [disabled]="busy() || fitDataLoading()"
+          placeholder="Select previous FIT data"
+        />
+      </section>
+      <section class="form-row">
         <p-button
-          label="Download"
+          [label]="data() ? 'Refresh' : 'Download'"
           icon="pi pi-download"
           (click)="download()"
           [loading]="busy()"
@@ -115,7 +134,7 @@ interface RenameRow {
       @if (busy()) {
         <p-message severity="info">Downloading FIT data…</p-message>
       }
-      @if (tournament?.fit?.lastImportDate; as lastImportDate) {
+      @if (lastImportDate(); as lastImportDate) {
         <p-message severity="secondary">
           Last download: {{ lastImportDate | date: 'yyyy-MM-dd HH:mm:ss' }}
         </p-message>
@@ -179,7 +198,7 @@ interface RenameRow {
                   </tr>
                 </ng-template>
               </p-treeTable>
-
+              <div style="height: 30px;"></div>
               <p-table
                 [value]="fieldRows"
                 showGridlines
@@ -377,9 +396,13 @@ export class TournamentFitImportComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly tournamentService = inject(TournamentService);
   private readonly fitService = inject(FitImportService);
+  private readonly fitDataService = inject(FitDataService);
   readonly competitions = signal<FitCompetition[]>([]);
   readonly seasons = signal<FitReference[]>([]);
   readonly data = signal<FITData | null>(null);
+  readonly fitDataSnapshots = signal<FITData[]>([]);
+  readonly latestFitData = signal<FITData | null>(null);
+  readonly fitDataLoading = signal(false);
   readonly busy = signal(false);
   readonly seasonsLoading = signal(false);
   readonly error = signal<string | null>(null);
@@ -391,6 +414,7 @@ export class TournamentFitImportComponent implements OnInit {
   season = '';
   targetTimeZone = 'UTC';
   capitalizeTeamName = false;
+  selectedFitDataId = '';
   divisionRows: RenameRow[] = [];
   teamRows: RenameRow[] = [];
   fieldRows: Array<{ fitName: string; automatic: string; appName: string }> =
@@ -420,20 +444,41 @@ export class TournamentFitImportComponent implements OnInit {
           return;
         }
         this.tournament = tournament;
-        this.competitionSlug = tournament.fit?.competitionSlug ?? '';
-        this.season = tournament.fit?.season ?? '';
-        this.targetTimeZone =
-          tournament.fit?.targetTimeZone ?? tournament.timeZone ?? 'UTC';
-        this.capitalizeTeamName =
-          tournament.fit?.renaming.capitalizeTeamName ?? false;
-        this.fitService.competitions().subscribe({
-          next: (values) => this.competitions.set(values),
-          error: (error) => this.error.set(error.message),
+        this.applyConfiguration(tournament.fit);
+        this.fitDataLoading.set(true);
+        this.fitDataService.forTournament(id).subscribe({
+          next: (snapshots) => {
+            this.fitDataSnapshots.set(snapshots);
+            this.latestFitData.set(snapshots[0] ?? null);
+            if (snapshots[0]) this.displayFitData(snapshots[0]);
+            this.fitDataLoading.set(false);
+            this.loadCompetitionsAndSeasons();
+          },
+          error: (error) => {
+            this.error.set(error.message);
+            this.fitDataLoading.set(false);
+            this.loadCompetitionsAndSeasons();
+          },
         });
-        if (this.competitionSlug) this.loadSeasons(this.season);
       },
       error: (error) => this.error.set(error.message),
     });
+  }
+
+  /** Returns the selectable labels for persisted FIT snapshots. */
+  fitDataOptions(): FitDataOption[] {
+    return this.fitDataSnapshots().map((snapshot) => ({
+      id: snapshot.id,
+      label: `${snapshot.importDate} - ${snapshot.competitionSlug} / ${snapshot.season}`,
+    }));
+  }
+
+  /** Displays the snapshot selected in the previous FIT data selector. */
+  fitDataSelected(): void {
+    const selected = this.fitDataSnapshots().find(
+      (snapshot) => snapshot.id === this.selectedFitDataId,
+    );
+    if (selected) this.displayFitData(selected);
   }
 
   competitionChanged(): void {
@@ -463,6 +508,41 @@ export class TournamentFitImportComponent implements OnInit {
     });
   }
 
+  private loadCompetitionsAndSeasons(): void {
+    this.fitService.competitions().subscribe({
+      next: (values) => this.competitions.set(values),
+      error: (error) => this.error.set(error.message),
+    });
+    if (this.competitionSlug) this.loadSeasons(this.season);
+  }
+
+  private applyConfiguration(
+    configuration: Tournament['fit'] | FITData | undefined,
+  ): void {
+    if (!configuration) {
+      this.targetTimeZone = this.tournament?.timeZone ?? 'UTC';
+      return;
+    }
+    this.competitionSlug = configuration.competitionSlug;
+    this.season = configuration.season;
+    this.targetTimeZone = configuration.targetTimeZone;
+    this.capitalizeTeamName = configuration.renaming.capitalizeTeamName;
+  }
+
+  private displayFitData(snapshot: FITData): void {
+    this.selectedFitDataId = snapshot.id;
+    this.data.set(snapshot);
+    this.tournament!.fit = {
+      competitionSlug: snapshot.competitionSlug,
+      season: snapshot.season,
+      targetTimeZone: snapshot.targetTimeZone,
+      renaming: snapshot.renaming,
+      lastImportDate: snapshot.importDate,
+    };
+    this.applyConfiguration(snapshot);
+    this.prepareRows(snapshot, snapshot.renaming);
+  }
+
   download(): void {
     if (!this.tournament || !this.competitionSlug || !this.season) return;
     this.busy.set(true);
@@ -488,10 +568,27 @@ export class TournamentFitImportComponent implements OnInit {
             renaming: config,
             lastImportDate: value.importDate,
           };
-          this.tournamentService
-            .save(this.tournament!)
-            .subscribe({ error: (error) => this.error.set(error.message) });
-          this.busy.set(false);
+          this.fitDataService.save(value).subscribe({
+            next: (saved) => {
+              this.fitDataSnapshots.update((snapshots) => [
+                saved,
+                ...snapshots.filter((snapshot) => snapshot.id !== saved.id),
+              ]);
+              this.latestFitData.set(saved);
+              this.selectedFitDataId = saved.id;
+              this.tournamentService.save(this.tournament!).subscribe({
+                next: () => this.busy.set(false),
+                error: (error) => {
+                  this.error.set(error.message);
+                  this.busy.set(false);
+                },
+              });
+            },
+            error: (error) => {
+              this.error.set(error.message);
+              this.busy.set(false);
+            },
+          });
         },
         error: (error) => {
           this.error.set(error.message);
@@ -501,6 +598,12 @@ export class TournamentFitImportComponent implements OnInit {
   }
 
   isUnassigned = (game: FitGame): boolean => !game.date;
+  lastImportDate(): string | undefined {
+    return (
+      this.latestFitData()?.importDate ?? this.tournament?.fit?.lastImportDate
+    );
+  }
+
   gamesForDay(games: FitGame[], date: string): FitGame[] {
     return games
       .filter((game) => game.date === date)

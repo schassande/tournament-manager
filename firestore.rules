@@ -42,6 +42,14 @@ service cloud.firestore {
       allow update, delete: if isTournamentManager(resource.data) || isPlatformAdmin();
     }
 
+    match /fit-data/{documentId} {
+      allow read: if canManageTournament(resource.data.tournamentId);
+      allow create: if canManageTournament(request.resource.data.tournamentId);
+      allow update: if request.resource.data.tournamentId == resource.data.tournamentId
+        && canManageTournament(resource.data.tournamentId);
+      allow delete: if canManageTournament(resource.data.tournamentId);
+    }
+
     match /attendee/{documentId} {
       allow read: if signedIn();
       allow create: if canManageTournament(request.resource.data.tournamentId);
