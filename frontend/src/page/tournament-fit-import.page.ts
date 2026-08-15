@@ -29,6 +29,7 @@ import { TournamentService } from '../service/tournament.service';
 import { FitDataService } from '../service/fit-data.service';
 import { FitMergePlan, FitMergeService } from '../service/fit-merge.service';
 import { GameService } from '../service/game.service';
+import { FitExcelExportService } from '../service/fit-excel-export.service';
 
 interface RenameRow {
   fitName: string;
@@ -146,6 +147,12 @@ interface FitDataOption {
       }
       @if (data(); as fit) {
         <section class="import-actions" aria-label="FIT imports">
+          <p-button
+            label="Export Excel"
+            icon="pi pi-file-excel"
+            (click)="exportExcel()"
+            [disabled]="busy() || renamingSaving()"
+          />
           <p-button
             label="Import structure"
             icon="pi pi-sitemap"
@@ -550,6 +557,7 @@ export class TournamentFitImportComponent implements OnInit {
   private readonly fitDataService = inject(FitDataService);
   private readonly fitMergeService = inject(FitMergeService);
   private readonly gameService = inject(GameService);
+  private readonly fitExcelExportService = inject(FitExcelExportService);
   readonly competitions = signal<FitCompetition[]>([]);
   readonly seasons = signal<FitReference[]>([]);
   readonly data = signal<FITData | null>(null);
@@ -604,6 +612,20 @@ export class TournamentFitImportComponent implements OnInit {
           this.busy.set(false);
         },
       });
+  }
+
+  /** Downloads the currently displayed FIT snapshot with the current renaming edits. */
+  exportExcel(): void {
+    const snapshot = this.baseFitData();
+    if (!snapshot) return;
+    const displayed = this.withRenaming(snapshot, this.configFromRows());
+    const competition = this.competitions().find(
+      (item) => item.slug === displayed.competitionSlug,
+    );
+    this.fitExcelExportService.download(
+      displayed,
+      competition?.title ?? displayed.competitionSlug,
+    );
   }
 
   /** Loads current games and opens the selected day import preview. */
