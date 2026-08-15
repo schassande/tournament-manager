@@ -3,6 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { SelectModule } from 'primeng/select';
@@ -11,6 +12,7 @@ import { TabsModule } from 'primeng/tabs';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { TreeNode } from 'primeng/api';
 import { TreeTableModule } from 'primeng/treetable';
+import { take } from 'rxjs/operators';
 import {
   FitRenamingConfig,
   Tournament,
@@ -25,6 +27,8 @@ import {
 } from '../service/fit-import.service';
 import { TournamentService } from '../service/tournament.service';
 import { FitDataService } from '../service/fit-data.service';
+import { FitMergePlan, FitMergeService } from '../service/fit-merge.service';
+import { GameService } from '../service/game.service';
 
 interface RenameRow {
   fitName: string;
@@ -46,6 +50,7 @@ interface FitDataOption {
     ButtonModule,
     CommonModule,
     DatePipe,
+    DialogModule,
     FormsModule,
     InputTextModule,
     MessageModule,
@@ -140,6 +145,20 @@ interface FitDataOption {
         </p-message>
       }
       @if (data(); as fit) {
+        <section class="import-actions" aria-label="FIT imports">
+          <p-button
+            label="Import structure"
+            icon="pi pi-sitemap"
+            (click)="previewStructureImport()"
+            [disabled]="busy()"
+          />
+          <p-button
+            label="Import all days"
+            icon="pi pi-calendar-plus"
+            (click)="previewAllDaysImport()"
+            [disabled]="busy()"
+          />
+        </section>
         <p-message severity="info"
           >{{ fit.games.length }} games, {{ fit.excludedByes }} bye(s) excluded,
           {{ fit.incompleteGames.length }} incomplete.</p-message
@@ -163,6 +182,15 @@ interface FitDataOption {
           </p-tablist>
           <p-tabpanels>
             <p-tabpanel value="renaming">
+              <div class="renaming-actions">
+                <p-button
+                  label="Save"
+                  icon="pi pi-save"
+                  (click)="saveRenamingConfiguration()"
+                  [loading]="renamingSaving()"
+                  [disabled]="busy() || renamingSaving()"
+                />
+              </div>
               <p-treeTable
                 [value]="renamingTree"
                 showGridlines
@@ -174,8 +202,8 @@ interface FitDataOption {
                     <th>FIT name</th>
                     <th>Automatic name</th>
                     <th>Manual name</th>
-                  </tr></ng-template
-                >
+                  </tr>
+                </ng-template>
                 <ng-template #body let-rowNode let-rowData="rowData">
                   <tr [ttRow]="rowNode">
                     <td>
@@ -227,6 +255,15 @@ interface FitDataOption {
                   </tr>
                 </ng-template>
               </p-table>
+              <div class="renaming-actions">
+                <p-button
+                  label="Save"
+                  icon="pi pi-save"
+                  (click)="saveRenamingConfiguration()"
+                  [loading]="renamingSaving()"
+                  [disabled]="busy() || renamingSaving()"
+                />
+              </div>
             </p-tabpanel>
 
             <p-tabpanel value="timeslots">
@@ -259,6 +296,14 @@ interface FitDataOption {
 
             @for (day of fit.days; track day.date) {
               <p-tabpanel [value]="day.date">
+                <div class="day-import-action">
+                  <p-button
+                    label="Import this day"
+                    icon="pi pi-calendar-plus"
+                    (click)="previewDayImport(day.date)"
+                    [disabled]="busy()"
+                  />
+                </div>
                 <ng-container
                   *ngTemplateOutlet="
                     gamesTable;
@@ -281,6 +326,84 @@ interface FitDataOption {
             }
           </p-tabpanels>
         </p-tabs>
+      }
+      @if (mergePlan(); as plan) {
+        <p-dialog
+          header="FIT import preview"
+          [visible]="mergePreviewVisible"
+          (visibleChange)="mergeDialogVisibilityChanged($event)"
+          [modal]="true"
+          appendTo="body"
+          [dismissableMask]="false"
+          [style]="{ width: 'min(1100px, 95vw)' }"
+          [breakpoints]="{ '960px': '95vw' }"
+        >
+          <p-message [severity]="plan.errors.length ? 'error' : 'info'">
+            {{
+              plan.operation === 'structure'
+                ? 'Structure import'
+                : plan.operation === 'all-days'
+                  ? 'All days import'
+                  : 'Day import ' + plan.date
+            }}: {{ plan.changes.length }} changes,
+            {{ plan.warnings.length }} warnings,
+            {{ plan.errors.length }} errors.
+          </p-message>
+          @if (plan.errors.length) {
+            <ul class="merge-errors">
+              @for (item of plan.errors; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          }
+          @if (plan.warnings.length) {
+            <ul class="merge-warnings">
+              @for (item of plan.warnings; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          }
+          <p-table
+            [value]="plan.changes"
+            size="small"
+            showGridlines
+            stripedRows
+          >
+            <ng-template #header>
+              <tr>
+                <th>Type</th>
+                <th>Key</th>
+                <th>Action</th>
+                <th>Details</th>
+              </tr>
+            </ng-template>
+            <ng-template #body let-change>
+              <tr
+                [class.merge-warning]="change.warning"
+                [class.merge-conflict]="change.action === 'Conflict'"
+              >
+                <td>{{ change.type }}</td>
+                <td>{{ change.key }}</td>
+                <td>{{ change.action }}</td>
+                <td>{{ change.details }}</td>
+              </tr>
+            </ng-template>
+          </p-table>
+          <div class="merge-dialog-actions">
+            <p-button
+              label="Cancel"
+              severity="secondary"
+              (click)="closeMergePreview(); $event.stopPropagation()"
+            />
+            <p-button
+              [label]="confirmLabel(plan)"
+              icon="pi pi-check"
+              (click)="applyMergePlan(); $event.stopPropagation()"
+              [disabled]="!!plan.errors.length || busy()"
+              [loading]="busy()"
+            />
+          </div>
+        </p-dialog>
       }
     </div>
     <ng-template #gamesTable let-games="games">
@@ -384,6 +507,34 @@ interface FitDataOption {
       .incomplete {
         background: #fff3cd;
       }
+      .renaming-actions {
+        display: flex;
+        justify-content: flex-start;
+        margin: 0.75rem 0;
+      }
+      .import-actions,
+      .day-import-action,
+      .merge-dialog-actions {
+        display: flex;
+        gap: 10px;
+        margin: 10px 0;
+      }
+      .merge-dialog-actions {
+        justify-content: flex-end;
+        margin-top: 16px;
+      }
+      .merge-errors {
+        color: #b42318;
+      }
+      .merge-warnings {
+        color: #8a5a00;
+      }
+      .merge-warning {
+        background: #fff8e1;
+      }
+      .merge-conflict {
+        background: #fdecec;
+      }
       p-message {
         display: block;
         margin: 8px 0;
@@ -397,6 +548,8 @@ export class TournamentFitImportComponent implements OnInit {
   private readonly tournamentService = inject(TournamentService);
   private readonly fitService = inject(FitImportService);
   private readonly fitDataService = inject(FitDataService);
+  private readonly fitMergeService = inject(FitMergeService);
+  private readonly gameService = inject(GameService);
   readonly competitions = signal<FitCompetition[]>([]);
   readonly seasons = signal<FitReference[]>([]);
   readonly data = signal<FITData | null>(null);
@@ -404,8 +557,11 @@ export class TournamentFitImportComponent implements OnInit {
   readonly latestFitData = signal<FITData | null>(null);
   readonly fitDataLoading = signal(false);
   readonly busy = signal(false);
+  readonly renamingSaving = signal(false);
   readonly seasonsLoading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly mergePlan = signal<FitMergePlan | null>(null);
+  mergePreviewVisible = false;
   readonly timeZones = ['UTC', ...Intl.supportedValuesOf('timeZone')]
     .filter((value, index, values) => values.indexOf(value) === index)
     .sort();
@@ -422,6 +578,129 @@ export class TournamentFitImportComponent implements OnInit {
 
   renamingTree: TreeNode<RenameRow>[] = [];
 
+  /** Opens the complete structure import preview. */
+  previewStructureImport(): void {
+    if (this.busy() || this.mergePlan()) return;
+    const snapshot = this.fitForImport();
+    if (!this.tournament || !snapshot) return;
+    this.busy.set(true);
+    this.gameService
+      .all()
+      .pipe(take(1))
+      .subscribe({
+        next: (games) => {
+          this.mergePlan.set(
+            this.fitMergeService.prepareStructure(
+              this.tournament!,
+              snapshot,
+              games.filter((game) => game.tournamentId === this.tournament!.id),
+            ),
+          );
+          this.mergePreviewVisible = true;
+          this.busy.set(false);
+        },
+        error: (error) => {
+          this.error.set(error.message);
+          this.busy.set(false);
+        },
+      });
+  }
+
+  /** Loads current games and opens the selected day import preview. */
+  previewDayImport(date: string): void {
+    if (this.busy() || this.mergePlan()) return;
+    const snapshot = this.fitForImport();
+    if (!this.tournament || !snapshot) return;
+    this.busy.set(true);
+    this.gameService
+      .all()
+      .pipe(take(1))
+      .subscribe({
+        next: (games) => {
+          this.mergePlan.set(
+            this.fitMergeService.prepareDay(
+              this.tournament!,
+              snapshot,
+              date,
+              games.filter((game) => game.tournamentId === this.tournament!.id),
+            ),
+          );
+          this.mergePreviewVisible = true;
+          this.busy.set(false);
+        },
+        error: (error) => {
+          this.error.set(error.message);
+          this.busy.set(false);
+        },
+      });
+  }
+
+  /** Loads current games and opens the preview for importing all FIT days. */
+  previewAllDaysImport(): void {
+    if (this.busy() || this.mergePlan()) return;
+    const snapshot = this.fitForImport();
+    if (!this.tournament || !snapshot) return;
+    this.busy.set(true);
+    this.gameService
+      .all()
+      .pipe(take(1))
+      .subscribe({
+        next: (games) => {
+          this.mergePlan.set(
+            this.fitMergeService.prepareAllDays(
+              this.tournament!,
+              snapshot,
+              games.filter((game) => game.tournamentId === this.tournament!.id),
+            ),
+          );
+          this.mergePreviewVisible = true;
+          this.busy.set(false);
+        },
+        error: (error) => {
+          this.error.set(error.message);
+          this.busy.set(false);
+        },
+      });
+  }
+
+  /** Applies the currently displayed import plan after preview validation. */
+  applyMergePlan(): void {
+    const plan = this.mergePlan();
+    if (!plan || plan.errors.length || this.busy()) return;
+    this.busy.set(true);
+    this.closeMergePreview();
+    this.fitMergeService.apply(plan).subscribe({
+      next: () => {
+        this.tournament = plan.tournament;
+        this.busy.set(false);
+      },
+      error: (error) => {
+        this.error.set(error.message);
+        this.busy.set(false);
+      },
+    });
+  }
+
+  /** Closes the preview without persisting any merge operation. */
+  closeMergePreview(): void {
+    this.mergePreviewVisible = false;
+    this.mergePlan.set(null);
+  }
+
+  /** Handles PrimeNG dialog visibility changes without reopening a stale plan. */
+  mergeDialogVisibilityChanged(visible: boolean): void {
+    if (!visible) this.closeMergePreview();
+  }
+
+  /** Returns the confirmation label for the current preview. */
+  confirmLabel(plan: FitMergePlan): string {
+    return plan.operation === 'structure'
+      ? `Confirm structure import (${plan.changes.length} changes)`
+      : plan.operation === 'all-days'
+        ? `Confirm all days import (${plan.changes.length} changes)`
+        : `Confirm day ${plan.date} import (${plan.changes.length} changes)`;
+  }
+
   private rebuildRenamingTree(): void {
     this.renamingTree = this.divisionRows.map((division) => ({
       data: division,
@@ -437,32 +716,37 @@ export class TournamentFitImportComponent implements OnInit {
       this.router.navigate(['/app/welcome']);
       return;
     }
-    this.tournamentService.byId(id).subscribe({
-      next: (tournament) => {
-        if (!tournament) {
-          this.router.navigate(['/tournament']);
-          return;
-        }
-        this.tournament = tournament;
-        this.applyConfiguration(tournament.fit);
-        this.fitDataLoading.set(true);
-        this.fitDataService.forTournament(id).subscribe({
-          next: (snapshots) => {
-            this.fitDataSnapshots.set(snapshots);
-            this.latestFitData.set(snapshots[0] ?? null);
-            if (snapshots[0]) this.displayFitData(snapshots[0]);
-            this.fitDataLoading.set(false);
-            this.loadCompetitionsAndSeasons();
-          },
-          error: (error) => {
-            this.error.set(error.message);
-            this.fitDataLoading.set(false);
-            this.loadCompetitionsAndSeasons();
-          },
-        });
-      },
-      error: (error) => this.error.set(error.message),
-    });
+    this.tournamentService
+      .byId(id)
+      .pipe(take(1))
+      .subscribe({
+        next: (tournament) => {
+          if (!tournament) {
+            this.router.navigate(['/tournament']);
+            return;
+          }
+          this.tournament = tournament;
+          this.applyConfiguration(tournament.fit);
+          this.fitDataLoading.set(true);
+          this.fitDataService.forTournament(id).subscribe({
+            next: (snapshots) => {
+              this.fitDataSnapshots.set(snapshots);
+              this.latestFitData.set(snapshots[0] ?? null);
+              if (snapshots[0]) {
+                this.displayFitData(snapshots[0], tournament.fit?.renaming);
+              }
+              this.fitDataLoading.set(false);
+              this.loadCompetitionsAndSeasons();
+            },
+            error: (error) => {
+              this.error.set(error.message);
+              this.fitDataLoading.set(false);
+              this.loadCompetitionsAndSeasons();
+            },
+          });
+        },
+        error: (error) => this.error.set(error.message),
+      });
   }
 
   /** Returns the selectable labels for persisted FIT snapshots. */
@@ -529,18 +813,22 @@ export class TournamentFitImportComponent implements OnInit {
     this.capitalizeTeamName = configuration.renaming.capitalizeTeamName;
   }
 
-  private displayFitData(snapshot: FITData): void {
+  private displayFitData(
+    snapshot: FITData,
+    renaming = snapshot.renaming,
+  ): void {
     this.selectedFitDataId = snapshot.id;
     this.data.set(snapshot);
     this.tournament!.fit = {
       competitionSlug: snapshot.competitionSlug,
       season: snapshot.season,
       targetTimeZone: snapshot.targetTimeZone,
-      renaming: snapshot.renaming,
+      renaming,
       lastImportDate: snapshot.importDate,
     };
-    this.applyConfiguration(snapshot);
-    this.prepareRows(snapshot, snapshot.renaming);
+    this.applyConfiguration(this.tournament!.fit);
+    this.prepareRows(snapshot, renaming);
+    this.data.set(this.withRenaming(snapshot, renaming));
   }
 
   download(): void {
@@ -656,11 +944,12 @@ export class TournamentFitImportComponent implements OnInit {
     this.teamRows = value.divisions.flatMap((division) =>
       division.teams.map((team) => ({
         division: division.name,
-        fitName: team,
-        automatic: team,
+        fitName: team.name,
+        automatic: team.name,
         kind: 'team' as const,
         appName:
-          config.teams.find((rename) => rename.fitName === team)?.appName ?? '',
+          config.teams.find((rename) => rename.fitName === team.name)
+            ?.appName ?? '',
       })),
     );
     this.rebuildRenamingTree();
@@ -687,6 +976,98 @@ export class TournamentFitImportComponent implements OnInit {
       fields: this.mergeRows(this.fieldRows, old?.fields),
       capitalizeTeamName: this.capitalizeTeamName,
     };
+  }
+
+  /** Persists the current manual naming choices in the tournament configuration. */
+  saveRenamingConfiguration(): void {
+    if (!this.tournament || !this.data()) return;
+    this.renamingSaving.set(true);
+    const config = this.configFromRows();
+    const source = this.baseFitData();
+    if (source) {
+      const recalculated = this.withRenaming(source, config);
+      this.data.set(recalculated);
+      this.prepareRows(source, config);
+    }
+    const current = this.tournament.fit ?? {
+      competitionSlug: this.competitionSlug,
+      season: this.season,
+      targetTimeZone: this.targetTimeZone,
+      renaming: config,
+      lastImportDate: this.data()!.importDate,
+    };
+    this.tournament.fit = {
+      ...current,
+      renaming: config,
+    };
+    this.tournamentService.save(this.tournament).subscribe({
+      next: () => this.renamingSaving.set(false),
+      error: (error) => {
+        this.error.set(error.message);
+        this.renamingSaving.set(false);
+      },
+    });
+  }
+
+  /** Applies unsaved rename edits to the selected snapshot before planning an import. */
+  private fitForImport(): FITData | null {
+    const source = this.baseFitData();
+    if (!source) return null;
+    return this.withRenaming(source, this.configFromRows());
+  }
+
+  private baseFitData(): FITData | null {
+    return (
+      this.fitDataSnapshots().find(
+        (snapshot) => snapshot.id === this.selectedFitDataId,
+      ) ?? this.data()
+    );
+  }
+
+  private withRenaming(source: FITData, config: FitRenamingConfig): FITData {
+    const value = structuredClone(source);
+    const oldConfig = source.renaming;
+    const divisionNames = new Map<
+      string,
+      { oldName: string; newName: string }
+    >();
+    const teamNames = new Map<string, string>();
+    for (const division of value.divisions) {
+      const oldName =
+        oldConfig.divisions.find((item) => item.fitName === division.name)
+          ?.appName || toCategory(division.name);
+      const newName =
+        config.divisions.find((item) => item.fitName === division.name)
+          ?.appName || toCategory(division.name);
+      divisionNames.set(oldName, { oldName, newName });
+      for (const team of division.teams) {
+        // console.log('fitForImport', division.name, team);
+        const oldTeam =
+          oldConfig.teams.find((item) => item.fitName === team.name)?.appName ||
+          team.name;
+        const newTeam =
+          config.teams.find((item) => item.fitName === team.name)?.appName ||
+          team.name;
+        teamNames.set(`${oldName}/${oldTeam}`, newTeam);
+        team.name = newTeam;
+      }
+    }
+    for (const game of value.games) {
+      const oldDivision = divisionNames.get(game.division);
+      const oldDivisionName = oldDivision?.oldName ?? game.division;
+      game.division = oldDivision?.newName ?? game.division;
+      game.teamHome =
+        teamNames.get(`${oldDivisionName}/${game.teamHome}`) ?? game.teamHome;
+      game.teamAway =
+        teamNames.get(`${oldDivisionName}/${game.teamAway}`) ?? game.teamAway;
+      if (game.fitField) {
+        game.field =
+          config.fields.find((item) => item.fitName === game.fitField)
+            ?.appName || game.fitField;
+      }
+    }
+    value.renaming = config;
+    return value;
   }
 
   private mergeRows(

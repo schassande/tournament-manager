@@ -1,5 +1,6 @@
 export const environment = {
   production: false,
+  functionsApiUrl: 'https://us-central1-tournament-manager-90045.cloudfunctions.net/api',
   firebase: {
     apiKey: 'AIzaSyCKuIT0Tcwgz1NDzTtMFOo23VBvZWiVXIQ',
     authDomain: "tournament-manager-90045.firebaseapp.com",

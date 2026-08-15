@@ -46,7 +46,7 @@ Sous-routes montees :
 
 ### Proxy FIT
 
-Le router `fitImportRouter` (`functions/src/fit-import.ts`) relaie les appels vers l'API publique FIT côté serveur. Le frontend appelle uniquement `/api/fitImport/...`, ce qui évite le blocage CORS du site FIT. Le proxy charge la saison, les divisions et les stages pour la route `download`, vérifie les erreurs HTTP et JSON, et renvoie les erreurs sous la forme `{ "error": "..." }`.
+Le router `fitImportRouter` (`functions/src/fit-import.ts`) relaie les appels vers l'API publique FIT côté serveur. Le frontend appelle directement l'URL publique de la fonction `api` (`...cloudfunctions.net/api/fitImport/...`), ce qui évite le blocage CORS du site FIT sans proxy local. Le relais charge la saison, les divisions et les stages pour la route `download`, vérifie les erreurs HTTP et JSON, et renvoie les erreurs sous la forme `{ "error": "..." }`.
 
 ## Fonction exposee : `createPerson`
 

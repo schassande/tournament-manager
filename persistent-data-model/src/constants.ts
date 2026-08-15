@@ -23,7 +23,7 @@ export const palette = {
   },
   violet: {
     name: 'violet',
-    background:  ['#570f0f', '#701414', '#891818', '#a31d1d', '#bc2121', '#d52626', '#dd3c3c', '#e15555', '#e66e6e', '#ea8888', '#eea1a1', '#f3baba', '#f7d4d4'],
+    background:  ['#3f0f57', '#511470', '#641889', '#761da3', '#8821bc', '#9b27d5', '#a83dde', '#b255e1', '#be6ee6', '#c988ea', '#d5a1ee', '#e0baf3', '#ebd4f7'],
     color:       ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#000000', '#000000', '#000000', '#000000', '#000000', '#000000', '#000000'],
   },
   yellow: {

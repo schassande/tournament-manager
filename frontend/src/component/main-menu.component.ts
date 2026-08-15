@@ -24,7 +24,7 @@ import { TitleService } from '../service/title.service';
       </div>
 
       <div class="p-toolbar-group-right">
-        {{ userName() }}
+        <span (click)="onAvatarClick(userMenu, $event)">{{ userName() }} </span>
         <p-menu #userMenu [model]="userMenuItems()" [popup]="true"></p-menu>
         <p-avatar
           icon="pi pi-user"

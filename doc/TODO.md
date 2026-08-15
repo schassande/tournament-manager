@@ -26,7 +26,6 @@
 - Upgrade
 - Ranking
 - Scorecard
-- Déploiement prod/dev
 
 ==> diffusion / communication / POC
 

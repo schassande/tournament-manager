@@ -101,12 +101,18 @@ export interface BasicDivision {
 }
 export interface Division extends WithId, BasicDivision {
   teams: Team[]; // list of teams in the division
+  /** FIT division slug used to identify the division across imports. */
+  fitSlug?: string;
 }
 export interface Team extends WithId {
   name: string; // name of the team
   shortName: string; // short name of the team
   divisionName: string; // name of the division
   playerIds?: string[]; // list of players in the team
+  /** FIT division slug containing this team. */
+  fitDivisionSlug?: string;
+  /** FIT team slug used to identify the team across imports. */
+  fitSlug?: string;
 }
 export interface TeamDivision extends Team {
   divisionShortName: string;
@@ -156,6 +162,8 @@ export interface Game extends PersistentObject {
   fieldId: string; // unique identifier of the field
   homeTeamId: string; // unique identifier of the home team
   awayTeamId: string; // unique identifier of the away team
+  /** Displayed game type, for example Pool or a knockout round. */
+  what: string;
   score?: {
     homeTeamScore: number; // score of the home team
     awayTeamScore: number; // score of the away team

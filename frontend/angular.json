@@ -64,8 +64,7 @@
               "buildTarget": "test-prime:build:production"
             },
             "development": {
-              "buildTarget": "test-prime:build:development",
-              "proxyConfig": "proxy.conf.json"
+              "buildTarget": "test-prime:build:development"
             }
           },
           "defaultConfiguration": "development"

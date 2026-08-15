@@ -172,6 +172,7 @@ npm run deploy
 ## Notes importantes
 
 - Les variables Firebase du front sont configurees dans `frontend/src/environments/environment.ts` et `environment.prod.ts`.
+- Les appels HTTP vers les Firebase Functions utilisent directement `functionsApiUrl` dans ces fichiers d'environnement ; aucun proxy local Angular n'est requis.
 - Le front accede directement a Firestore avec AngularFire.
 - Le backend ne fournit actuellement qu'une API HTTP de calcul de statistiques d'allocation ; le reste du CRUD passe par Firestore depuis le frontend.
 - Decision technique : le datamodel partage n'est plus distribue comme package workspace. Le frontend le consomme via le mapping TypeScript et le backend l'embarque directement pendant sa compilation.

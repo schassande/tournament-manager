@@ -7,8 +7,9 @@ import {
   PersistentObject,
   Tournament,
 } from '@tournament-manager/persistent-data-model';
+import { environment } from '../environments/environment';
 
-const FIT_PROXY = '/api/fitImport';
+const FIT_API = `${environment.functionsApiUrl}/fitImport`;
 
 export interface FitReference {
   title: string;
@@ -73,6 +74,9 @@ export interface FitGame {
   changes: string[];
   incomplete: boolean;
   washout: boolean;
+  fitDivisionSlug?: string;
+  fitHomeTeamSlug?: string;
+  fitAwayTeamSlug?: string;
 }
 export interface FITData extends PersistentObject {
   tournamentId: string;
@@ -81,7 +85,11 @@ export interface FITData extends PersistentObject {
   season: string;
   targetTimeZone: string;
   renaming: FitRenamingConfig;
-  divisions: { name: string; teams: string[] }[];
+  divisions: {
+    name: string;
+    fitSlug?: string;
+    teams: { name: string; fitSlug?: string; fitId?: number }[];
+  }[];
   days: { date: string; timeslots: string[] }[];
   games: FitGame[];
   excludedByes: number;
@@ -165,7 +173,7 @@ export class FitImportService {
 
   private get<T>(path: string): Observable<T> {
     return this.http
-      .get<T>(`${FIT_PROXY}${path}`)
+      .get<T>(`${FIT_API}${path}`)
       .pipe(
         catchError((error: HttpErrorResponse) =>
           throwError(
@@ -197,21 +205,16 @@ export class FitImportService {
     const unresolvedTeams: number[] = [];
     const incompleteGames: number[] = [];
     for (const division of divisions) {
-      const teams = new Map(
-        (division.teams ?? []).map((team) => [
-          team.id,
-          this.renamedTeam(team, config),
-        ]),
-      );
+      const teams = new Map((division.teams ?? []).map((team) => [team.id, team]));
       for (const stage of division.stages ?? [])
         for (const match of stage.matches ?? []) {
           if (match.is_bye) {
             continue;
           }
-          const home =
-            match.home_team == null ? '' : (teams.get(match.home_team) ?? '');
-          const away =
-            match.away_team == null ? '' : (teams.get(match.away_team) ?? '');
+          const homeTeam = match.home_team == null ? undefined : teams.get(match.home_team);
+          const awayTeam = match.away_team == null ? undefined : teams.get(match.away_team);
+          const home = homeTeam ? this.renamedTeam(homeTeam, config) : '';
+          const away = awayTeam ? this.renamedTeam(awayTeam, config) : '';
           if (match.home_team != null && !home)
             unresolvedTeams.push(match.home_team);
           if (match.away_team != null && !away)
@@ -223,7 +226,7 @@ export class FitImportService {
             ? 'Pool'
             : (match.round ?? '');
           const game: FitGame = {
-            date: dateTime.date,
+            ...(dateTime.date !== undefined ? { date: dateTime.date } : {}),
             timeslot: dateTime.time,
             fitField: rawField,
             field: fieldNames.get(rawField) || rawField,
@@ -238,6 +241,15 @@ export class FitImportService {
             incomplete:
               !dateTime.date || !dateTime.time || !rawField || !home || !away,
             washout: match.is_washout === true,
+            ...(division.slug !== undefined
+              ? { fitDivisionSlug: division.slug }
+              : {}),
+            ...(homeTeam?.slug !== undefined
+              ? { fitHomeTeamSlug: homeTeam.slug }
+              : {}),
+            ...(awayTeam?.slug !== undefined
+              ? { fitAwayTeamSlug: awayTeam.slug }
+              : {}),
           };
           if (game.incomplete) incompleteGames.push(match.id);
           games.push(game);
@@ -245,7 +257,8 @@ export class FitImportService {
     }
     const names = divisions.map((division) => ({
       name: division.title,
-      teams: this.teamsReferencedBy(division, config.capitalizeTeamName),
+      ...(division.slug !== undefined ? { fitSlug: division.slug } : {}),
+      teams: this.teamsReferencedBy(division, config),
     }));
     const dates = Array.from(
       new Set(
@@ -333,21 +346,16 @@ export class FitImportService {
 
   private teamsReferencedBy(
     division: FitDivision,
-    capitalize: boolean,
-  ): string[] {
-    const teams = new Map(
-      (division.teams ?? []).map((team) => [team.id, team]),
-    );
-    const names = (division.stages ?? []).flatMap((stage) =>
-      (stage.matches ?? []).flatMap((match) =>
-        [match.home_team, match.away_team]
-          .filter((id): id is number => id != null)
-          .map((id) => teams.get(id))
-          .filter((team): team is FitTeam => !!team)
-          .map((team) => getTeamName(team, capitalize)),
-      ),
-    );
-    return Array.from(new Set(names)).sort();
+    config: FitRenamingConfig,
+  ): { name: string; fitSlug?: string; fitId?: number }[] {
+    const names = (division.teams ?? []).map((team) => ({
+      name: this.renamedTeam(team, config),
+      ...(team.slug !== undefined ? { fitSlug: team.slug } : {}),
+      fitId: team.id,
+    }));
+    return Array.from(
+      new Map(names.map((team) => [`${team.fitId ?? ''}:${team.name}`, team])).values(),
+    ).sort((left, right) => left.name.localeCompare(right.name));
   }
 
   private renamedTeam(team: FitTeam, config: FitRenamingConfig): string {

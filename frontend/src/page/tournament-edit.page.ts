@@ -62,35 +62,34 @@ interface ManagerView {
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="general">
-      <div class="form-field">
-        <label for="name">Name</label>
-        <input id="name" type="text" pInputText [(ngModel)]="tournament()!.name" required />
-      </div>
-      <div class="form-field">
-        <label for="description">Description</label>
-        <textarea id="description" pInputTextarea [(ngModel)]="tournament()!.description"></textarea>
-      </div>
-      <div class="form-field">
-        <label for="country">Country</label>
-        <p-select id="description" size="small" [options]="countries" [(ngModel)]="country"
-          optionLabel="name" [filter]="true" filterBy="name"
-          appendTo="body" placeholder="Country" (onChange)="countrySelected()" />
-        </div>
+          <div class="form-field">
+            <label for="name">Name *</label>
+            <input id="name" type="text" pInputText [(ngModel)]="tournament()!.name" required />
+          </div>
+          <div class="form-field">
+            <label for="description">Description</label>
+            <textarea id="description" pInputTextarea [(ngModel)]="tournament()!.description"></textarea>
+          </div>
+          <div class="form-field">
+            <label for="country">Country *</label>
+            <p-select id="description" size="small" [options]="countries" [(ngModel)]="country"
+              optionLabel="name" [filter]="true" filterBy="name"
+              appendTo="body" placeholder="Country" (onChange)="countrySelected()" />
+          </div>
         </p-tabpanel>
 
         <p-tabpanel value="fields">
-      <app-tournament-fields-edit
-        [(fields)]="tournament()!.fields">
-      </app-tournament-fields-edit>
+          <app-tournament-fields-edit [(fields)]="tournament()!.fields" (fieldsChange)="fieldsChanged()">
+          </app-tournament-fields-edit>
         </p-tabpanel>
 
         <p-tabpanel value="days">
-      <app-tournament-days-edit
-        [tournament]="tournament()!"
-        (dayChange)="onDayChange()"
-        (startDateChange)="onTournamentStartDateChange($event)"
-        (endDateChange)="onTournamentEndDateChange($event)">
-      </app-tournament-days-edit>
+          <app-tournament-days-edit
+            [tournament]="tournament()!"
+            (dayChange)="onDayChange()"
+            (startDateChange)="onTournamentStartDateChange($event)"
+            (endDateChange)="onTournamentEndDateChange($event)">
+          </app-tournament-days-edit>
         </p-tabpanel>
 
         <p-tabpanel value="divisions">
@@ -131,12 +130,11 @@ interface ManagerView {
     .page {
       margin: 0 auto;
     }
-
-    .chapterSection .form-field {
+    .form-field {
       margin: 5px 0;
       vertical-align: middle;
     }
-    .chapterSection .form-field label {
+    .form-field label {
       display: inline-block;
       width: 150px;
       text-align: right;
@@ -223,6 +221,10 @@ export class TournamentEditComponent  implements OnInit {
       this.save();
       return tournament
     });
+  }
+
+  fieldsChanged() {
+    this.save();
   }
 
   onTournamentStartDateChange(startDate: number) {
