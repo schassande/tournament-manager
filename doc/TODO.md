@@ -1,7 +1,6 @@
 # TODO list du projet Tournament Maager
 
 ## Priorité 2
-- Gérer la disponibilité des RefereeCoach + Passage à PrimeNG
 - Ajouter la configuration de l'allocation
   - Back 2 back autorisé
   - Avec ou sans coach
@@ -56,7 +55,7 @@
 - Configuration général du tournoi en onglet
 - 2026/08/12: Tournamanent manager (no restrictions supported yet)
 - 2026/08/15: FIT Data import + Export Excel
-- 2026/08/16: Gérer la disponibilité des Arbitres + Passage à PrimeNG
+- 2026/08/16: Gérer la disponibilité des Arbitres et des coach arbitre
 
 
 ## Bugs non reproduis
