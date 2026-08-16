@@ -1,12 +1,7 @@
 # TODO list du projet Tournament Maager
 
 ## Priorité 2
- Games: import FIT
-- Referees : bug teams sauvegarde ou chargement de teams
-- Gérer la disponibilité des Arbitres
-  - Passage à PrimeNG
-- Gérer la disponibilité des RefereeCoach
-  - Passage à PrimeNG
+- Gérer la disponibilité des RefereeCoach + Passage à PrimeNG
 - Ajouter la configuration de l'allocation
   - Back 2 back autorisé
   - Avec ou sans coach
@@ -56,8 +51,15 @@
 
 
 ## DONE
-- 2026/08/09 : durcissement des règles firestore
+- 2026/08/09: durcissement des règles firestore
 - Authentification google
 - Configuration général du tournoi en onglet
-- Tournamanent manager (no restrictions supported yet)
+- 2026/08/12: Tournamanent manager (no restrictions supported yet)
+- 2026/08/15: FIT Data import + Export Excel
+- 2026/08/16: Gérer la disponibilité des Arbitres + Passage à PrimeNG
+
+
+## Bugs non reproduis
+- Referees : bug teams sauvegarde ou chargement de teams
+
 

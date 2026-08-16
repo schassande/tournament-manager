@@ -1,4 +1,5 @@
 export * from "./referee-allocation";
+export * from "./referee-availability";
 export * from "./constants";
 export * from "./persistence";
 export * from "./person";

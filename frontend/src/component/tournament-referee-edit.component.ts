@@ -6,13 +6,22 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { FieldsetModule } from 'primeng/fieldset';
 import { SelectModule } from 'primeng/select';
 import { AutoCompleteModule } from 'primeng/autocomplete';
+import { TabsModule } from 'primeng/tabs';
 import { FormsModule } from '@angular/forms';
+import { AttendeeUnavailabilityComponent } from './attendee-unavailability.component';
 
 @Component({
   selector: 'app-tournament-referee-edit',
   template: `
-<div style="padding: 10px;">
+<div>
 @if (referee?.person) {
+  <p-tabs value="general">
+    <p-tablist>
+      <p-tab value="general">General</p-tab>
+      <p-tab value="unavailability">Unavailability</p-tab>
+    </p-tablist>
+    <p-tabpanels>
+      <p-tabpanel value="general">
   <div class="fieldSet"></div>
   @if (tournament?.allowPlayerReferees) {
     <div class="form-field">
@@ -130,6 +139,17 @@ import { FormsModule } from '@angular/forms';
       }
     </p-fieldset>
   }
+      </p-tabpanel>
+      <p-tabpanel value="unavailability">
+        @if (referee && tournament) {
+          <app-attendee-unavailability
+            [attendee]="referee.attendee"
+            [tournament]="tournament">
+          </app-attendee-unavailability>
+        }
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
 }
 </div>`,
   styles: [`
@@ -145,7 +165,9 @@ import { FormsModule } from '@angular/forms';
     FieldsetModule,
     FormsModule,
     SelectModule,
-    ToggleSwitchModule
+    TabsModule,
+    ToggleSwitchModule,
+    AttendeeUnavailabilityComponent
   ],
   standalone: true
 })

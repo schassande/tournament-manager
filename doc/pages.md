@@ -170,12 +170,14 @@ Fonctionnalites principales :
 - edition inline du nom, short name, niveau, upgrade, categorie, genre
 - liaison d'un player referee a une equipe
 - ouverture d'une popup detail d'edition
+- edition des disponibilites par jour, `PartDay` et timeslot dans l'onglet `Unavailability`
 - suppression
 
 Comportements notables :
 
 - active ou desactive le mode `allowPlayerReferees` du tournoi
 - si ce mode est coupe, propose de supprimer les player referees existants
+- les modifications de disponibilite sont sauvegardees a la fermeture de la popup
 
 ## `/tournament/:tournamentId/coach`
 

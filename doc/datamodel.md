@@ -148,8 +148,15 @@ Champs principaux :
 - `player`
 - `referee`
 - `refereeCoach`
+- `unavailabilities[]` (optionnel) : exceptions de disponibilité par `dayId` et `partDayId`
 - `partDays[]`
 - `comments`
+
+Chaque entrée de `unavailabilities[]` contient `dayId`, `partDayId`,
+`unavailability` (`TOTAL` ou `PARTIAL`) et `unavailableSlotIds[]`. L'absence
+d'une entrée signifie que l'attendee est disponible sur tout le `PartDay`.
+Une entrée `TOTAL` utilise une liste de slots vide ; une entrée `PARTIAL`
+contient uniquement les slots indisponibles.
 
 `roleRestrictions[]` précise les limites applicables à un rôle porté par l'attendee. Chaque restriction contient :
 

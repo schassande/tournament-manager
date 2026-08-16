@@ -132,8 +132,21 @@ export interface Attendee extends PersistentObject {
   };
   referee?: RefereeInfo;
   refereeCoach?: RefereeCoachInfo;
+  /** Availability exceptions for the attendee, indexed by tournament part-day. */
+  unavailabilities?: PartDayUnavailability[];
   roleRestrictions?: AttendeeRoleRestriction[]; // Define the exact rights of the attendee
   comments?: string;
+}
+
+/** Describes whether an attendee is unavailable for all or part of a part-day. */
+export type Unavailability = 'TOTAL' | 'PARTIAL';
+
+/** Persisted unavailable slots for one tournament part-day. */
+export interface PartDayUnavailability {
+  dayId: string;
+  partDayId: string;
+  unavailability: Unavailability;
+  unavailableSlotIds: string[];
 }
 export interface AttendeeRoleRestriction {
   role: AttendeeRole; // roles of the attendee
