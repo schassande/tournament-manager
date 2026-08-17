@@ -52,21 +52,27 @@ import { DialogModule } from 'primeng/dialog';
       <td colspan="2" class="noBorder"></td>
       @for(tAlloc of tournamentAllocations(); track tAlloc.data.id) {
         <th class="colAllocation {{tAlloc.data.current ? 'current-allocation' : ''}}">
-          <div style="height: 30px; text-align: center">
-            @if (tAlloc.data.current) {
-            Selected
-            } @else {
-              <div (click)="toggleAllocationActivation(tAlloc.data)" class="action-item">
-                <i class="pi pi-play action" aria-label="Set as current allocation" title="Set as current allocation"></i>Select
-              </div>
-            }
-          </div>
-          <div>
-            <input type="text" pInputText [(ngModel)]="tAlloc.data.name" required
-              (ngModelChange)="onTourAllocChanged(tAlloc.data)" pSize="small" style="width: 200px;" />
-          </div>
+          @if (tournamentAllocations()!.length > 1) {
+            <div style="height: 30px; text-align: center">
+              @if (tAlloc.data.current) {
+              Selected
+              } @else {
+                <div (click)="toggleAllocationActivation(tAlloc.data)" class="action-item">
+                  <i class="pi pi-play action" aria-label="Set as current allocation" title="Set as current allocation"></i>
+                  <span>Select</span>
+                </div>
+              }
+            </div>
+            <div>
+              <input type="text" pInputText [(ngModel)]="tAlloc.data.name" required
+                (ngModelChange)="onTourAllocChanged(tAlloc.data)" pSize="small" style="width: 200px;" />
+            </div>
+          }
           <div class="action-panel">
             <div class="action-row">
+              <div (click)="configureTournamentAllocation()" class="action-item">
+                <i class="pi pi-cog action" aria-label="Configure allocation" title="Configure allocation"></i>
+              </div>
               <div (click)="createTournamentAllocation()" class="action-item">
                 <i class="pi pi-plus action action-plus" aria-label="Create allocation" title="Create allocation"></i>
               </div>
@@ -91,16 +97,18 @@ import { DialogModule } from 'primeng/dialog';
         <td>Full</td>
         @for(fav of dayAllocation.fullColumns; track fav.tournament.id) {
           <td class="colAllocation {{fav.tournament.current ? 'current-allocation' : ''}} {{!dayAllocation.showParts && lastDay ?'last-row':''}}">
-            <div>
-              <p-select [options]="fav.fragments" [(ngModel)]="fav.selected" optionLabel="data.name" placeholder="Select an allocation"
-                (onChange)="selectFragmentAllocation(fav.tournament, $event.value)"
-                style="width: 200px;" size="small" />
-            </div>
+            @if (fav.fragments.length > 0) {
+              <div>
+                <p-select [options]="fav.fragments" [(ngModel)]="fav.selected" optionLabel="data.name" placeholder="Select an allocation"
+                  (onChange)="selectFragmentAllocation(fav.tournament, $event.value)"
+                  style="width: 200px;" size="small" />
+              </div>
+            }
             <div class="action-panel">
-              @if (fav.fragments.length > 0 && fav.selected) {
-                <div class="action-row">
+              <div class="action-row">
+                @if (fav.fragments.length > 0 && fav.selected) {
                   <div (click)="routeToAllocationEdit(fav.tournament, fav.selected.data)" class="action-item">
-                    <i class="pi pi-pencil action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
+                    <i class="pi pi-pencil action" aria-label="Edit allocation" title="Edit allocation"></i>
                   </div>
                   @if (fav.tournament.current) {
                     <div (click)="toggleFragmentAllocationVisibilty(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
@@ -111,13 +119,14 @@ import { DialogModule } from 'primeng/dialog';
                       }
                     </div>
                   }
-                </div>
-              }
-              <div class="action-row">
+                }
                 <div (click)="createFragmentAllocation(fav.tournament, dayAllocation.day.id)" class="action-item">
                   <i class="pi pi-plus action action-plus" aria-label="Create a new full day allocation" title="Create a new full day allocation"></i>
                 </div>
                 @if (fav.fragments.length > 0 && fav.selected) {
+                  <div (click)="configureFragmentAllocation()" class="action-item">
+                    <i class="pi pi-cog action" aria-label="Configure allocation" title="Configure allocation"></i>
+                  </div>
                   <div (click)="duplicateFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
                     <i class="pi pi-copy action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
                   </div>
@@ -274,6 +283,13 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
         return [...das];
       })
     });
+  }
+  configureTournamentAllocation() {
+    // TODO
+  }
+
+  configureFragmentAllocation() {
+    // TODO
   }
   createFragmentAllocation(tourAlloc: TournamentRefereeAllocation, dayId: string, partDayId: string|undefined = undefined) {
     this.modalCreateAllocation.tourAlloc = tourAlloc;

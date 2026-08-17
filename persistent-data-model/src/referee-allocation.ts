@@ -22,6 +22,24 @@ export interface TournamentRefereeAllocation extends PersistentObject {
   tournamentId: string; // unique identifier of the tournament
   current: boolean; // true if the tournament allocation is the current one
   fragmentRefereeAllocations: FragmentRefereeAllocationDesc[]; // list of the allocation fragment identifier
+  generalConfig?: GeneralAllocationConfiguration;
+}
+/**
+ * Define the general configuration of the allocation
+ */
+interface GeneralAllocationConfiguration {
+  /** Maximal number of minutes in a row for a referee. Default is 50min */
+  maxGameInRowForReferee: number;
+  /** Maximal number of minutes in a row for a referee coach. Default is 160 */
+  maxGameInRowForRefereeCoach: number;
+  /** Does the allocation must allocate the referee coaches: Default is false */
+  allocateRefereeCoach: boolean;
+  /** Does a referee coach can be allocated on 2 games for a timeslot (One half time each). Default is false */
+  refereeCoachTwoField: boolean;
+  /** Number of Referee to allocate per Game (could include a backup). Default is 3 */
+  nbRefereePerGame: number;
+  /** Max number of minute of game time per Day. Default is 140min */
+  maxRefereeGameTimePerDay: number;
 }
 
 export interface FragmentRefereeAllocationDesc extends WithId {
@@ -35,6 +53,7 @@ export interface FragmentRefereeAllocation extends FragmentRefereeAllocationDesc
   refereeAllocatorAttendeeIds: string[]; // list of the authors identifier of the referee allocation (Attendee.id)
   refereeCoachAllocatorAttendeeIds: string[]; // list of authors identifier of the author of the referee coach allocation (Attendee.id)
   visible: boolean; // true if the allocation is visible
+  generalConfig?: GeneralAllocationConfiguration;
 }
 
 
