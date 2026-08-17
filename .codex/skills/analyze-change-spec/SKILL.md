@@ -13,6 +13,9 @@ Ne pas implémenter la fonctionnalité pendant cette analyse, sauf demande expli
 
 ## Règles impératives
 
+- Proposer des solutions numérotées pour chaque question ; placer la solution recommandée en premier et la marquer `(Recommended)`.
+- Permettre une réponse courte par numéro (`1`, `2`, etc.) et accepter une réponse libre si aucune proposition ne convient.
+
 - Lire toute la spec avant de conclure qu'une information manque.
 - Ne jamais poser une question dont la réponse figure déjà dans la spec ou dans une réponse précédente.
 - Poser une seule question par message et attendre la réponse avant de continuer.
@@ -87,23 +90,38 @@ Conserver une liste ordonnée des questions restantes. Le total `Y` est le nombr
 
 ### 4. Poser les questions une par une
 
+Pour chaque question, préparer 2 à 4 solutions mutuellement exclusives lorsque le contexte le permet. Décrire chaque solution en une phrase et indiquer brièvement son principal effet ou compromis. Ne pas présenter une solution comme validée par le projet si elle ne l'est pas.
+
 S'il reste des questions :
 
 1. Poser uniquement la première question non résolue.
 2. Commencer le message par `Question X/Y — questions restantes après celle-ci : Y-X`.
 3. Formuler la question en français pour faciliter l'échange, tout en mentionnant les termes anglais à inscrire dans la spec si nécessaire.
-4. Ne pas demander de confirmation générale et ne pas poser de question supplémentaire dans le même message.
-5. Attendre la réponse de l'utilisateur.
+4. Afficher les solutions sous forme numérotée, par exemple :
+
+   ```text
+   1. Option recommandée (Recommended) — ...
+   2. ... — ...
+   3. ... — ...
+
+   Répondre avec le numéro de l'option choisie, ou préciser une autre réponse.
+   ```
+
+5. Ne pas demander de confirmation générale et ne pas poser de question supplémentaire dans le même message.
+6. Attendre la réponse de l'utilisateur. Une réponse composée uniquement d'un numéro sélectionne l'option correspondante.
 
 Après chaque réponse :
 
 1. Interpréter la réponse sans inventer de détail.
-2. Traduire et intégrer la décision dans la section standard appropriée.
-3. Mettre à jour `Last updated` avec la date du jour.
-4. Vérifier à nouveau les questions restantes et supprimer toute question devenue inutile.
-5. Poser ensuite la prochaine question seule, avec son nouveau compteur.
+2. Si la réponse est un numéro, appliquer exactement le texte de l'option choisie ; si elle est libre, clarifier uniquement ce qui reste ambigu.
+3. Traduire et intégrer la décision dans la section standard appropriée.
+4. Mettre à jour `Last updated` avec la date du jour.
+5. Vérifier à nouveau les questions restantes et supprimer toute question devenue inutile.
+6. Poser ensuite la prochaine question seule, avec son nouveau compteur et ses propres options numérotées.
 
 ### 5. Terminer l'analyse
+
+Lorsque la spec est prête, ne pas afficher de résumé ni de compte rendu d'analyse dans le chat. Répondre uniquement : `La spec est prête. Voulez-vous passer à l'implémentation ?`
 
 Lorsque toutes les informations nécessaires sont présentes :
 
@@ -129,7 +147,7 @@ Citer les chemins, symboles, routes ou champs qui justifient chaque impact. Dist
 
 ## Compte rendu final
 
-Utiliser ce format lorsque l'analyse est terminée :
+Utiliser ce format uniquement pour structurer les informations conservées dans la spec ; ne pas l'afficher dans le chat lorsque l'analyse est terminée :
 
 ```markdown
 # Spec analysis: <file>

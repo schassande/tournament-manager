@@ -179,4 +179,4 @@ npm run deploy
 
 ## Analyse des specs de changement
 
-Une skill Codex locale est disponible dans `.codex/skills/analyze-change-spec/`. Elle analyse le fichier spec indiqué dans `doc/changes/`, vérifie s'il est prêt pour l'implémentation, pose les questions manquantes une par une avec un compteur, puis met à jour la spec en anglais dans une structure standard avec sa date de mise à jour. Elle ne modifie pas le code par défaut.
+Une skill Codex locale est disponible dans `.codex/skills/analyze-change-spec/`. Elle analyse le fichier spec indiqué dans `doc/changes/`, vérifie s'il est prêt pour l'implémentation, pose les questions manquantes une par une avec un compteur et des solutions numérotées, puis met à jour la spec en anglais dans une structure standard avec sa date de mise à jour. Lorsque la spec est prête, elle le signale simplement et propose de passer à l'implémentation, sans afficher de résumé dans le chat. Elle ne modifie pas le code par défaut.
