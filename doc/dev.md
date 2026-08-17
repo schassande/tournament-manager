@@ -176,3 +176,7 @@ npm run deploy
 - Le front accede directement a Firestore avec AngularFire.
 - Le backend ne fournit actuellement qu'une API HTTP de calcul de statistiques d'allocation ; le reste du CRUD passe par Firestore depuis le frontend.
 - Decision technique : le datamodel partage n'est plus distribue comme package workspace. Le frontend le consomme via le mapping TypeScript et le backend l'embarque directement pendant sa compilation.
+
+## Analyse des specs de changement
+
+Une skill Codex locale est disponible dans `.codex/skills/analyze-change-spec/`. Elle analyse le fichier spec indiqué dans `doc/changes/`, vérifie s'il est prêt pour l'implémentation, pose les questions manquantes une par une avec un compteur, puis met à jour la spec en anglais dans une structure standard avec sa date de mise à jour. Elle ne modifie pas le code par défaut.
