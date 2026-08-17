@@ -224,6 +224,7 @@ Champs principaux :
 - `tournamentId`
 - `current`
 - `fragmentRefereeAllocations[]`
+- `generalConfig` (optionnel) : configuration générale de l'allocation
 
 Usage :
 
@@ -243,6 +244,16 @@ Champs principaux :
 - `refereeAllocatorAttendeeIds[]`
 - `refereeCoachAllocatorAttendeeIds[]`
 - `visible`
+- `generalConfig` (optionnel) : configuration générale du fragment
+
+`generalConfig` contient :
+
+- `maxGameInRowForReferee` : entier, en minutes, de 20 à 60 (défaut 50)
+- `maxGameInRowForRefereeCoach` : entier, en minutes, de 20 à 200 (défaut 160)
+- `allocateRefereeCoach` : booléen (défaut false)
+- `refereeCoachTwoField` : booléen (défaut false)
+- `nbRefereePerGame` : entier, au moins 1 (défaut 3)
+- `maxRefereeGameTimePerDay` : entier, en minutes, de 20 à 200 (défaut 140)
 
 Usage :
 

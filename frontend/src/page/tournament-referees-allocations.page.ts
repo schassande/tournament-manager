@@ -1,7 +1,7 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { map, mergeMap } from 'rxjs';
 
-import { Day, PartDay, TournamentRefereeAllocation, FragmentRefereeAllocation, RefereeCoach, FragmentRefereeAllocationDesc } from '@tournament-manager/persistent-data-model';
+import { Day, PartDay, TournamentRefereeAllocation, FragmentRefereeAllocation, RefereeCoach, FragmentRefereeAllocationDesc, GeneralAllocationConfiguration } from '@tournament-manager/persistent-data-model';
 import { AbstractTournamentPage } from '../component/tournament-abstract.page';
 import { DateService } from '../service/date.service';
 import { TournamentRefereeAllocationService } from '../service/tournament-referee-allocation.service';
@@ -43,6 +43,48 @@ import { DialogModule } from 'primeng/dialog';
           <p-button label="Create" (click)="confirmAllocationCreation()"/>
       </div>
   </p-dialog>
+  <p-dialog header="Allocation configuration" [modal]="true" [(visible)]="modalAllocationConfig.show" [style]="{ width: '34rem' }" (onHide)="resetAllocationConfigModal()">
+    @if (modalAllocationConfig.draft) {
+      <div class="allocation-config-form">
+        <label for="maxGameInRowForReferee">Max referee consecutive game time (minutes)</label>
+        <input pInputText id="maxGameInRowForReferee" type="number" min="20" max="60" step="1"
+          [(ngModel)]="modalAllocationConfig.draft.maxGameInRowForReferee" />
+
+        <label for="maxGameInRowForRefereeCoach">Max referee coach consecutive game time (minutes)</label>
+        <input pInputText id="maxGameInRowForRefereeCoach" type="number" min="20" max="200" step="1"
+          [(ngModel)]="modalAllocationConfig.draft.maxGameInRowForRefereeCoach" />
+
+        <label for="maxRefereeGameTimePerDay">Max referee game time per day (minutes)</label>
+        <input pInputText id="maxRefereeGameTimePerDay" type="number" min="20" max="200" step="1"
+          [(ngModel)]="modalAllocationConfig.draft.maxRefereeGameTimePerDay" />
+
+        <label for="nbRefereePerGame">Referees per game</label>
+        <input pInputText id="nbRefereePerGame" type="number" min="1" step="1"
+          [(ngModel)]="modalAllocationConfig.draft.nbRefereePerGame" />
+
+        <label class="config-checkbox" for="allocateRefereeCoach">
+          <input id="allocateRefereeCoach" type="checkbox" [(ngModel)]="modalAllocationConfig.draft.allocateRefereeCoach" />
+          Allocate referee coaches
+        </label>
+
+        <label class="config-checkbox" for="refereeCoachTwoField">
+          <input id="refereeCoachTwoField" type="checkbox" [(ngModel)]="modalAllocationConfig.draft.refereeCoachTwoField" />
+          Allow referee coaches on two fields
+        </label>
+
+        @if (modalAllocationConfig.error) {
+          <div class="config-error" role="alert">{{modalAllocationConfig.error}}</div>
+        }
+
+        <div class="config-actions">
+          <p-button label="Delete" severity="danger" (click)="deleteAllocationConfig()" />
+          <span class="config-actions-spacer"></span>
+          <p-button label="Cancel" severity="secondary" (click)="modalAllocationConfig.show = false" />
+          <p-button label="Save" [disabled]="!isAllocationConfigValid()" (click)="saveAllocationConfig()" />
+        </div>
+      </div>
+    }
+  </p-dialog>
   <table class="dayAllocationTable">
     <tr>
       <td colspan="2" class="noBorder"></td>
@@ -70,7 +112,7 @@ import { DialogModule } from 'primeng/dialog';
           }
           <div class="action-panel">
             <div class="action-row">
-              <div (click)="configureTournamentAllocation()" class="action-item">
+              <div (click)="configureTournamentAllocation(tAlloc.data)" class="action-item">
                 <i class="pi pi-cog action" aria-label="Configure allocation" title="Configure allocation"></i>
               </div>
               <div (click)="createTournamentAllocation()" class="action-item">
@@ -124,7 +166,7 @@ import { DialogModule } from 'primeng/dialog';
                   <i class="pi pi-plus action action-plus" aria-label="Create a new full day allocation" title="Create a new full day allocation"></i>
                 </div>
                 @if (fav.fragments.length > 0 && fav.selected) {
-                  <div (click)="configureFragmentAllocation()" class="action-item">
+                  <div (click)="configureFragmentAllocation(fav.selected.data)" class="action-item">
                     <i class="pi pi-cog action" aria-label="Configure allocation" title="Configure allocation"></i>
                   </div>
                   <div (click)="duplicateFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
@@ -217,6 +259,12 @@ import { DialogModule } from 'primeng/dialog';
     .action.pi-plus {  color: green;}
     .action.pi-copy {  color: blue;}
     .action.pi-eye, .action.pi-eye-slash { color: orange;}
+    .allocation-config-form { display: grid; gap: 8px; }
+    .allocation-config-form input[type='number'] { width: 100%; }
+    .config-checkbox { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .config-error { color: #b91c1c; margin-top: 8px; }
+    .config-actions { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+    .config-actions-spacer { flex: 1; }
   `],
   standalone: true
 })
@@ -235,6 +283,14 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
     tourAlloc: undefined as (TournamentRefereeAllocation|undefined),
     dayId: '' as string,
     partDayId: undefined as (string|undefined)
+  };
+  modalAllocationConfig: AllocationConfigModal = {
+    show: false,
+    scope: 'tournament',
+    tournamentAllocation: undefined,
+    fragmentAllocation: undefined,
+    draft: undefined,
+    error: ''
   };
 
   constructor() {
@@ -284,12 +340,123 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
       })
     });
   }
-  configureTournamentAllocation() {
-    // TODO
+  /** Opens the configuration editor for a tournament allocation. */
+  configureTournamentAllocation(allocation: TournamentRefereeAllocation) {
+    this.openAllocationConfig('tournament', allocation);
   }
 
-  configureFragmentAllocation() {
-    // TODO
+  /** Opens the configuration editor for the selected fragment allocation. */
+  configureFragmentAllocation(allocation: FragmentRefereeAllocation) {
+    this.openAllocationConfig('fragment', allocation);
+  }
+
+  /** Opens the configuration editor, initializing missing values with defaults. */
+  private openAllocationConfig(scope: AllocationConfigScope, allocation: TournamentRefereeAllocation|FragmentRefereeAllocation) {
+    this.modalAllocationConfig = {
+      show: true,
+      scope,
+      tournamentAllocation: scope === 'tournament' ? allocation as TournamentRefereeAllocation : undefined,
+      fragmentAllocation: scope === 'fragment' ? allocation as FragmentRefereeAllocation : undefined,
+      draft: this.toAllocationConfigForm(allocation.generalConfig),
+      error: ''
+    };
+  }
+
+  /** Saves the configuration at the scope selected when the modal was opened. */
+  saveAllocationConfig() {
+    const draft = this.modalAllocationConfig.draft;
+    if (!draft || !this.isAllocationConfigValid()) return;
+    const config = this.toAllocationConfig(draft);
+    const target = this.modalAllocationConfig.scope === 'tournament'
+      ? this.modalAllocationConfig.tournamentAllocation
+      : this.modalAllocationConfig.fragmentAllocation;
+    if (!target) return;
+
+    if (this.modalAllocationConfig.scope === 'tournament') {
+      const tournamentAllocation = target as TournamentRefereeAllocation;
+      this.tournamentRefereeAllocationService.save({ ...tournamentAllocation, generalConfig: config }).subscribe({
+        next: (saved: TournamentRefereeAllocation) => {
+          tournamentAllocation.generalConfig = saved.generalConfig;
+          this.modalAllocationConfig.show = false;
+          this.loadAllocations();
+        },
+        error: () => this.modalAllocationConfig.error = 'Unable to save the allocation configuration.'
+      });
+    } else {
+      const fragmentAllocation = target as FragmentRefereeAllocation;
+      this.fragmentRefereeAllocationService.save({ ...fragmentAllocation, generalConfig: config }).subscribe({
+        next: (saved: FragmentRefereeAllocation) => {
+          fragmentAllocation.generalConfig = saved.generalConfig;
+          this.modalAllocationConfig.show = false;
+          this.loadAllocations();
+        },
+        error: () => this.modalAllocationConfig.error = 'Unable to save the allocation configuration.'
+      });
+    }
+  }
+
+  /** Deletes the optional configuration object without confirmation. */
+  deleteAllocationConfig() {
+    const target = this.modalAllocationConfig.scope === 'tournament'
+      ? this.modalAllocationConfig.tournamentAllocation
+      : this.modalAllocationConfig.fragmentAllocation;
+    if (!target) return;
+    const deleteConfig = target.generalConfig
+      ? (this.modalAllocationConfig.scope === 'tournament'
+        ? this.tournamentRefereeAllocationService.deleteGeneralConfig(target.id)
+        : this.fragmentRefereeAllocationService.deleteGeneralConfig(target.id))
+      : Promise.resolve();
+    deleteConfig.then(() => {
+      target.generalConfig = undefined;
+      this.modalAllocationConfig.show = false;
+      this.loadAllocations();
+    }).catch(() => this.modalAllocationConfig.error = 'Unable to delete the allocation configuration.');
+  }
+
+  /** Returns whether the current draft satisfies all configuration constraints. */
+  isAllocationConfigValid(): boolean {
+    const draft = this.modalAllocationConfig.draft;
+    return !!draft
+      && this.isIntegerInRange(draft.maxGameInRowForReferee, 20, 60)
+      && this.isIntegerInRange(draft.maxGameInRowForRefereeCoach, 20, 200)
+      && this.isIntegerInRange(draft.maxRefereeGameTimePerDay, 20, 200)
+      && this.isIntegerInRange(draft.nbRefereePerGame, 1, Number.MAX_SAFE_INTEGER)
+      && typeof draft.allocateRefereeCoach === 'boolean'
+      && typeof draft.refereeCoachTwoField === 'boolean';
+  }
+
+  /** Clears transient modal state after the configuration dialog closes. */
+  resetAllocationConfigModal() {
+    if (!this.modalAllocationConfig.show) {
+      this.modalAllocationConfig.draft = undefined;
+      this.modalAllocationConfig.error = '';
+    }
+  }
+
+  private toAllocationConfigForm(config: GeneralAllocationConfiguration|undefined): AllocationConfigForm {
+    return {
+      maxGameInRowForReferee: config?.maxGameInRowForReferee ?? 50,
+      maxGameInRowForRefereeCoach: config?.maxGameInRowForRefereeCoach ?? 160,
+      allocateRefereeCoach: config?.allocateRefereeCoach ?? false,
+      refereeCoachTwoField: config?.refereeCoachTwoField ?? false,
+      nbRefereePerGame: config?.nbRefereePerGame ?? 3,
+      maxRefereeGameTimePerDay: config?.maxRefereeGameTimePerDay ?? 140
+    };
+  }
+
+  private toAllocationConfig(form: AllocationConfigForm): GeneralAllocationConfiguration {
+    return {
+      maxGameInRowForReferee: form.maxGameInRowForReferee!,
+      maxGameInRowForRefereeCoach: form.maxGameInRowForRefereeCoach!,
+      allocateRefereeCoach: form.allocateRefereeCoach,
+      refereeCoachTwoField: form.refereeCoachTwoField,
+      nbRefereePerGame: form.nbRefereePerGame!,
+      maxRefereeGameTimePerDay: form.maxRefereeGameTimePerDay!
+    };
+  }
+
+  private isIntegerInRange(value: number|null, min: number, max: number): value is number {
+    return value !== null && Number.isInteger(value) && value >= min && value <= max;
   }
   createFragmentAllocation(tourAlloc: TournamentRefereeAllocation, dayId: string, partDayId: string|undefined = undefined) {
     this.modalCreateAllocation.tourAlloc = tourAlloc;
@@ -546,6 +713,29 @@ interface FragmentRefereeAllocationView {
   partDay?: PartDay;
   refereesAllocator: RefereeCoach[];
   refereeCoachesAllocator: RefereeCoach[];
+}
+
+/** Scope edited by the allocation configuration modal. */
+type AllocationConfigScope = 'tournament' | 'fragment';
+
+/** Nullable draft values used to disable Save for incomplete numeric inputs. */
+interface AllocationConfigForm {
+  maxGameInRowForReferee: number|null;
+  maxGameInRowForRefereeCoach: number|null;
+  allocateRefereeCoach: boolean;
+  refereeCoachTwoField: boolean;
+  nbRefereePerGame: number|null;
+  maxRefereeGameTimePerDay: number|null;
+}
+
+/** State owned by the allocation configuration modal. */
+interface AllocationConfigModal {
+  show: boolean;
+  scope: AllocationConfigScope;
+  tournamentAllocation: TournamentRefereeAllocation|undefined;
+  fragmentAllocation: FragmentRefereeAllocation|undefined;
+  draft: AllocationConfigForm|undefined;
+  error: string;
 }
 interface LoadedData {
   tournamentRefereeAllocationViews: TournamentRefereeAllocationView[];

@@ -27,7 +27,7 @@ export interface TournamentRefereeAllocation extends PersistentObject {
 /**
  * Define the general configuration of the allocation
  */
-interface GeneralAllocationConfiguration {
+export interface GeneralAllocationConfiguration {
   /** Maximal number of minutes in a row for a referee. Default is 50min */
   maxGameInRowForReferee: number;
   /** Maximal number of minutes in a row for a referee coach. Default is 160 */
