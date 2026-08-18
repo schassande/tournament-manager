@@ -39,7 +39,7 @@ export class UserService {
       map((user:Person|null) => {
         this.currentUser$.set(user);
         this.setLastUser(email, password);
-        console.debug('User connected', user);
+        // console.debug('User connected', user);
         return user;
       }),
       catchError((err) => {
@@ -92,7 +92,7 @@ export class UserService {
   public autoLogin(): Observable<Person|null> {
     const {email, password } = this.getLastUser();
     if (email && password) {
-      console.debug('Autologin...');
+      // console.debug('Autologin...');
       return this.login(email, password)
     } else {
       console.debug('No autologin', email, password);

@@ -80,7 +80,15 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
           </div>
 
           <div class="form-row">
-            <button pButton type="submit" label="Login" class="login-button" [disabled]="loading()"></button>
+            <button
+              pButton
+              type="submit"
+              label="Login"
+              class="login-button"
+              [disabled]="loading()"
+              [loading]="loginLoading()"
+              [attr.aria-busy]="loginLoading()"
+            ></button>
           </div>
 
           <div class="form-row">
@@ -148,37 +156,39 @@ export class UserLoginComponent {
 
   // Signals pour l'état UI
   loading = signal(false);
+  loginLoading = signal(false);
   error = signal<string | null>(null);
   submitted = signal(false);
 
   async onSubmit() {
+    if (this.loading()) return;
+
     this.submitted.set(true);
     this.error.set(null);
 
     if (this.form.invalid) return;
 
     const { email, password, remember } = this.form.getRawValue();
+    this.loading.set(true);
+    this.loginLoading.set(true);
 
-    try {
-      this.loading.set(true);
-
-      this.userService.login(email!, password!).subscribe((user:Person|null) => {
-        this.loading.set(false);
+    this.userService.login(email!, password!).subscribe({
+      next: (user: Person | null) => {
         if (user) {
-          console.log(user);
+          // console.log(user);
           this.router.navigate(['/home']);
-        } else {
-          // TODO this.error.set(this.mapFirebaseError(e?.code) ?? 'Échec de la connexion.');
         }
-      });
-      // Optionnel : persistance selon "remember me"
-      // await setPersistence(this.auth, remember ? browserLocalPersistence : browserSessionPersistence);
-
-    } catch (e: any) {
-      this.error.set(this.mapFirebaseError(e?.code) ?? 'Échec de la connexion.');
-    } finally {
-      this.loading.set(false);
-    }
+      },
+      error: (e: any) => {
+        this.error.set(this.mapFirebaseError(e?.code) ?? 'Échec de la connexion.');
+        this.loading.set(false);
+        this.loginLoading.set(false);
+      },
+      complete: () => {
+        this.loading.set(false);
+        this.loginLoading.set(false);
+      },
+    });
   }
 
   /** Start the Google popup authentication flow. */
