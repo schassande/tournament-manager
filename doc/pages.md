@@ -297,6 +297,8 @@ Comportements notables :
 - raccourcis de navigation dans la grille
 - copy / cut / paste des allocations
 - suppression clavier d'une affectation
+- le nom ou la date d'un jour sans allocation complete ouvre une confirmation de creation
+- la confirmation cree une allocation `Full day` et ouvre son edition
 
 ## Pages indirectement presentes dans l'UX
 

@@ -16,20 +16,26 @@ import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { ConfirmationService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { AllocationAction, ClipboardItem, SelectionDescriptor, SelectionService } from '../service/selection.service';
 import { FragmentRefereeAllocationService } from '../service/fragment-referee-allocation.service';
 import { TournamentRefereeAllocationService } from '../service/tournament-referee-allocation.service';
 
 @Component({
   selector: 'app-tournament-referees-allocation',
-  imports: [CommonModule, DatePipe, FormsModule, GameRefereeAllocatorComponent, InputTextModule, SelectModule, ToggleSwitchModule],
+  imports: [CommonModule, ConfirmDialogModule, DatePipe, FormsModule, GameRefereeAllocatorComponent, InputTextModule, SelectModule, ToggleSwitchModule],
   template: `
   @if(day() && allocation()) {
     <div style="text-align: center;">
+      <p-confirmdialog />
       @if (days().length > 1 || (days().length === 1 && days()[0].day.parts.length > 1)) {
         @for(dd of days(); track dd.day.id) {
           <div class="day-panel {{dd.current ? 'day-panel-current':''}}">
-            <div>{{dd.day.id}}: {{dd.date | date: 'EEEE'}}</div>
+            <button type="button" class="day-navigation" (click)="onDayNavigationClick(dd)"
+              [attr.aria-label]="'Open or create allocation for Day ' + dd.day.id">
+              {{dd.day.id}}: {{dd.date | date: 'EEEE'}}
+            </button>
             <div style="margin: 5px 0;">
               @if (dd.fragmentAllocationDesc) {
                 <a (click)="routeToFragmentAllocation(dd.fragmentAllocationDesc.id)" style="margin: 0 5px;">Full</a>
@@ -136,6 +142,15 @@ import { TournamentRefereeAllocationService } from '../service/tournament-refere
     .day-panel-current {
       background-color: lightgray;
     }
+    .day-navigation {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      font-weight: bold;
+      padding: 2px;
+    }
     `],
   standalone: true
 })
@@ -148,6 +163,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   private fragmentRefereeAllocationService = inject(FragmentRefereeAllocationService);
   private tournamentRefereeAllocationService = inject(TournamentRefereeAllocationService);
   private selectionService = inject(SelectionService);
+  private confirmationService = inject(ConfirmationService);
   private route: ActivatedRoute = inject(ActivatedRoute);
 
   day = signal<DayView|undefined>(undefined);
@@ -210,6 +226,59 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     if (alloc) {
       this.routeToFragmentAllocation(alloc.id);
     }
+  }
+  /**
+   * Opens an existing full-day allocation or asks to create it when the day has none.
+   * @param dayDesc day navigation entry selected by the user
+   */
+  onDayNavigationClick(dayDesc: DayDesc): void {
+    if (dayDesc.fragmentAllocationDesc) {
+      this.routeToFragmentAllocation(dayDesc.fragmentAllocationDesc.id);
+      return;
+    }
+    this.confirmationService.confirm({
+      message: `Do you want to create the allocation of the Day ${dayDesc.day.id}?`,
+      accept: () => this.createFullDayAllocation(dayDesc.day.id)
+    });
+  }
+
+  /**
+   * Creates and persists a full-day fragment for the selected tournament allocation.
+   * @param dayId identifier of the day for the new allocation
+   */
+  private createFullDayAllocation(dayId: string): void {
+    const tournamentAllocation = this.tournamentAllocation();
+    if (!tournamentAllocation || tournamentAllocation.fragmentRefereeAllocations.some(
+      allocation => allocation.dayId === dayId && allocation.partDayId === undefined
+    )) return;
+
+    const fragmentAllocation: FragmentRefereeAllocation = {
+      id: '',
+      name: `D${dayId}-${Math.floor(Math.random() * 100)}`,
+      tournamentId: this.tournament()!.id,
+      lastChange: new Date().getTime(),
+      dayId,
+      refereeAllocatorAttendeeIds: [],
+      refereeCoachAllocatorAttendeeIds: [],
+      visible: false
+    };
+    this.fragmentRefereeAllocationService.save(fragmentAllocation).pipe(
+      mergeMap(savedAllocation => {
+        const updatedTournamentAllocation: TournamentRefereeAllocation = {
+          ...tournamentAllocation,
+          fragmentRefereeAllocations: [
+            ...tournamentAllocation.fragmentRefereeAllocations,
+            { id: savedAllocation.id, dayId: savedAllocation.dayId }
+          ]
+        };
+        return this.tournamentRefereeAllocationService.save(updatedTournamentAllocation).pipe(
+          map(() => savedAllocation)
+        );
+      })
+    ).subscribe({
+      next: savedAllocation => this.routeToFragmentAllocation(savedAllocation.id),
+      error: error => console.error('Unable to create the full-day referee allocation', error)
+    });
   }
   routeToFragmentAllocation(fragmentAllocationId: string) {
     this.router.navigate(['tournament', this.tournament()!.id, 'allocation',
