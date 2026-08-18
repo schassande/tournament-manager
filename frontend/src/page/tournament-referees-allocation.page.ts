@@ -1,7 +1,7 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, signal, OnInit, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { forkJoin, map, mergeMap, Observable, of, take } from 'rxjs';
+import { finalize, forkJoin, map, mergeMap, Observable, of, take } from 'rxjs';
 
 import { AbstractTournamentPage } from '../component/tournament-abstract.page';
 import { Day, Division, Field, Game, GameAttendeeAllocation, PartDay, Referee, TournamentRefereeAllocation, FragmentRefereeAllocation, RefereeCoach, Team, Timeslot, FragmentRefereeAllocationDesc } from '@tournament-manager/persistent-data-model';
@@ -15,51 +15,57 @@ import { GameRefereeAllocatorComponent, SearchableReferee, SearchableCoach, toSe
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { CheckboxModule } from 'primeng/checkbox';
 import { ConfirmationService } from 'primeng/api';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { AllocationAction, ClipboardItem, SelectionDescriptor, SelectionService } from '../service/selection.service';
 import { FragmentRefereeAllocationService } from '../service/fragment-referee-allocation.service';
 import { TournamentRefereeAllocationService } from '../service/tournament-referee-allocation.service';
+import { UserService } from '../service/user.service';
+
+const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
 
 @Component({
   selector: 'app-tournament-referees-allocation',
-  imports: [CommonModule, ConfirmDialogModule, DatePipe, FormsModule, GameRefereeAllocatorComponent, InputTextModule, SelectModule, ToggleSwitchModule],
+  imports: [CheckboxModule, CommonModule, ConfirmDialogModule, DatePipe, FormsModule, GameRefereeAllocatorComponent, InputTextModule, ProgressSpinnerModule, SelectModule, TooltipModule],
   template: `
+  @if (loading()) {
+    <div class="allocation-loading-overlay" role="dialog" aria-modal="true" aria-label="Loading allocation">
+      <div class="allocation-loading-panel">
+        <p-progress-spinner ariaLabel="Loading allocation" />
+      </div>
+    </div>
+  }
   @if(day() && allocation()) {
     <div style="text-align: center;">
       <p-confirmdialog />
-      @if (days().length > 1 || (days().length === 1 && days()[0].day.parts.length > 1)) {
-        @for(dd of days(); track dd.day.id) {
-          <div class="day-panel {{dd.current ? 'day-panel-current':''}}">
-            <button type="button" class="day-navigation" (click)="onDayNavigationClick(dd)"
-              [attr.aria-label]="'Open or create allocation for Day ' + dd.day.id">
-              {{dd.day.id}}: {{dd.date | date: 'EEEE'}}
-            </button>
-            <div style="margin: 5px 0;">
-              @if (dd.fragmentAllocationDesc) {
-                <a (click)="routeToFragmentAllocation(dd.fragmentAllocationDesc.id)" style="margin: 0 5px;">Full</a>
-              }
-              @for(p of dd.partDescs; track p.id) {
-                <a (click)="routeToFragmentAllocation(p.id)" style="margin: 0 5px;">Part {{p.partDayId}}</a>
-              }
-            </div>
-          </div>
-        }
-      }
-      <div style="margin-bottom: 10px;">
-        <span><label>Name: </label><input type="text" pInputText [(ngModel)]="allocation()!.name" (change)="allocationNameChanged()" size="small"/></span>
-        <span style="margin-left: 10px; font-size: 0.8em;">{{referees().length}} referees and {{coaches().length}} referee coaches.</span>
-        <p-toggleswitch [(ngModel)]="showCoaches" style="vertical-align: middle; margin-left: 10px;" size="small"></p-toggleswitch>
-      </div>
-
-      <div>
-        <div style="width: 55px; display: inline-block; text-align: center; font-weight: bold;">
-          Day {{day()!.dayNb}}
-          @if (day()!.parts.length > 1 && day()!.partViews.length === 1) {
-            <div>Part {{ day()!.partViews[0].id }}</div>
-          }
+      @if (showAllocationName()) {
+        <div style="margin-bottom: 10px;">
+          <span><label>Name: </label><input type="text" pInputText [(ngModel)]="allocation()!.name" (change)="allocationNameChanged()" size="small"/></span>
         </div>
+      }
+
+      <div class="allocation-navigation-row">
+        <p-select [options]="days()" [ngModel]="selectedDay()" (onChange)="onDaySelectionChange($event.value)"
+          [style]="{ width: '190px', 'margin-right': '8px' }"
+          ariaLabel="Select day" placeholder="Select day">
+          <ng-template #item let-dayDesc>
+            {{dayDesc.day.id}}: {{dayDesc.date | date: 'EEEE'}}
+          </ng-template>
+          <ng-template #selectedItem let-dayDesc>
+            {{dayDesc.day.id}}: {{dayDesc.date | date: 'EEEE'}}
+          </ng-template>
+        </p-select>
+        @if (day()!.parts.length > 1 && selectedDay()) {
+          @if (selectedDay()!.fragmentAllocationDesc) {
+            <a (click)="routeToFragmentAllocation(selectedDay()!.fragmentAllocationDesc!.id)" style="margin: 0 5px;">Full</a>
+          }
+          @for(p of selectedDay()!.partDescs; track p.id) {
+            <a (click)="routeToFragmentAllocation(p.id)" style="margin: 0 5px;">Part {{p.partDayId}}</a>
+          }
+        }
         @if (showReferees()) {
           @for(hlrId of highlightedRefereeIds(); let idx=$index; track idx) {
             <p-select [options]="referees()" [ngModel]="highlightedRefereeIds()[idx]" (onChange)="onHhighlightedRefereeChange($event.value, idx)"
@@ -78,40 +84,50 @@ import { TournamentRefereeAllocationService } from '../service/tournament-refere
             </p-select>
           }
         }
+        <span class="show-coaches-option">
+          <p-checkbox [(ngModel)]="showCoaches" (ngModelChange)="onShowCoachesChange($event)"
+            inputId="show-referee-coach" [binary]="true"></p-checkbox>
+          <label for="show-referee-coach">Referee coach</label>
+        </span>
+        <i class="pi pi-info-circle allocation-summary-info"
+          [pTooltip]="allocationSummary()" tooltipPosition="top"
+          tabindex="0" role="img" [attr.aria-label]="allocationSummary()"></i>
       </div>
       @for(part of day()!.partViews; track part.id) {
         @if (day()!.partViews.length > 1) {
         <h3>Part {{ part.id }}</h3>
         }
-        <table style="margin: 0 auto;">
-          <tr class="tableRowTitle">
-            <th>Slot</th>
-            @for(field of part.fields; track field.id) {
-              <th class="fieldCol">{{ field.name }}</th>
-            }
-          </tr>
-          @for(ts of part.timeSlotViews; track ts.id) {
-            <tr class="tableRowItem">
-              <td class="timeslotCell">{{ts.startStr}}</td>
-              @if (ts.playingSlot) {
-                @for(field of ts.fields; track field.id) {
-                  <td [ngClass]="{ 'noGameCell': !field.game,  'gameCell': field.game, 'selectable':selection() && !field.game && selection()?.cellType === 'EmptySlot' && selection()?.fieldId === field.id && selection()?.timeslotId === ts.id }" class="fieldCol {{gameCellStyle()}}" >
-                    @if (field.game) {
-                      <app-game-referee-allocator [game]="field.game" [coaches]="coaches()"
-                        [showCoaches]="showCoaches()" [showReferees]="showReferees()" [showRefereeLevel]="showRefereeLevel()"
-                        [showBadgeSystem]="showBadgeSystem()" [showDivisionColor]="showDivisionColor()"
-                        [referees]="referees()" [allocation]="allocation()!"
-                        [highlightedRefereeIds]="highlightedRefereeIds()">
-                      </app-game-referee-allocator>
-                    }
-                  </td>
-                }
-              } @else {
-                <td style="text-align: center;">{{ ts.durationStr }}</td>
+        <div class="allocation-table-container">
+          <table class="allocation-table">
+            <tr class="tableRowTitle">
+              <th class="timeslotCell">Slot</th>
+              @for(field of part.fields; track field.id) {
+                <th class="fieldCol">{{ field.name }}</th>
               }
             </tr>
-          }
-        </table>
+            @for(ts of part.timeSlotViews; track ts.id) {
+              <tr class="tableRowItem">
+                <td class="timeslotCell">{{ts.startStr}}</td>
+                @if (ts.playingSlot) {
+                  @for(field of ts.fields; track field.id) {
+                    <td [ngClass]="{ 'noGameCell': !field.game,  'gameCell': field.game, 'selectable':selection() && !field.game && selection()?.cellType === 'EmptySlot' && selection()?.fieldId === field.id && selection()?.timeslotId === ts.id }" class="fieldCol {{gameCellStyle()}}" >
+                      @if (field.game) {
+                        <app-game-referee-allocator [game]="field.game" [coaches]="coaches()"
+                          [showCoaches]="showCoaches()" [showReferees]="showReferees()" [showRefereeLevel]="showRefereeLevel()"
+                          [showBadgeSystem]="showBadgeSystem()" [showDivisionColor]="showDivisionColor()"
+                          [referees]="referees()" [allocation]="allocation()!"
+                          [highlightedRefereeIds]="highlightedRefereeIds()">
+                        </app-game-referee-allocator>
+                      }
+                    </td>
+                  }
+                } @else {
+                  <td style="text-align: center;">{{ ts.durationStr }}</td>
+                }
+              </tr>
+            }
+          </table>
+        </div>
       }
     </div>
   }
@@ -127,29 +143,76 @@ import { TournamentRefereeAllocationService } from '../service/tournament-refere
       text-align: center;
       border: 2px grey solid;
     }
+    .allocation-table-container {
+      height: calc(100vh - 120px);
+      overflow: auto;
+      position: relative;
+    }
+    .allocation-table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .tableRowTitle th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background-color: #f5f5f5;
+    }
+    .tableRowTitle th:first-child,
+    .tableRowItem .timeslotCell {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background-color: #ffffff;
+    }
+    .tableRowTitle th:first-child {
+      z-index: 3;
+    }
     .tableRowTitle th, .timeslotCell {
       padding: 10px 5px;
     }
-    .day-panel {
-      display: inline-block;
-      text-align: center;
-      margin: 10px 5px;
-      padding: 5px;
-      background-color: lightblue;
-      border-radius: 10px;
-      width: 150px;
+    .allocation-navigation-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      text-align: left;
     }
-    .day-panel-current {
-      background-color: lightgray;
+    .allocation-summary-info {
+      margin-left: auto;
+      margin-right: 10px;
+      font-size: 1.21rem;
+      color: blue;
+      cursor: help;
+      vertical-align: middle;
     }
-    .day-navigation {
-      border: 0;
-      background: transparent;
-      color: inherit;
+    .show-coaches-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+    .show-coaches-option label {
       cursor: pointer;
-      font: inherit;
-      font-weight: bold;
-      padding: 2px;
+    }
+    .allocation-table {
+      margin: 0;
+    }
+    .allocation-loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(0, 0, 0, 0.35);
+    }
+    .allocation-loading-panel {
+      display: flex;
+      justify-content: center;
+      padding: 1.5rem;
+      border-radius: 8px;
+      background-color: white;
     }
     `],
   standalone: true
@@ -164,10 +227,31 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   private tournamentRefereeAllocationService = inject(TournamentRefereeAllocationService);
   private selectionService = inject(SelectionService);
   private confirmationService = inject(ConfirmationService);
+  private userService = inject(UserService);
   private route: ActivatedRoute = inject(ActivatedRoute);
 
   day = signal<DayView|undefined>(undefined);
   days = signal<DayDesc[]>([]);
+  selectedDay = computed(() => this.days().find(dayDesc => dayDesc.current));
+  gameCount = computed(() => this.day()?.partViews.reduce(
+    (count, part) => count + part.timeSlotViews.reduce(
+      (partCount, timeslot) => partCount + timeslot.fields.filter(field => field.game).length, 0
+    ), 0
+  ) ?? 0);
+  allocationSummary = computed(() =>
+    `${this.gameCount()} games, ${this.referees().length} referees and ${this.coaches().length} referee coaches.`
+  );
+  showAllocationName = computed(() => {
+    const allocation = this.allocation();
+    const tournamentAllocation = this.tournamentAllocation();
+    if (!allocation || !tournamentAllocation) return false;
+    return tournamentAllocation.fragmentRefereeAllocations.filter(fragment =>
+      fragment.dayId === allocation.dayId && fragment.partDayId === allocation.partDayId
+    ).length > 1;
+  });
+  loading = signal<boolean>(true);
+  private loadingStartedAt = 0;
+  private readonly minimumLoadingDisplayMs = 100;
 
   allocation = signal<FragmentRefereeAllocation|undefined>(undefined);
   tournamentAllocation = signal<TournamentRefereeAllocation|undefined>(undefined);
@@ -193,6 +277,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
 
   constructor() {
     super();
+    this.showCoaches.set(this.userService.getLocalUserProperty(KEY_SHOW_COACHES) ?? true);
     effect(() => {
       if (this.tournament()) {
         this.loadData();
@@ -200,7 +285,14 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     });
     window.addEventListener('keydown', this.onKeyboard.bind(this));
   }
+
+  /** Persists the user's preference for displaying referee coaches in the grid. */
+  onShowCoachesChange(showCoaches: boolean): void {
+    this.userService.setLocalUserProperty(KEY_SHOW_COACHES, showCoaches);
+  }
   loadData() {
+    this.loadingStartedAt = Date.now();
+    this.loading.set(true);
     this.route.params.subscribe(params => {
       const fragmentRefereeAllocationId = params['fragmentAllocationId'] as string;
       const tournamentRefereeAllocationId = params['tournamentAllocationId'] as string;
@@ -212,9 +304,20 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
         mergeMap((dayView:DayView) => this.loadGames(dayView)),
         mergeMap((dayView:DayView) => this.loadRefereeAllocations(dayView)),
         map((dayView:DayView) => this.day.set(dayView)),
-        map(() => this.buildDayDescs())
-      ).subscribe();
+        map(() => this.buildDayDescs()),
+        take(1),
+        finalize(() => this.finishLoading())
+      ).subscribe({
+        error: error => console.error('Unable to load the referee allocation', error)
+      });
     });
+  }
+
+  /** Keeps the loading mask visible long enough to be perceptible during fast loads. */
+  private finishLoading(): void {
+    const elapsed = Date.now() - this.loadingStartedAt;
+    const remaining = Math.max(0, this.minimumLoadingDisplayMs - elapsed);
+    setTimeout(() => this.loading.set(false), remaining);
   }
   goToPart(partDay: PartDay|undefined = undefined) {
     let allocs = this.tournamentAllocation()!.fragmentRefereeAllocations.filter(fra => fra.dayId === this.day()!.id);
@@ -231,9 +334,13 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
    * Opens an existing full-day allocation or asks to create it when the day has none.
    * @param dayDesc day navigation entry selected by the user
    */
-  onDayNavigationClick(dayDesc: DayDesc): void {
+  onDaySelectionChange(dayDesc: DayDesc): void {
     if (dayDesc.fragmentAllocationDesc) {
       this.routeToFragmentAllocation(dayDesc.fragmentAllocationDesc.id);
+      return;
+    }
+    if (dayDesc.day.parts.length === 1 && dayDesc.partDescs.length === 1) {
+      this.routeToFragmentAllocation(dayDesc.partDescs[0].id);
       return;
     }
     this.confirmationService.confirm({
@@ -281,6 +388,8 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     });
   }
   routeToFragmentAllocation(fragmentAllocationId: string) {
+    this.loadingStartedAt = Date.now();
+    this.loading.set(true);
     this.router.navigate(['tournament', this.tournament()!.id, 'allocation',
       this.tournamentAllocation()!.id, 'fragment',fragmentAllocationId ]);
   }

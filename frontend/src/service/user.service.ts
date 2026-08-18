@@ -134,7 +134,7 @@ export class UserService {
     this.userLocalStorageService.setUserProperty(this.getUserKey(key), value);
   }
   public getLocalUserProperty(key:string): any{
-    this.userLocalStorageService.getUserProperty(this.getUserKey(key));
+    return this.userLocalStorageService.getUserProperty(this.getUserKey(key));
   }
 
   private getUserKey(key: string): string {

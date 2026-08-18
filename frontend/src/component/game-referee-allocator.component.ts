@@ -199,6 +199,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
     // effect(() => console.log(this.referees()));
   }
   ngOnInit(): void {
+    this.autoClean();
     this.sub = this.selectionService.action$.subscribe(action => this.performAction(action));
   }
   ngOnDestroy(): void {
@@ -237,10 +238,6 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   computeGameRefereeId(pos: number) {
     this.lastRefereeChange();
     let refs = this.game().referees.filter(rav => rav.referee?.attendee.isReferee && rav.attendeeAlloc.attendeePosition === pos);
-    if (refs.length > 1) {
-      this.autoClean();
-      refs = this.game().referees.filter(rav => rav.referee?.attendee.isReferee && rav.attendeeAlloc.attendeePosition === pos);
-    }
     let res: string|undefined;
     if (refs.length === 0) {
       res = undefined;

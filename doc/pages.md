@@ -287,7 +287,9 @@ Fonctionnalites principales :
 - affichage des matchs sur la grille du jour ou de la partie de journee
 - affichage uniquement des colonnes de terrains contenant au moins un match dans la partie affichee
 - affichage des arbitres et coaches d'arbitres disponibles
+- une icône d'information remplace le résumé chiffré de la grille ; son survol ou sa mise au focus affiche le nombre de matchs, d'arbitres et de coaches d'arbitres
 - surbrillance de plusieurs arbitres
+- checkbox « Referee coach » pour afficher ou masquer les coaches dans la grille, avec mémorisation de la préférence par utilisateur
 - edition du nom du fragment
 - navigation entre fragments d'un meme tournoi
 
@@ -297,8 +299,12 @@ Comportements notables :
 - raccourcis de navigation dans la grille
 - copy / cut / paste des allocations
 - suppression clavier d'une affectation
-- le nom ou la date d'un jour sans allocation complete ouvre une confirmation de creation
+- le selecteur de jour permet d'ouvrir l'allocation existante ou de demander la creation d'une allocation manquante
 - la confirmation cree une allocation `Full day` et ouvre son edition
+- les liens `Full` et `Part` du jour selectionne ne sont affiches que lorsque ce jour comporte plusieurs parties
+- lors du basculement de jour, une modale non fermable avec spinner bloque la saisie jusqu'a la fin du chargement
+- le champ de nom est masque lorsqu'un seul fragment existe pour la periode affichee et apparait uniquement lorsqu'il existe plusieurs fragments concurrents
+- le tableau des allocations se defile horizontalement et verticalement dans son conteneur ; la colonne des slots reste visible pendant le defilement horizontal et la ligne des noms de terrains reste visible pendant le defilement vertical
 
 ## Pages indirectement presentes dans l'UX
 

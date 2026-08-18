@@ -22,6 +22,6 @@ export class GameAttendeeAllocationService extends AbstractPersistentDataService
   byAllocation(tournamentId: string, refereeAllocationId: string): Observable<GameAttendeeAllocation[]> {
     return this.query(query(this.itemsCollection(),
       where('tournamentId', '==', tournamentId),
-      where('refereeAllocationId', '==', refereeAllocationId)));
+      where('fragmentRefereeAllocationId', '==', refereeAllocationId)));
   }
 }

@@ -42,10 +42,14 @@ When a tournament spans multiple days and the selected tournament allocation has
 ## User interface and workflow
 
 - The day name or date itself must be clickable when the corresponding day allocation is missing.
+- The day navigation panel must also be displayed when the tournament has only one day with one part.
+- When a day has exactly one part, display only the day name/date in its navigation panel; do not display `Full` or `Part` links.
+- When the single part has an allocation, clicking the day name/date must open that part allocation.
 - The day navigation area must make missing days or parts actionable.
 - When the user activates a missing day or part, display a confirmation dialog before creation.
 - On confirmation, create the allocation and navigate to or display the newly created allocation.
 - On cancellation, keep the current allocation page unchanged.
+- While loading the selected day allocation, display a non-dismissible modal with a spinner and block user input.
 
 ## Data model and persistence
 
@@ -105,6 +109,7 @@ The requested behavior has been normalized from `doc/WIP.md`. The creation workf
 - The selected tournament allocation is the `tournamentAllocation` loaded by the current detail-page route.
 - A missing day action creates only a full-day allocation, as decided during specification analysis.
 - The day name or date is the clickable interaction target, as decided during specification analysis.
+- A single-part day uses its part allocation as the navigation target when that allocation exists.
 - The existing fragment allocation defaults and naming rules can be reused for allocations created from this page.
 - A confirmation dialog should use the existing PrimeNG confirmation infrastructure.
 
