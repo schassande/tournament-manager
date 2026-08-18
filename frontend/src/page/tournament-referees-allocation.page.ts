@@ -407,9 +407,27 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
             });
           });
         });
+        this.removeFieldsWithoutGames(dayView);
         return dayView;
       })
     );
+  }
+
+  /**
+   * Keeps only fields that contain at least one game in the displayed part.
+   * The same field list is applied to headers and timeslot rows.
+   * @param dayView day view whose empty field columns must be removed
+   */
+  private removeFieldsWithoutGames(dayView: DayView): void {
+    dayView.partViews.forEach((part: PartView) => {
+      const fieldIdsWithGames = new Set(
+        part.timeSlotViews.flatMap(ts => ts.fields.filter(field => field.game).map(field => field.id))
+      );
+      part.fields = part.fields.filter(field => fieldIdsWithGames.has(field.id));
+      part.timeSlotViews.forEach(ts => {
+        ts.fields = ts.fields.filter(field => fieldIdsWithGames.has(field.id));
+      });
+    });
   }
   allocationNameChanged() {
     this.fragmentRefereeAllocationService.save(this.allocation()!).pipe(take(1)).subscribe();
@@ -418,6 +436,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     const select = this.selectionService.currentSelection();
     if (!select) {
       if (event.key === 'Enter') {
+        if (this.day()!.partViews[0].fields.length === 0) return;
         this.selectionService.setCurrentSelection({
           tournamentId: this.tournament()!.id,
           viewName: 'Appointments',

@@ -285,6 +285,7 @@ Fonctionnalites principales :
 
 - chargement du fragment et de l'allocation tournoi parente
 - affichage des matchs sur la grille du jour ou de la partie de journee
+- affichage uniquement des colonnes de terrains contenant au moins un match dans la partie affichee
 - affichage des arbitres et coaches d'arbitres disponibles
 - surbrillance de plusieurs arbitres
 - edition du nom du fragment
