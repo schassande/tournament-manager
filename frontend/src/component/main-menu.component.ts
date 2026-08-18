@@ -1,13 +1,15 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, effect, inject, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { TournamentService } from '../service/tournament.service';
 import { MenuItem } from 'primeng/api';
-import { MenuModule } from 'primeng/menu';
+import { TieredMenuModule } from 'primeng/tieredmenu';
 import { AvatarModule } from 'primeng/avatar';
 import { ToolbarModule } from 'primeng/toolbar';
 import { ButtonModule } from 'primeng/button';
 import { UserService } from '../service/user.service';
 import { TitleService } from '../service/title.service';
+import { AttendeeService } from '../service/attendee.service';
+import { take } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -15,7 +17,7 @@ import { TitleService } from '../service/title.service';
   template: `
     <p-toolbar class="top-toolbar">
       <div class="p-toolbar-group-left">
-        <p-menu #menu [model]="mainMenuItems()" [popup]="true"></p-menu>
+        <p-tieredmenu #menu [model]="mainMenuItems()" [popup]="true"></p-tieredmenu>
         <span class="pi pi-bars" (click)="menu.toggle($event)"></span>
       </div>
 
@@ -25,7 +27,7 @@ import { TitleService } from '../service/title.service';
 
       <div class="p-toolbar-group-right">
         <span (click)="onAvatarClick(userMenu, $event)">{{ userName() }} </span>
-        <p-menu #userMenu [model]="userMenuItems()" [popup]="true"></p-menu>
+        <p-tieredmenu #userMenu [model]="userMenuItems()" [popup]="true"></p-tieredmenu>
         <p-avatar
           icon="pi pi-user"
           styleClass="mr-2"
@@ -62,7 +64,7 @@ import { TitleService } from '../service/title.service';
       }
     `,
   ],
-  imports: [AvatarModule, ButtonModule, MenuModule, ToolbarModule],
+  imports: [AvatarModule, ButtonModule, TieredMenuModule, ToolbarModule],
 })
 export class MainMenuComponent {
   router = inject(Router);
@@ -76,66 +78,83 @@ export class MainMenuComponent {
   });
 
   tournamentService = inject(TournamentService);
+  attendeeService = inject(AttendeeService);
   selectedTournament = computed(() =>
     this.tournamentService.currentTournament(),
   );
+  canAccessRefereeUpgrade = signal(false);
 
-  mainMenuItems = computed<MenuItem[] | undefined>(() => {
-    const entries: MenuItem[] = [
-      {
-        label: 'Application',
-        items: [
-          { label: 'Home', icon: 'pi pi-home', routerLink: '/home' },
-          {
-            label: 'Tournaments',
-            icon: 'pi pi-list',
-            routerLink: '/tournament',
-          },
-        ],
-      },
+  constructor() {
+    effect(() => {
+      const tournament = this.selectedTournament();
+      const user = this.userService.currentUser$();
+      this.canAccessRefereeUpgrade.set(false);
+      if (tournament && user) {
+        this.attendeeService.findByPerson(tournament.id, user.id).pipe(take(1)).subscribe((attendees) => {
+          this.canAccessRefereeUpgrade.set(attendees.some((attendee) => attendee.isRefereeCoach));
+        });
+      }
+    });
+  }
+
+  mainMenuItems = computed<MenuItem[]>(() => {
+    let entries: MenuItem[] = [
+      { label: 'Home', icon: 'pi pi-home', routerLink: '/home' },
+      { label: 'Tournaments', icon: 'pi pi-list', routerLink: '/tournament' }
     ];
     if (this.selectedTournament()) {
       const tournament = this.selectedTournament()!;
-      entries.push({
-        label: `${tournament.name}`,
-        items: [
-          {
-            label: 'Tournament home',
-            icon: 'pi pi-trophy',
-            routerLink: `/tournament/${tournament.id}/home`,
-          },
-          {
-            label: 'General config',
-            icon: 'pi pi-cog',
-            routerLink: `/tournament/${tournament.id}/edit`,
-          },
-          {
-            label: 'Games',
-            icon: 'pi pi-calendar',
-            routerLink: `/tournament/${tournament.id}/game`,
-          },
-          {
-            label: 'Import FIT',
-            icon: 'pi pi-download',
-            routerLink: `/tournament/${tournament.id}/fit-import`,
-          },
-          {
-            label: 'Referees',
-            icon: 'pi pi-users',
-            routerLink: `/tournament/${tournament.id}/referee`,
-          },
-          {
-            label: 'Referee Coaches',
-            icon: 'pi pi-user-plus',
-            routerLink: `/tournament/${tournament.id}/coach`,
-          },
-          {
-            label: 'Referee Allocations',
-            icon: 'pi pi-map-marker',
-            routerLink: `/tournament/${tournament.id}/allocation`,
-          },
-        ],
-      });
+      entries = entries.concat([
+        { separator: true },
+        {
+          label: `${tournament.name}`,
+          icon: 'pi pi-trophy',
+          routerLink: `/tournament/${tournament.id}/home`
+        },
+        {
+          label: 'General config',
+          icon: 'pi pi-cog',
+          routerLink: `/tournament/${tournament.id}/edit`
+        },
+        {
+          label: 'Game',
+          icon: 'pi pi-calendar',
+          items: [
+            {
+              label: 'Games',
+              icon: 'pi pi-calendar',
+              routerLink: `/tournament/${tournament.id}/game`
+            },
+            {
+              label: 'Import FIT',
+              icon: 'pi pi-download',
+              routerLink: `/tournament/${tournament.id}/fit-import`
+            }
+          ]
+        },
+        {
+          label: 'Referee',
+          icon: 'pi pi-users',
+          items: [
+            {
+              label: 'Referees',
+              routerLink: `/tournament/${tournament.id}/referee`,
+            },
+            {
+              label: 'Coaches',
+              routerLink: `/tournament/${tournament.id}/coach`,
+            },
+            {
+              label: 'Allocations',
+              routerLink: `/tournament/${tournament.id}/allocation`,
+            },
+            ...(this.canAccessRefereeUpgrade() ? [{
+                label: 'Upgrades',
+                routerLink: `/tournament/${tournament.id}/referee-upgrade`,
+              }] : []),
+          ],
+        },
+      ]);
     }
     // TODO add admin entry
     return entries;

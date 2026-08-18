@@ -25,6 +25,46 @@ service cloud.firestore {
         );
     }
 
+    function validUpgradeVote(vote) {
+      return vote in ['Yes', 'Not yet', 'Possible', 'DNS', 'Voting'];
+    }
+
+    function isRefereeCoachAttendee(attendeeId, tournamentId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/attendee/$(attendeeId)).data.tournamentId == tournamentId
+        && get(/databases/$(database)/documents/attendee/$(attendeeId)).data.isRefereeCoach == true
+        && get(/databases/$(database)/documents/person/$(get(/databases/$(database)/documents/attendee/$(attendeeId)).data.personId)).data.email == request.auth.token.email;
+    }
+
+    function isEligibleUpgradeReferee(refereeAttendeeId, tournamentId) {
+      return get(/databases/$(database)/documents/attendee/$(refereeAttendeeId)).data.tournamentId == tournamentId
+        && get(/databases/$(database)/documents/attendee/$(refereeAttendeeId)).data.isReferee == true
+        && get(/databases/$(database)/documents/attendee/$(refereeAttendeeId)).data.referee.upgrade.badge != 0;
+    }
+
+    function validCoachUpgradeVote() {
+      return request.resource.data.tournamentId is string
+        && request.resource.data.refereeAttendeeId is string
+        && request.resource.data.coachAttendeeId is string
+        && request.resource.data.vote is string
+        && validUpgradeVote(request.resource.data.vote)
+        && request.resource.data.comments is list
+        && isRefereeCoachAttendee(request.resource.data.coachAttendeeId, request.resource.data.tournamentId)
+        && isEligibleUpgradeReferee(request.resource.data.refereeAttendeeId, request.resource.data.tournamentId);
+    }
+
+    function validPanelUpgradeVote() {
+      return request.resource.data.tournamentId is string
+        && request.resource.data.refereeAttendeeId is string
+        && request.resource.data.vote is string
+        && validUpgradeVote(request.resource.data.vote)
+        && request.resource.data.updatedByCoachAttendeeId is string
+        && request.resource.data.needToSee is list
+        && (request.resource.data.needToTalk == null || request.resource.data.needToTalk is string)
+        && isRefereeCoachAttendee(request.resource.data.updatedByCoachAttendeeId, request.resource.data.tournamentId)
+        && isEligibleUpgradeReferee(request.resource.data.refereeAttendeeId, request.resource.data.tournamentId);
+    }
+
     match /region/{documentId} {
       allow read: if true;
       allow write: if isPlatformAdmin();
@@ -104,6 +144,25 @@ service cloud.firestore {
       allow update: if request.resource.data.tournamentId == resource.data.tournamentId
         && canManageTournament(resource.data.tournamentId);
       allow delete: if canManageTournament(resource.data.tournamentId);
+    }
+
+    match /referee-upgrade-coach-vote/{documentId} {
+      allow read: if signedIn();
+      allow create: if validCoachUpgradeVote();
+      allow update: if validCoachUpgradeVote()
+        && request.resource.data.tournamentId == resource.data.tournamentId
+        && request.resource.data.refereeAttendeeId == resource.data.refereeAttendeeId
+        && request.resource.data.coachAttendeeId == resource.data.coachAttendeeId;
+      allow delete: if false;
+    }
+
+    match /referee-upgrade-panel-vote/{documentId} {
+      allow read: if signedIn();
+      allow create: if validPanelUpgradeVote();
+      allow update: if validPanelUpgradeVote()
+        && request.resource.data.tournamentId == resource.data.tournamentId
+        && request.resource.data.refereeAttendeeId == resource.data.refereeAttendeeId;
+      allow delete: if false;
     }
 
     match /email_personid/{documentId} {

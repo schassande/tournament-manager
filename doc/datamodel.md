@@ -22,8 +22,19 @@ Les noms de collections Firestore declares dans le code sont :
 - `fragment-referee-allocation`
 - `tournament-referee-allocation-statistics`
 - `fragment-referee-allocation-statistics`
+- `referee-upgrade-coach-vote`
+- `referee-upgrade-panel-vote`
 
 ## Objets metier persistants
+
+## Votes d'upgrade des arbitres
+
+Le modele partage `persistent-data-model/src/referee-upgrade.ts` definit `UpgradeVote`, `RefereeUpgradeCoachVote` et `RefereeUpgradePanelVote`.
+
+- Un vote coach contient le tournoi, l'arbitre, le coach, une valeur de vote et les lignes de commentaire.
+- Un vote panel contient le tournoi, l'arbitre, la decision, le dernier coach auteur, les coaches a revoir et le coach a qui parler (`null` si aucun).
+- Les IDs Firestore sont deterministes afin de garantir un vote coach par couple coach/arbitre et un vote panel par arbitre dans un tournoi.
+- Au chargement de la page, les votes coach manquants sont initialises uniquement pour le coach connecte ; les votes panel manquants sont initialises pour tous les arbitres eligibles.
 
 ## `Region`
 

@@ -26,3 +26,8 @@ export const colTournamentRefereeAllocationStatistics =
 /** Firebase collection name of FragmentRefereeAllocationAllStatistics */
 export const colFragmentRefereeAllocationStatistics =
   'fragment-referee-allocation-statistics';
+
+/** Firebase collection name for referee coach upgrade votes. */
+export const colRefereeUpgradeCoachVote = 'referee-upgrade-coach-vote';
+/** Firebase collection name for referee panel upgrade votes. */
+export const colRefereeUpgradePanelVote = 'referee-upgrade-panel-vote';

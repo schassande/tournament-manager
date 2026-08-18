@@ -10,6 +10,8 @@ Le backend Firebase actuel est tres concentre :
 
 Le reste du CRUD metier est fait directement par le frontend via Firestore.
 
+Les collections `referee-upgrade-coach-vote` et `referee-upgrade-panel-vote` sont validees par les regles Firestore : valeurs de vote autorisees, arbitre eligible, identite du referee coach pour les votes individuels et invariants d'identite lors des mises a jour. Les votes ne sont pas supprimables afin de conserver l'historique.
+
 ## Initialisation
 
 Fichier : `functions/src/index.ts`

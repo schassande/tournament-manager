@@ -11,6 +11,8 @@ Le layout commun contient :
 - un menu utilisateur
 - un menu contexte tournoi quand un tournoi courant est charge
 
+Le menu contexte tournoi regroupe les pages d'arbitrage dans le sous-menu `Referee` : `Referees`, `Coaches`, `Allocations` et `Upgrades` (ce dernier est visible uniquement pour un referee coach).
+
 Certaines pages sont protegees par `AuthGuard` :
 
 - creation de tournoi
@@ -20,6 +22,15 @@ Certaines pages sont protegees par `AuthGuard` :
 - edition des matchs
 - gestion des allocations
 - edition d'un fragment d'allocation
+- gestion des upgrades d'arbitres
+
+## `/tournament/:tournamentId/referee-upgrade`
+
+Composant : `TournamentRefereeUpgradeComponent`
+
+Cette page est accessible aux referee coaches du tournoi depuis l'entree de menu `Referee upgrade`. Elle fournit les onglets `Coach vote`, `Panel Vote`, `Upgraded`, `To See` et `To talk`. Les votes coach sont visibles par les referee coaches ; le vote panel est modifiable par les membres du panel, c'est-a-dire tous les attendees `isRefereeCoach` du tournoi.
+
+Lorsque aucun arbitre ne cherche un upgrade, les onglets sont masques et la page affiche `No referee is currently seeking an upgrade.`.
 
 ## Liste des routes
 
