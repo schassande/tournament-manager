@@ -32,6 +32,8 @@ Cette page est accessible aux referee coaches du tournoi depuis l'entree de menu
 
 Lorsque aucun arbitre ne cherche un upgrade, les onglets sont masques et la page affiche `No referee is currently seeking an upgrade.`.
 
+Au chargement, la page utilise la liste courante des attendees arbitres dont la demande d'upgrade est active. Les votes coach et panel conserves pour un arbitre qui ne demande plus d'upgrade sont ignores dans tous les onglets, y compris les suivis `To See` et `To talk`, sans suppression des documents Firestore.
+
 ## Liste des routes
 
 ## `/home`

@@ -35,6 +35,7 @@ Le modele partage `persistent-data-model/src/referee-upgrade.ts` definit `Upgrad
 - Un vote panel contient le tournoi, l'arbitre, la decision, le dernier coach auteur, les coaches a revoir et le coach a qui parler (`null` si aucun).
 - Les IDs Firestore sont deterministes afin de garantir un vote coach par couple coach/arbitre et un vote panel par arbitre dans un tournoi.
 - Au chargement de la page, les votes coach manquants sont initialises uniquement pour le coach connecte ; les votes panel manquants sont initialises pour tous les arbitres eligibles.
+- Au chargement de la page, la liste courante des attendees arbitres qui demandent un upgrade est comparee aux identifiants references par les votes. Les votes coach et panel d'un arbitre qui ne demande plus d'upgrade restent persistes, mais sont ignores par la page et ne sont pas recrees.
 
 ## `Region`
 

@@ -3,7 +3,6 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   Attendee,
-  Gender,
   Person,
   RefereeBadgeColor,
   RefereeBadgeColors,
@@ -305,14 +304,29 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
         )
         : of(undefined),
     }).subscribe(({ referees, coaches, coachVotes, panelVotes, currentCoach }) => {
+      const activeRefereeIds = new Set(referees.map((referee) => referee.attendee.id));
       this.referees.set(referees);
       this.coaches.set(coaches);
       this.currentCoach.set(currentCoach);
-      this.coachVotes.set(coachVotes);
-      this.panelVotes.set(panelVotes);
+      this.coachVotes.set(this.keepVotesForActiveReferees(coachVotes, activeRefereeIds));
+      this.panelVotes.set(this.keepVotesForActiveReferees(panelVotes, activeRefereeIds));
       this.dataLoaded.set(true);
-      this.ensureInitialVotes(tournamentId, referees, coaches, coachVotes, panelVotes);
+      this.ensureInitialVotes(
+        tournamentId,
+        referees,
+        coaches,
+        this.coachVotes(),
+        this.panelVotes(),
+      );
     });
+  }
+
+  /** Keep historical vote documents out of the active page state when their referee no longer seeks an upgrade. */
+  private keepVotesForActiveReferees<T extends { refereeAttendeeId: string }>(
+    votes: T[],
+    activeRefereeIds: Set<string>,
+  ): T[] {
+    return votes.filter((vote) => activeRefereeIds.has(vote.refereeAttendeeId));
   }
 
   /** Create only the connected coach's missing votes and every missing panel decision. */
@@ -345,7 +359,7 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
 
   private loadReferees(tournamentId: string): Observable<RefereeUpgradeReferee[]> {
     return this.attendeeService.findTournamentReferees(tournamentId).pipe(
-      map((attendees) => attendees.filter((attendee) => attendee.referee?.upgrade && attendee.referee.upgrade.badge !== 0)),
+      map((attendees) => attendees.filter((attendee) => attendee.referee?.upgrade && attendee.referee.upgrade.badge > 0)),
       switchMap((attendees) => this.attachPeople(attendees)),
     );
   }

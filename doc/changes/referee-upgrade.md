@@ -1,6 +1,6 @@
 # Referee Upgrade
 
-Last updated: 2026-08-17
+Last updated: 2026-08-18
 
 ## Objective
 
@@ -37,6 +37,8 @@ upgrade?: {
 ```
 
 The current shared model stores this information on `Attendee.referee` (`persistent-data-model/src/tournament.ts` and `persistent-data-model/src/referee.ts`). A badge value of `0` means that no upgrade is requested.
+
+At page load, the frontend must load the current referee attendees for the tournament and derive the active eligible set from their current `referee.upgrade` values. The attendee ID is the stable identity used to compare this set with the referee IDs referenced by persisted upgrade votes. No historical eligibility snapshot is required.
 
 ### Vote values
 
@@ -92,6 +94,8 @@ The frontend must provide an Angular service for each persisted model. The Fireb
 ## Business rules
 
 - Every eligible referee is displayed in the coach and panel workflows.
+- On every page load, only referees present in the current eligible set are included in coach-vote rows, panel-vote rows, and all summary or follow-up views.
+- If a referee referenced by a persisted `RefereeUpgradeCoachVote` or `RefereeUpgradePanelVote` is no longer in the current eligible set, both vote types are ignored for the active workflow. This includes panel follow-up assignments and aggregated coach comments for that referee.
 - On page load, create the connected referee coach's missing coach votes with `Voting` and empty comments; do not create coach-vote documents for other coaches.
 - On page load, create a missing panel vote for every eligible referee with `Voting`, no follow-up assignments, and the connected coach as the initial author.
 - A coach's initial vote is `Voting`.
@@ -165,7 +169,7 @@ When the panel vote changes away from `Not yet`, `needToTalk` is cleared to `nul
 
 Table sorting and badge filters use the referee's current `referee.badge`, not the requested upgrade badge.
 
-Votes are retained in Firebase for traceability when a coach or referee is removed, loses the relevant role, or is no longer eligible, but they are excluded from active views.
+Votes are retained in Firebase for traceability when a coach or referee is removed, loses the relevant role, or is no longer eligible, but they are excluded from active views. In particular, a referee who no longer has an upgrade request must not cause new vote documents to be created, and existing coach and panel vote documents for that referee must not be deleted or used by the page.
 
 Verified repository conventions include `PersistentObject extends WithId`, attendee role flags in `persistent-data-model/src/tournament.ts`, and reusable persistence helpers in `functions/src/common-persistence.ts`. No existing upgrade-vote collection or service was found.
 
@@ -187,6 +191,8 @@ No existing persisted upgrade-vote data or collections were found, so no data mi
 
 - An authorized referee coach can open the new route from the tournament menu.
 - Only eligible referees appear in the upgrade workflow.
+- On page load, the page loads the tournament's current referee attendees and excludes persisted coach and panel votes whose referee attendee IDs are no longer associated with an eligible upgrade request.
+- When an eligible referee stops seeking an upgrade, their existing `RefereeUpgradeCoachVote` and `RefereeUpgradePanelVote` documents remain persisted but disappear from every active tab, including `To See` and `To talk`.
 - A coach can view and persist one vote and comments per eligible referee, with `Voting` as the initial state.
 - Every referee coach can see all persisted coach votes.
 - Panel members can view coach votes, edit panel votes, assign coaches to `Need to See` and `Need to talk`, and see aggregated comments.

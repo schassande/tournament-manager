@@ -47,7 +47,7 @@ export const RefereeBadgeColors: RefereeBadgeColor[] = [
 
   { badgeSystem: 5, badge: 1, background: '#254192',   font: 'white' },
   { badgeSystem: 5, badge: 2, background: '#0394A5',  font: 'white' },
-  { badgeSystem: 5, badge: 3, background: 'yellow', font: 'white' },
+  { badgeSystem: 5, badge: 3, background: 'yellow', font: 'black' },
   { badgeSystem: 5, badge: 4, background: 'red',    font: 'white' },
   { badgeSystem: 5, badge: 5, background: 'black',  font: 'white' },
 
