@@ -1,8 +1,11 @@
 # TODO list du projet Tournament Maager
 
 - Allocation : 
+  - Bug liste des arbitres dans le select
+  - Quand multi jour et pas alloc créer pour les autres jours, il faut pouvoir creer en cliquant + confirmation
+  - Cacher automatiquement les terrains ou il n'y a pas de match dans la journée
   - Composant graphique pour l'édition d'une case d'un referee avec une popup pour proposer des arbitres disponibles 
-    - Bug Sauvegarde des allocations
+  - Bug Sauvegarde des allocations
   - Panel gauche avec la liste des arbitres classés / triés
   - Page des allocations à améliorer
     - Présentation pour les tournois 1 day et une autre présentation pour les tournois multi days

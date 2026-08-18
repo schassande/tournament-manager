@@ -196,6 +196,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
     effect(() => this._gameRefereeIds[2] = this.gameRefereeIds[2]());
     effect(() => this._highlights = this.highlights());
     effect(() => this._gameCoachIds = this.gameCoachIds());
+    // effect(() => console.log(this.referees()));
   }
   ngOnInit(): void {
     this.sub = this.selectionService.action$.subscribe(action => this.performAction(action));

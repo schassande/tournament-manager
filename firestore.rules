@@ -71,9 +71,7 @@ service cloud.firestore {
     }
 
     match /person/{documentId} {
-      allow read, create, delete: if signedIn();
-      allow update: if signedIn()
-        && (request.auth.token.email == resource.data.email || isPlatformAdmin());
+      allow read, create, update, delete: if signedIn();
     }
 
     match /tournament/{documentId} {

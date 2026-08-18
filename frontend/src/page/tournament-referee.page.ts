@@ -19,6 +19,7 @@ import { TournamentRefereeEditComponent } from '../component/tournament-referee-
 import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
 import { IconFieldModule } from 'primeng/iconfield';
+import { ref } from 'firebase/storage';
 
 @Component({
   selector: 'app-tournament-referee',
@@ -46,9 +47,11 @@ import { IconFieldModule } from 'primeng/iconfield';
             <th style="width:20%">First name</th>
             <th style="width:20%">Last Name</th>
             <th style="width:10%">Short Name</th>
-            <th style="width:10%">Team</th>
+            @if (this.tournament()?.allowPlayerReferees) {
+              <th style="width:10%">Team</th>
+            }
             <th style="width:5%">Level</th>
-            <th style="width:5%">Upgrade to</th>
+            <th style="width:5%">Up to</th>
             <th style="width:5%">Category</th>
             <th style="width:5%">Gender</th>
             <th style="width:10%">Action</th>
@@ -65,7 +68,7 @@ import { IconFieldModule } from 'primeng/iconfield';
             <td [pEditableColumn]="referee.person?.firstName" pEditableColumnField="firstName" style="text-align: center;">
               @if (referee!.isPR) {
                 <span style="text-align: center;">-</span>
-              } @else {
+              } @else if (referee?.person) {
                 <p-cellEditor>
                   <ng-template #input>
                     <input pInputText type="text" [(ngModel)]="referee.person.firstName" [disabled]="referee!.isPR"
@@ -79,7 +82,7 @@ import { IconFieldModule } from 'primeng/iconfield';
             <td [pEditableColumn]="referee.person?.lastName" pEditableColumnField="lastName" style="text-align: center;">
               @if (referee!.isPR) {
                 <span style="text-align: center;">-</span>
-              } @else {
+              } @else if (referee?.person) {
                 <p-cellEditor>
                   <ng-template #input>
                     <input pInputText type="text" [(ngModel)]="referee.person.lastName" [disabled]="referee!.isPR"
@@ -94,7 +97,7 @@ import { IconFieldModule } from 'primeng/iconfield';
             <td [pEditableColumn]="referee.person?.shortName" pEditableColumnField="shortName" style="text-align: center;">
               @if (referee!.isPR) {
                 <span style="text-align: center;">-</span>
-              } @else {
+              } @else if (referee?.person) {
                 <p-cellEditor>
                   <ng-template #input>
                     <input pInputText type="text" [(ngModel)]="referee.person.shortName" [disabled]="referee!.isPR"
@@ -105,6 +108,7 @@ import { IconFieldModule } from 'primeng/iconfield';
                 </p-cellEditor>
               }
             </td>
+            @if (this.tournament()?.allowPlayerReferees) {
             <td  [pEditableColumn]="referee.team?.id" pEditableColumnField="team" style="text-align: center;">
               @if (referee!.isPR) {
                 <p-cellEditor>
@@ -123,6 +127,7 @@ import { IconFieldModule } from 'primeng/iconfield';
                 </p-cellEditor>
               }
             </td>
+            }
             <td [pEditableColumn]="referee.attendee.referee.badge" pEditableColumnField="refereeLevel" style="text-align: center;">
               @if (referee!.isPR) {
                 <div style="text-align: center;">-</div>
@@ -158,30 +163,42 @@ import { IconFieldModule } from 'primeng/iconfield';
                 </p-cellEditor>
               }
             </td>
-            <td [pEditableColumn]="referee.attendee.referee.category" pEditableColumnField="refereeCategory" style="text-align: center;">
+            <td [pEditableColumn]="referee.attendee.referee.category" pEditableColumnField="refereeCategory" class="full-cell-select-cell" style="text-align: center;">
               @if (referee!.isPR) {
                 <div style="text-align: center;">-</div>
               } @else {
                 <p-cellEditor>
                   // Referee Category selector
                   <ng-template #input>
-                    <p-select id="refereeCategory" size="small" [options]="refereeCategories"  (change)="attendeeChanged(referee)"
-                      [(ngModel)]="referee!.attendee!.referee!.category" appendTo="body" required [disabled]="referee!.isPR"/>
+                    <select id="refereeCategory" [(ngModel)]="referee!.attendee!.referee!.category"
+                      (change)="categoryChanged(referee)" required [disabled]="referee!.isPR" class="full-cell-select">
+                        <option [value]="'J'">Junior</option>
+                        <option [value]="'O'">Open</option>
+                        <option [value]="'S'">Senior</option>
+                        <option [value]="'M'">Master</option>
+                    </select>
                   </ng-template>
-                  <ng-template #output>{{ referee.attendee.referee.category }}</ng-template>
+                  <ng-template #output>{{ toPrintedRefereeCategory(referee.attendee.referee.category) }}</ng-template>
                 </p-cellEditor>
               }
             </td>
-            <td [pEditableColumn]="referee.person?.gender" pEditableColumnField="gender" style="text-align: center;">
+            <td [pEditableColumn]="referee.person?.gender" pEditableColumnField="gender" class="full-cell-select-cell" style="text-align: center;">
               @if (referee!.isPR) {
                 <div style="text-align: center;">-</div>
               } @else {
                 <p-cellEditor>
                   <ng-template #input>
-                    <p-listbox id="gender" size="small" [options]="genders" [(ngModel)]="referee!.person!.gender"
-                      appendTo="body" required [disabled]="referee!.isPR" (change)="attendeeChanged(referee)"/>
+                    <select id="gender" [(ngModel)]="referee!.person!.gender"
+                      (change)="personChanged(referee)" [disabled]="referee!.isPR" class="full-cell-select">
+                        <option [value]="'M'">Male</option>
+                        <option [value]="'F'">Female</option>
+                    </select>
                   </ng-template>
-                  <ng-template #output>{{ referee.person.gender }}</ng-template>
+                  <ng-template #output>
+                    @if (referee?.person) {
+                      {{ toPrintedGender(referee.person.gender) }}
+                    }
+                  </ng-template>
                 </p-cellEditor>
               }
             </td>
@@ -207,6 +224,24 @@ import { IconFieldModule } from 'primeng/iconfield';
     .action-edit { margin-right: 10px; color: blue;}
     .buttonPanel { float: right;}
     .table-buttons { margin: 0 10px;}
+    td.p-editable-column { padding: 0; }
+    td.p-editable-column p-celleditor {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    td.p-editable-column p-celleditor input,
+    td.p-editable-column p-celleditor p-select,
+    td.p-editable-column p-celleditor select {
+      display: block;
+      width: 100% !important;
+      height: 100%;
+      min-height: 2rem;
+      box-sizing: border-box;
+    }
+    .full-cell-select {
+      height: 100%;
+    }
     .pr-toggle-switch {
       --p-toggleswitch-checked-background: var(--p-info-color);
     }
@@ -244,7 +279,6 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
   constructor() {
     super();
     effect(() => {
-      this.tournament();
       if (this.tournament()) {
         this.loadTeams();
         this.loadReferees();
@@ -521,7 +555,6 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
     });
   }
   attendeeChanged(referee: Referee) {
-    console.debug('Saving referee', referee)
     this.attendeeService.save(referee.attendee).subscribe();
   }
   autoComputeShortName(p: Person): boolean {
@@ -538,7 +571,9 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
   personChanged(referee: Referee) {
     const p:Person = referee.person!;
     this.autoComputeShortName(p);
-    if (!referee.isPR) this.personService.save(p).subscribe();
+    if (!referee.isPR) this.personService.save(p).subscribe({
+      error: (err) => console.error('Error when saving ', p, err)
+    });
   }
   onPasteFirstName(event: any, ri:number) {
     event.preventDefault(); // Empêcher le collage natif
@@ -666,11 +701,34 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
   }
 
   upgradeChanged(referee: Referee, value:number) {
-    if (referee.attendee.referee)
+    if (referee.attendee.referee) {
       referee.attendee.referee.upgrade!.badge = value;
+      this.attendeeChanged(referee);
+    }
     if (referee && referee.person) {
       referee.person.referee = referee.attendee.referee;
+      this.personChanged(referee);
     }
+  }
+  categoryChanged(referee: Referee) {
     this.attendeeChanged(referee);
+    if (referee && referee.person) {
+      referee.person.referee = referee.attendee.referee;
+      this.personChanged(referee);
+    }
+  }
+  toPrintedRefereeCategory(category: RefereeCategory) {
+    switch(category) {
+      case  'J': return 'Junior';
+      case  'O': return 'Open';
+      case  'S': return 'Senior';
+      case  'M': return 'MAster';
+    }
+  }
+  toPrintedGender(g: Gender) {
+    switch(g) {
+      case 'F': return 'Female';
+      case 'M': return 'Male';
+    }
   }
 }

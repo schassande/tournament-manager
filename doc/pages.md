@@ -179,7 +179,7 @@ Fonctionnalites principales :
 - ajout d'un arbitre temps plein
 - ajout d'un player referee
 - ajout d'un player referee pour chaque equipe
-- edition inline du nom, short name, niveau, upgrade, categorie, genre
+- edition inline du nom, short name, niveau, upgrade, categorie, genre (select Male/Female)
 - liaison d'un player referee a une equipe
 - ouverture d'une popup detail d'edition
 - edition des disponibilites par jour, `PartDay` et timeslot dans l'onglet `Unavailability`
