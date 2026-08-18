@@ -59,6 +59,7 @@ Comportements notables :
 - appelle `UserService.login()`
 - appelle `UserService.loginWithGoogle()` pour la connexion Google
 - redirige vers `/home` en cas de succes
+- affiche un spinner et desactive le bouton Login pendant la connexion email / mot de passe afin d'eviter les appels multiples
 - crée automatiquement une fiche `Person` si l’adresse Google n’existe pas encore
 - affiche un message générique en cas d’échec de la connexion Google
 - le lien "Forgotten password" est un placeholder

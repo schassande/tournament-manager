@@ -79,7 +79,14 @@ Le build Angular resolve `@tournament-manager/persistent-data-model` directement
 
 Sortie generee :
 
-- `frontend/dist/test-prime/browser`
+- `frontend/dist/browser`
+
+Le point d'entree HTML de l'application est `frontend/src/index.html`. Le repertoire
+`frontend/public/` contient uniquement les assets statiques (par exemple le favicon) :
+il ne doit pas contenir la page d'accueil generee par Firebase Hosting ni de scripts
+`/__/firebase/*`. Firebase est initialise par AngularFire dans
+`frontend/src/app/app.config.ts`; les URLs `/__/firebase/*` sont des endpoints
+fournis uniquement par Firebase Hosting et ne sont pas disponibles avec `ng serve`.
 
 Pour le developpement local :
 
