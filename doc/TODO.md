@@ -1,9 +1,11 @@
 # TODO list du projet Tournament Maager
 
 - Allocation : 
-  - Composant graphique pour l'édition d'une case d'un referee avec une popup pour proposer des arbitres disponibles 
+  - Composant graphique pour l'édition d'une case d'un referee avec une popup pour proposer des arbitres disponibles
   - Panel gauche avec la liste des arbitres classés / triés
-  - Page des allocations à améliorer
+  - Ajouter la vérification des contraintes pour les arbitres: dispo, nombre de match conséqutifs
+  - Ajouter la vérification des contraintes pour les coach: dispo, nombre de match conséqutifs
+- Page des allocations à améliorer
     - Présentation pour les tournois 1 day et une autre présentation pour les tournois multi days
 - Planning arbitres
 - Planning coach
