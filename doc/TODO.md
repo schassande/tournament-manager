@@ -1,7 +1,6 @@
 # TODO list du projet Tournament Maager
 
 - Allocation : 
-  - Composant graphique pour l'édition d'une case d'un referee avec une popup pour proposer des arbitres disponibles
   - Panel gauche avec la liste des arbitres classés / triés
   - Ajouter la vérification des contraintes pour les arbitres: dispo, nombre de match conséqutifs
   - Ajouter la vérification des contraintes pour les coach: dispo, nombre de match conséqutifs
@@ -51,7 +50,9 @@
   - Quand multi jour et pas alloc créer pour les autres jours, il faut pouvoir creer en cliquant + confirmation
   - Bug Sauvegarde des allocations
   - Mise en page de l'allocation
-  
+- 2026/08/20: Allocation
+  - Composant graphique pour l'édition d'une case d'un referee avec une popup pour proposer des arbitres disponibles
+  - 
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams

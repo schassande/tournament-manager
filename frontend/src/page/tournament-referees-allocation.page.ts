@@ -1,7 +1,7 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, signal, OnInit, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { finalize, forkJoin, map, mergeMap, Observable, of, take } from 'rxjs';
+import { finalize, forkJoin, map, mergeMap, Observable, of, take, tap } from 'rxjs';
 
 import { AbstractTournamentPage } from '../component/tournament-abstract.page';
 import { Day, Division, Field, Game, GameAttendeeAllocation, PartDay, Referee, TournamentRefereeAllocation, FragmentRefereeAllocation, RefereeCoach, Team, Timeslot, FragmentRefereeAllocationDesc } from '@tournament-manager/persistent-data-model';
@@ -24,17 +24,20 @@ import { AllocationAction, ClipboardItem, SelectionDescriptor, SelectionService 
 import { FragmentRefereeAllocationService } from '../service/fragment-referee-allocation.service';
 import { TournamentRefereeAllocationService } from '../service/tournament-referee-allocation.service';
 import { UserService } from '../service/user.service';
+import { RefereeSelectorActivation, RefereeSelectorFacade } from '../service/referee-selector.service';
 
 const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
 
 @Component({
   selector: 'app-tournament-referees-allocation',
+  providers: [RefereeSelectorFacade],
   imports: [CheckboxModule, CommonModule, ConfirmDialogModule, DatePipe, FormsModule, GameRefereeAllocatorComponent, InputTextModule, ProgressSpinnerModule, SelectModule, TooltipModule],
   template: `
   @if (loading()) {
     <div class="allocation-loading-overlay" role="dialog" aria-modal="true" aria-label="Loading allocation">
       <div class="allocation-loading-panel">
         <p-progress-spinner ariaLabel="Loading allocation" />
+        <div class="allocation-loading-message">{{ loadingMessage() }}</div>
       </div>
     </div>
   }
@@ -89,11 +92,22 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
             inputId="show-referee-coach" [binary]="true"></p-checkbox>
           <label for="show-referee-coach">Referee coach</label>
         </span>
-        <i class="pi pi-info-circle allocation-summary-info"
-          [pTooltip]="allocationSummary()" tooltipPosition="top"
-          tabindex="0" role="img" [attr.aria-label]="allocationSummary()"></i>
+        @if (selectorPreparing()) {
+          <span class="selector-preparation-status" role="status">{{ selectorPreparationMessage() }}</span>
+        }
+        <span class="allocation-summary-icons">
+          @if (incompleteMatchCount() > 0) {
+            <i class="pi pi-exclamation-triangle allocation-referee-status-icon"
+              [pTooltip]="incompleteAllocationMessage()" tooltipPosition="top"
+              tabindex="0" role="button" [attr.aria-label]="incompleteAllocationMessage()"
+              (click)="selectFirstEmptyRefereeSlot()" (keydown.enter)="selectFirstEmptyRefereeSlot()"></i>
+          }
+          <i class="pi pi-info-circle allocation-summary-info"
+            [pTooltip]="allocationSummary()" tooltipPosition="top"
+            tabindex="0" role="img" [attr.aria-label]="allocationSummary()"></i>
+        </span>
       </div>
-      @for(part of day()!.partViews; track part.id) {
+      @for(part of day()!.partViews; let partIdx = $index; track part.id) {
         @if (day()!.partViews.length > 1) {
         <h3>Part {{ part.id }}</h3>
         }
@@ -105,18 +119,21 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
                 <th class="fieldCol">{{ field.name }}</th>
               }
             </tr>
-            @for(ts of part.timeSlotViews; track ts.id) {
+            @for(ts of part.timeSlotViews; let timeslotIdx = $index; track ts.id) {
               <tr class="tableRowItem">
                 <td class="timeslotCell">{{ts.startStr}}</td>
                 @if (ts.playingSlot) {
-                  @for(field of ts.fields; track field.id) {
-                    <td [ngClass]="{ 'noGameCell': !field.game,  'gameCell': field.game, 'selectable':selection() && !field.game && selection()?.cellType === 'EmptySlot' && selection()?.fieldId === field.id && selection()?.timeslotId === ts.id }" class="fieldCol {{gameCellStyle()}}" >
+                  @for(field of ts.fields; let fieldIdx = $index; track field.id) {
+                    <td [attr.data-grid-cell]="partIdx + '-' + timeslotIdx + '-' + fieldIdx"
+                      [ngClass]="{ 'noGameCell': !field.game,  'gameCell': field.game, 'selectable':selection() && !field.game && selection()?.cellType === 'EmptySlot' && selection()?.fieldId === field.id && selection()?.timeslotId === ts.id }" class="fieldCol {{gameCellStyle()}}" >
                       @if (field.game) {
                         <app-game-referee-allocator [game]="field.game" [coaches]="coaches()"
                           [showCoaches]="showCoaches()" [showReferees]="showReferees()" [showRefereeLevel]="showRefereeLevel()"
                           [showBadgeSystem]="showBadgeSystem()" [showDivisionColor]="showDivisionColor()"
-                          [referees]="referees()" [allocation]="allocation()!"
-                          [highlightedRefereeIds]="highlightedRefereeIds()">
+                          [referees]="referees()" [refereeSelectorEntries]="refereeSelectorFacade.entries()" [periodGames]="periodGames()" [allocation]="allocation()!"
+                          [tournamentAllocation]="tournamentAllocation()" [selectorActivation]="selectorActivation()"
+                          [highlightedRefereeIds]="highlightedRefereeIds()" (allocationChanged)="onAllocationChanged()"
+                          (refereeCellActivated)="onRefereeCellActivated($event, partIdx, timeslotIdx, fieldIdx)">
                         </app-game-referee-allocator>
                       }
                     </td>
@@ -135,7 +152,7 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
   styles: [`
     a { text-decoration: underline; color: blue;}
     h2, h3 { text-align: center; padding-top: 10px;}
-    .fieldCol { width: 250px;}
+    .fieldCol { width: 225px;}
     .noGameCell { background-color: #eeeeee; }
     .gameCell { background-color: #ffffff;  vertical-align: top;}
     .tableRowItem .timeslotCell { font-weight: bold; }
@@ -178,12 +195,17 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
       text-align: left;
     }
     .allocation-summary-info {
-      margin-left: auto;
-      margin-right: 10px;
       font-size: 1.21rem;
       color: blue;
       cursor: help;
       vertical-align: middle;
+    }
+    .allocation-summary-icons {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      margin-left: auto;
+      margin-right: 10px;
     }
     .show-coaches-option {
       display: inline-flex;
@@ -194,6 +216,11 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
     }
     .show-coaches-option label {
       cursor: pointer;
+    }
+    .allocation-referee-status-icon {
+      color: #dc3545;
+      cursor: help;
+      font-size: 1.21rem;
     }
     .allocation-table {
       margin: 0;
@@ -209,11 +236,15 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
     }
     .allocation-loading-panel {
       display: flex;
+      flex-direction: column;
+      align-items: center;
       justify-content: center;
       padding: 1.5rem;
       border-radius: 8px;
       background-color: white;
     }
+    .allocation-loading-message { margin-top: .75rem; text-align: center; }
+    .selector-preparation-status { color: #666; font-size: .85rem; margin: 0 10px; }
     `],
   standalone: true
 })
@@ -228,6 +259,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   private selectionService = inject(SelectionService);
   private confirmationService = inject(ConfirmationService);
   private userService = inject(UserService);
+  readonly refereeSelectorFacade = inject(RefereeSelectorFacade);
   private route: ActivatedRoute = inject(ActivatedRoute);
 
   day = signal<DayView|undefined>(undefined);
@@ -274,6 +306,27 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     }
   });
   selection = this.selectionService.currentSelection;
+  selectorActivation = signal<RefereeSelectorActivation | undefined>(undefined);
+  private selectorActivationSequence = 0;
+  loadingMessage = signal('Loading allocation configuration...');
+  selectorPreparing = signal(false);
+  selectorPreparationMessage = signal('Preparing referee selector...');
+  periodGames = computed<GameView[]>(() => this.day()?.partViews.flatMap(part =>
+    part.timeSlotViews.flatMap(timeslot => timeslot.fields.flatMap(field => field.game ? [field.game] : []))
+  ) ?? []);
+  private readonly refereePositionsPerGame = 3;
+  private readonly allocationChangeVersion = signal(0);
+  incompleteMatchCount = computed(() => {
+    this.allocationChangeVersion();
+    return this.periodGames().filter(game => this.missingRefereeSlots(game) > 0).length;
+  });
+  refereeSlotsToAllocate = computed(() => {
+    this.allocationChangeVersion();
+    return this.periodGames().reduce((total, game) => total + this.missingRefereeSlots(game), 0);
+  });
+  incompleteAllocationMessage = computed(() =>
+    `Incomplete matches: ${this.incompleteMatchCount()} · Referee slots to allocate: ${this.refereeSlotsToAllocate()}`
+  );
 
   constructor() {
     super();
@@ -283,6 +336,17 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
         this.loadData();
       }
     });
+    effect(() => {
+      const referees = this.referees();
+      const games = this.periodGames();
+      if (!referees.length && !games.length) return;
+      this.selectorPreparing.set(true);
+      this.selectorPreparationMessage.set('Preparing referee selector...');
+      void this.refereeSelectorFacade.prepareAsync(referees, games, (completed, total) => {
+        const progress = total === 0 ? 100 : Math.round((completed / total) * 100);
+        this.selectorPreparationMessage.set(`Preparing referee selector: ${progress}% (${completed}/${total})`);
+      }).then(() => this.selectorPreparing.set(false));
+    });
     window.addEventListener('keydown', this.onKeyboard.bind(this));
   }
 
@@ -290,20 +354,76 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   onShowCoachesChange(showCoaches: boolean): void {
     this.userService.setLocalUserProperty(KEY_SHOW_COACHES, showCoaches);
   }
+
+  /** Refreshes selector data and allocation counters after an allocation change. */
+  onAllocationChanged(): void {
+    this.refereeSelectorFacade.refresh();
+    this.allocationChangeVersion.update(version => version + 1);
+  }
+
+  /** Selects and reveals the first empty referee position in grid order. */
+  selectFirstEmptyRefereeSlot(): void {
+    for (let partIdx = 0; partIdx < this.day()!.partViews.length; partIdx++) {
+      const part = this.day()!.partViews[partIdx];
+      for (let timeslotIdx = 0; timeslotIdx < part.timeSlotViews.length; timeslotIdx++) {
+        const timeslot = part.timeSlotViews[timeslotIdx];
+        for (let fieldIdx = 0; fieldIdx < timeslot.fields.length; fieldIdx++) {
+          const game = timeslot.fields[fieldIdx].game;
+          if (!game) continue;
+          const allocatedPositions = new Set(game.referees.map(referee => referee.attendeeAlloc.attendeePosition));
+          const position = [0, 1, 2].find(candidate => !allocatedPositions.has(candidate));
+          if (position === undefined) continue;
+          const selection: SelectionDescriptor = {
+            tournamentId: this.tournament()!.id,
+            viewName: 'Appointments',
+            partId: part.id,
+            partIdx,
+            timeslotId: timeslot.id,
+            timeslotIdx,
+            fieldId: timeslot.fields[fieldIdx].id,
+            fieldIdx,
+            cellType: 'Referee',
+            inCellPosition: position,
+            nbLine: 1,
+          };
+          this.selectionService.setCurrentSelection(selection);
+          this.scrollSelectionIntoView(selection);
+          return;
+        }
+      }
+    }
+  }
+
+  /** Returns the number of unallocated referee positions for one match. */
+  private missingRefereeSlots(game: GameView): number {
+    const allocatedReferees = game.referees.filter(referee => referee.referee?.attendee.isReferee).length;
+    return Math.max(0, this.refereePositionsPerGame - allocatedReferees);
+  }
+
   loadData() {
     this.loadingStartedAt = Date.now();
     this.loading.set(true);
+    this.loadingMessage.set('Loading allocation configuration...');
     this.route.params.subscribe(params => {
       const fragmentRefereeAllocationId = params['fragmentAllocationId'] as string;
       const tournamentRefereeAllocationId = params['tournamentAllocationId'] as string;
       console.log('fragmentAllocationId',fragmentRefereeAllocationId, 'tournamentAllocationId', tournamentRefereeAllocationId)
       this.loadFragmentAllocation(fragmentRefereeAllocationId).pipe(
-        mergeMap(() => this.loadTournamentAllocation(tournamentRefereeAllocationId)),
-        mergeMap(() => this.loadAttendees()),
+        mergeMap(() => this.loadTournamentAllocation(tournamentRefereeAllocationId).pipe(
+          tap(() => this.loadingMessage.set('Loading referees and coaches...')),
+        )),
+        mergeMap(() => this.loadAttendees().pipe(
+          tap(() => this.loadingMessage.set('Building match grid...')),
+        )),
         map(() => this.buildDayView()),
-        mergeMap((dayView:DayView) => this.loadGames(dayView)),
+        mergeMap((dayView:DayView) => this.loadGames(dayView).pipe(
+          tap(() => this.loadingMessage.set('Loading referee allocations...')),
+        )),
         mergeMap((dayView:DayView) => this.loadRefereeAllocations(dayView)),
-        map((dayView:DayView) => this.day.set(dayView)),
+        map((dayView:DayView) => {
+          this.day.set(dayView);
+          this.selectFirstRefereeCell(dayView);
+        }),
         map(() => this.buildDayDescs()),
         take(1),
         finalize(() => this.finishLoading())
@@ -318,6 +438,54 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     const elapsed = Date.now() - this.loadingStartedAt;
     const remaining = Math.max(0, this.minimumLoadingDisplayMs - elapsed);
     setTimeout(() => this.loading.set(false), remaining);
+  }
+
+  /** Selects the first referee position of the first displayed game at page startup. */
+  private selectFirstRefereeCell(dayView: DayView): void {
+    for (let partIdx = 0; partIdx < dayView.partViews.length; partIdx++) {
+      const part = dayView.partViews[partIdx];
+      for (let timeslotIdx = 0; timeslotIdx < part.timeSlotViews.length; timeslotIdx++) {
+        const timeslot = part.timeSlotViews[timeslotIdx];
+        const fieldIdx = timeslot.fields.findIndex(field => field.game !== undefined);
+        if (fieldIdx < 0) continue;
+        const field = timeslot.fields[fieldIdx];
+        this.selectionService.setCurrentSelection({
+          tournamentId: this.tournament()!.id,
+          viewName: 'Appointments',
+          partId: part.id,
+          partIdx,
+          timeslotId: timeslot.id,
+          timeslotIdx,
+          fieldId: field.id,
+          fieldIdx,
+          cellType: 'Referee',
+          inCellPosition: 0,
+          nbLine: 1,
+        });
+        return;
+      }
+    }
+  }
+
+  /** Updates the page selection when a referee position is clicked in the grid. */
+  onRefereeCellActivated(position: number, partIdx: number, timeslotIdx: number, fieldIdx: number): void {
+    const part = this.day()?.partViews[partIdx];
+    const timeslot = part?.timeSlotViews[timeslotIdx];
+    const field = timeslot?.fields[fieldIdx];
+    if (!part || !timeslot || !field?.game) return;
+    this.selectionService.setCurrentSelection({
+      tournamentId: this.tournament()!.id,
+      viewName: 'Appointments',
+      partId: part.id,
+      partIdx,
+      timeslotId: timeslot.id,
+      timeslotIdx,
+      fieldId: field.id,
+      fieldIdx,
+      cellType: 'Referee',
+      inCellPosition: position,
+      nbLine: 1,
+    });
   }
   goToPart(partDay: PartDay|undefined = undefined) {
     let allocs = this.tournamentAllocation()!.fragmentRefereeAllocations.filter(fra => fra.dayId === this.day()!.id);
@@ -611,6 +779,8 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     this.fragmentRefereeAllocationService.save(this.allocation()!).pipe(take(1)).subscribe();
   }
   onKeyboard(event: KeyboardEvent) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.referee-selector-popover')) return;
     const select = this.selectionService.currentSelection();
     if (!select) {
       if (event.key === 'Enter') {
@@ -632,12 +802,22 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
       return;
     }
     let newSelection: SelectionDescriptor|null = {...select};
+    let selectorSearchText: string | undefined;
     let cas;
     const previousNbLine = newSelection.nbLine;
     newSelection.nbLine = 1;
     switch (event.key) {
       case 'Enter':
         newSelection.cellType = (select.inCellPosition > 0 || this.showReferees()) ? 'Referee' : 'Coach';
+        if (newSelection.cellType === 'Referee') selectorSearchText = '';
+        break;
+      case ' ':
+        if (select.cellType === 'Referee') {
+          event.preventDefault();
+          selectorSearchText = '';
+        } else {
+          newSelection = null;
+        }
         break;
       case 'Esc':
       case 'Escape':
@@ -794,7 +974,8 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
         }
         break;
         }
-      case 'Delete':{
+      case 'Delete':
+      case 'Backspace':{
         newSelection = null;
         const game = this.day()!.partViews[select.partIdx].timeSlotViews[select.timeslotIdx].fields[select.fieldIdx].game;
         if (game && (select.cellType === 'Coach' || select.cellType === 'Referee')) {
@@ -828,13 +1009,21 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
         cas = 'End to field';
         break;
       default:
-        newSelection = null;
+        if (/^[a-z0-9]$/i.test(event.key) && select.cellType === 'Referee') {
+          event.preventDefault();
+          selectorSearchText = event.key;
+        } else {
+          newSelection = null;
+        }
         break;
     }
     if (newSelection) {
       const game = this.day()!.partViews[newSelection.partIdx].timeSlotViews[newSelection.timeslotIdx].fields[newSelection.fieldIdx].game;
       if (game) {
-        if (!this.showReferees() && newSelection.cellType === 'Referee') {
+        // Returning from an empty slot restores the previously selected referee position.
+        if (newSelection.cellType === 'EmptySlot') {
+          newSelection.cellType = this.showReferees() ? 'Referee' : 'Coach';
+        } else if (!this.showReferees() && newSelection.cellType === 'Referee') {
           newSelection.cellType = 'Coach';
           newSelection.inCellPosition = 0;
         } else if (!this.showCoaches() && newSelection.cellType === 'Coach') {
@@ -850,7 +1039,37 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
       newSelection.fieldId    = this.day()!.partViews[newSelection.partIdx].fields[newSelection.fieldIdx].id;
       // console.debug('Selection changed (', cas, '): ', select, '=>', newSelection);
       this.selectionService.setCurrentSelection(newSelection);
+      this.scrollSelectionIntoView(newSelection);
+      if (selectorSearchText !== undefined && newSelection.cellType === 'Referee' && game) {
+        this.selectorActivation.set({
+          gameId: game.game.id,
+          position: newSelection.inCellPosition,
+          searchText: selectorSearchText,
+          sequence: ++this.selectorActivationSequence,
+        });
+      }
     }
+  }
+
+  /** Scrolls the nearest horizontal and vertical containers to the active grid cell. */
+  private scrollSelectionIntoView(selection: SelectionDescriptor): void {
+    const cell = document.querySelector<HTMLElement>(
+      `[data-grid-cell="${selection.partIdx}-${selection.timeslotIdx}-${selection.fieldIdx}"]`
+    );
+    const target = selection.cellType === 'Referee'
+      ? cell?.querySelector<HTMLElement>(`[data-referee-position="${selection.inCellPosition}"]`)
+      : cell;
+    setTimeout(() => {
+      target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const container = cell?.closest<HTMLElement>('.allocation-table-container');
+      const part = this.day()?.partViews[selection.partIdx];
+      const lastFieldIndex = part ? part.fields.length - 1 : -1;
+      if (selection.fieldIdx === 0) {
+        container?.scrollTo({ left: 0, behavior: 'auto' });
+      } else if (selection.fieldIdx === lastFieldIndex) {
+        container?.scrollTo({ left: container.scrollWidth, behavior: 'auto' });
+      }
+    });
   }
 }
 interface DayDesc {

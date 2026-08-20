@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, OnDestroy, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -10,10 +10,13 @@ import { SelectModule } from 'primeng/select';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { AllocationAction, SelectionService } from '../service/selection.service';
 import { Subscription } from 'rxjs';
+import { RefereeSelectorComponent } from './referee-selector.component';
+import { RefereeSelectorActivation, RefereeSelectorEntry } from '../service/referee-selector.service';
+import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data-model';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, MultiSelectModule, SelectModule],
+  imports: [CommonModule, FormsModule, MultiSelectModule, RefereeSelectorComponent, SelectModule],
   selector: 'app-game-referee-allocator',
   template: `
   <div>
@@ -36,48 +39,24 @@ import { Subscription } from 'rxjs';
     @if (showReferees() && referees()) {
     <div class="referees">
       @for(gameRefereeId of _gameRefereeIds;  let idx = $index; track idx) {
-        <div class="{{ selection() && refereeCellSelected() >=0
-            && refereeCellSelected() <= idx && idx <= (refereeCellSelected()+selection()!.nbLine-1)  ? 'selectable' : ''}}">
-          <p-select [options]="referees()" [ngModel]="gameRefereeId" optionValue="id"
-            (onChange)="refereeSelected($event.value, idx)"
-            [filter]="true" filterBy="search"
-            class="{{highlights()[idx]}}" style="width: 250px;" size="small"
-            (clear)="clearReferee(idx)" [showClear]="true">
-
-            <ng-template #selectedItem let-referee>
-              <div style="text-align: left; width: 300px;">
-              @if (referee.isPR) {
-                PR: {{referee.team?.name}}
-              } @else {
-                {{referee.person.firstName}} {{referee.person.lastName}}
-                @if(showRefereeLevel()) {
-                  (L{{referee.attendee.referee.badge}}{{referee.attendee.referee.upgrade?.badge > 0 ? '*': ''}}
-                  @if (showBadgeSystem()) {
-                    /{{referee.attendee.referee.badgeSystem}}
-                  })
-                }
-              }
-              </div>
-            </ng-template>
-
-            <ng-template #item let-referee>
-              <span>
-                @if(referee) {
-                  @if (referee.isPR) {
-                    PR: {{referee.team?.name}}
-                  } @else {
-                    {{referee.person.firstName}} {{referee.person.lastName}}
-                    @if(showRefereeLevel()) {
-                      (L{{referee.attendee.referee.badge}}{{referee.attendee.referee.upgrade?.badge > 0 ? '*': ''}}
-                      @if (showBadgeSystem()) {
-                        /{{referee.attendee.referee.badgeSystem}}
-                      })
-                    }
-                  }
-                }
-              </span>
-            </ng-template>
-          </p-select>
+        <div class="{{ selection() 
+            && refereeCellSelected() >=0
+            && refereeCellSelected() <= idx 
+            && idx <= (refereeCellSelected()+selection()!.nbLine-1)  ? 'selectable' : ''}}">
+          <app-referee-selector 
+            [game]="game()" 
+            [position]="idx" 
+            [selectedId]="gameRefereeId"
+            [cellSelected]="refereeCellSelected() === idx"
+            [highlight]="_highlights[idx]"
+            [entries]="refereeSelectorEntries()" 
+            [periodGames]="periodGames()" 
+            [fragmentAllocation]="allocation()"
+            [tournamentAllocation]="tournamentAllocation()" 
+            [activation]="selectorActivation()"
+            (selected)="refereeSelected($event, idx)" 
+            (cleared)="clearReferee(idx)"
+            (cellActivated)="refereeCellActivated.emit(idx)" />
         </div>
       }
     </div>
@@ -85,8 +64,13 @@ import { Subscription } from 'rxjs';
   </div>`,
   styles: [`
     .teamsCell { padding: 5px; }
-    .coaches { height: 40px; border-top: 1px lightgrey solid;}
-    .coaches p-multiselect { height: 40px;}
+    .coaches { 
+      height: 40px; 
+      border-top: 1px lightgrey solid;
+    }
+    .coaches p-multiselect { 
+      height: 40px;
+    }
     .coachShortName {
        text-align: center;
        padding: 2px 6px;
@@ -94,7 +78,10 @@ import { Subscription } from 'rxjs';
        margin-right: 4px;
        display: inline-block;
     }
-    .selectable.coaches   { height: 50px !important; margin-top: 10px;}
+    .selectable.coaches   { 
+      height: 50px !important; 
+      margin-top: 10px;
+    }
   `],
 })
 export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
@@ -104,8 +91,14 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   // Input parameters //
   game = input.required<GameView>();
   referees = input.required<(SearchableReferee|undefined)[]>()
+  refereeSelectorEntries = input.required<RefereeSelectorEntry[]>()
+  periodGames = input.required<GameView[]>()
   coaches = input.required<(SearchableCoach|undefined)[]>()
   allocation = input.required<FragmentRefereeAllocation>();
+  tournamentAllocation = input<TournamentRefereeAllocation>();
+  selectorActivation = input<RefereeSelectorActivation>();
+  allocationChanged = output<void>();
+  refereeCellActivated = output<number>();
   showCoaches = input.required<boolean>();
   showReferees = input.required<boolean>();
   showRefereeLevel = input.required<boolean>();
@@ -184,7 +177,9 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
       .map(ref => ref() !== undefined)
       .reduce((prev, cur) => prev && cur, true);
   });
+  /** Returns the match-header colors, marking incomplete referee assignments in pale red. */
   teamsCellStyle = computed<string>(() => {
+    if (!this.fullyAllocated()) return 'background-color: #ffcccc; color: #000000;';
     if (this.showDivisionColor()) {
       return `background-color: {{game().division?.backgroundColor}}; color: {{game().division?.fontColor}}`;
     } else return '';
@@ -272,7 +267,10 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
         console.log('Update allocation with the new selected referee', idx, referee, rav);
         rav.attendeeAlloc.attendeeId = referee.attendee.id;
         rav.referee = referee;
-        this.gameAttendeeAllocationService.save(rav.attendeeAlloc).subscribe();
+        this.gameAttendeeAllocationService.save(rav.attendeeAlloc).subscribe(() => {
+          this.lastRefereeChange.set(this.lastRefereeChange() + 1);
+          this.allocationChanged.emit();
+        });
       } else {
         console.log('Create allocation with the selected referee', idx, referee);
         const newAlloc: GameAttendeeAllocation = {
@@ -291,6 +289,8 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           // create the GAV view and add it to the game
           const gav = {attendeeAlloc: savedAlloc, referee: referee };
           this.game().referees.push(gav);
+          this.lastRefereeChange.set(this.lastRefereeChange() + 1);
+          this.allocationChanged.emit();
         });
       }
     } else {
@@ -301,6 +301,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
       if (rav) {
         console.log('Delete the previous allocation', idx, rav);
         this.gameAttendeeAllocationService.delete(rav.attendeeAlloc.id);
+        this.allocationChanged.emit();
       } else {
         console.log('Still no referee selected on position ', idx);
       }
@@ -314,6 +315,8 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
       console.debug('Delete referee allocation', idx, gav);
       this.gameAttendeeAllocationService.delete(gav.attendeeAlloc.id);
     }
+    this.game().referees = this.game().referees.filter(gav => gav.attendeeAlloc.attendeePosition !== idx);
+    this.allocationChanged.emit();
     this.lastRefereeChange.set(this.lastRefereeChange() + 1);
   }
 

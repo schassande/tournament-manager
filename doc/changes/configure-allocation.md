@@ -1,12 +1,12 @@
 # Allocation configuration
 
-Last updated: 2026-08-17
+Last updated: 2026-08-19
 
 ## Objective
 
 Allow users to configure referee allocation parameters at tournament-allocation level and, optionally, at fragment-allocation level.
 
-This increment only covers defining and persisting the configuration. The allocation algorithm does not consume this configuration yet.
+This increment originally covered defining and persisting the configuration. The manual `RefereeSelector` now consumes the configured referee limits during candidate filtering; automatic allocation generation remains outside this feature.
 
 ## Scope
 
@@ -60,7 +60,7 @@ Configuration precedence is:
 2. Otherwise, the tournament-allocation configuration is used when it is defined.
 3. Otherwise, the documented default values are used.
 
-The precedence rule is documented for future allocation-algorithm use; applying it is out of scope for this increment.
+The precedence rule is also used by manual referee selection: fragment configuration takes precedence over tournament-allocation configuration, followed by the documented defaults.
 
 ## User interface and workflow
 
@@ -104,7 +104,7 @@ No data migration is currently required.
 - Users with allocation-edit permission can create, modify, and delete the configuration; no additional permission is required.
 - The frontend uses the exported shared `GeneralAllocationConfiguration` type.
 - Existing documents without `generalConfig` remain readable.
-- The allocation algorithm does not need to consume the configuration in this increment.
+- Manual referee selection consumes `maxGameInRowForReferee` and `maxRefereeGameTimePerDay`; automatic allocation generation is not required to consume the configuration by this document.
 
 ## Open decisions
 

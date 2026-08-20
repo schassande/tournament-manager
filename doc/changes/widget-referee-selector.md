@@ -12,7 +12,7 @@ Replace the current PrimeNG `p-select` used by `game-referee-allocator` with a c
 
 - A base referee-allocation cell displaying the selected referee and a clear action.
 - A popover opened for the primary selected cell.
-- Context, search/filter controls, sorting controls, and a selectable referee-card list in the popover.
+- Context, search/filter controls, sorting controls, and a selectable referee-entry list in the popover.
 - Integration with `SelectionService`, keyboard actions, highlighting, and existing allocation persistence.
 - In-memory filtering and sorting of at most 300 referees and their matches for the current allocation period.
 
@@ -26,16 +26,32 @@ Replace the current PrimeNG `p-select` used by `game-referee-allocator` with a c
 
 The widget selects a referee for one position in a game. Its public output is the allocated attendee information, or `null` when the position is cleared.
 
-The base element is a `div` with a solid light-grey 1px border and an 8px radius. It displays one-line, left-aligned referee identity and a trailing clear icon. Identity formatting is:
+The base element is a `div` with a minimum width of 200px, a solid light-grey 1px border, and an 8px radius when it is not selected. It displays one-line, left-aligned referee identity and a trailing clear icon. Identity formatting is:
+
+An empty referee selector cell uses a light pale-blue background to distinguish the unallocated position.
 
 - Player referee: `PR` followed by the team name.
 - Full-time referee: level/category/upgrade followed by first name and last name, for example `L3S* Laurent GARRIGUES`.
 
+When no referee is allocated to the position, the cell displays no visible text or placeholder. It remains an interactive cell that can open the selector and retains an accessible label.
+
 The cell may be selected. The primary selected cell opens the popover. The popover contains a context line, a single-line search/filter form, and a list of selectable referee cards.
 
-The context line uses a thin `0.8rem` font and displays `HH:mm`, division, match type, `Result Required`, and the two teams as `A vs B` when known.
+The popover is positioned immediately beside the match cell without covering it: it prefers the right side, then the left side, and uses below/above placement when horizontal space is insufficient. Its position is clamped to the viewport only when no complete side is available.
 
-The form contains:
+The popover has a maximum height of 280px and a fixed width of 385px. Its referee entries are simple, compact `div` elements without card-component spacing, with a light-grey bottom border as a separator and 5px vertical padding. It remains responsive to smaller viewports where the viewport is narrower than the fixed width.
+
+Match columns in the allocation grid use a width of 225px, reduced by 10% from the previous 250px width, while the referee selector fills its column.
+
+The context line uses a thin `0.8rem` font and displays `HH:mm`, `Field: <field name>`, division, match type, `Result Required`, and the two teams as `A vs B` when known.
+
+The form is arranged over three rows:
+
+- Row 1 contains the text search input and the sort selector.
+- Row 2 contains the level, category, and gender selectors.
+- Row 3 contains the upgrade, `PR`, and `Eligibility` checkboxes.
+
+The form controls are:
 
 - A text input for search.
 - A three-option sort selector: ascending level (default), descending level, or ascending number of games already allocated during the period.
@@ -44,7 +60,7 @@ The form contains:
 - An upgrade-only checkbox.
 - A gender selector: All, Male, Female.
 - A `PR` checkbox for player referees.
-- A `Release eligibility constraints` checkbox, disabled by default. When enabled, it bypasses only automatic eligibility constraints (availability, overlapping allocation, consecutive playing-time, and daily playing-time limits); ordinary text search, explicit level/category/gender/PR filters, and sorting remain active.
+- An `Eligibility` checkbox, enabled by default. When checked, automatic eligibility constraints (availability, overlapping allocation, consecutive playing-time, and daily playing-time limits) are applied; when unchecked, only ordinary text search, explicit level/category/gender/PR filters, and sorting remain active.
 
 Search terms are matched case-insensitively against `Attendee.person.search` and `Attendee.Team.name`.
 
@@ -59,11 +75,11 @@ Special search tokens are supported:
 
 The `*` token can be combined with the other tokens, for example `L1*` and `L3S*`.
 
-Each referee card displays:
+Each referee entry displays:
 
 - For a full-time referee, first name, last name, and gender tag are displayed at the top left; female is pink and male is blue.
 - For a `PlayerReferee`, only the associated team name is displayed as the identity; no first name, last name, gender, level, category, or upgrade information is assumed or displayed.
-- For a full-time referee, level/category/upgrade is displayed as a tag at the top right, using the badge-system color. No level/category/upgrade tag is displayed for a `PlayerReferee`.
+- For a full-time referee, level/category/upgrade is displayed as a tag at the top right, using the badge-system color. The category suffix is omitted for Open referees (`L3` rather than `L3O`). No level/category/upgrade tag is displayed for a `PlayerReferee`.
 - All matches for the period, with `HH:mm`, field, division, teams, and other referees.
 
 The match list is displayed for both full-time referees and `PlayerReferees`. For a `PlayerReferee`, the absence of personal and referee-level information does not prevent displaying its allocated period matches.
@@ -86,13 +102,35 @@ Validated time-calculation rule: constraints use playing time, not complete time
 
 An attendee failing any mandatory availability or allocation constraint is not selectable for the current game. Ineligible referees are omitted without an explanatory message or disabled placeholder. The eligibility mechanism must be extensible so additional constraints, such as interleaved divisions, can be added without changing the selector component or duplicating filtering logic.
 
-The allocator may explicitly enable the `Release eligibility constraints` mode for exceptional assignments. This mode is off by default to prevent accidental invalid allocations. It does not disable search or ordinary user-selected filters.
+The allocator may explicitly disable `Eligibility` for exceptional assignments. This mode is enabled by default to prevent accidental invalid allocations. Disabling it does not disable search or ordinary user-selected filters.
 
 ## User interface and workflow
 
 Selection is managed by `SelectionService`; multiple cells may be selected. The primary selected cell has a 3px solid blue border. Other selected cells have a grey background, which takes priority over referee highlighting.
 
+When the allocation page finishes loading, the first referee position of the first displayed match is selected by default.
+
+Clicking a referee selector cell updates the page selection to that exact referee position and opens its popover.
+
+When keyboard navigation moves from an empty slot back to a match, the selection returns to a referee position and preserves the previous referee position when possible.
+
+Keyboard selection movements automatically scroll the nearest horizontal and vertical containers so the selected match cell or referee position remains visible.
+
+When the first field column is selected, the horizontal grid scroll is reset completely to the left so the full first-column cell remains visible.
+
+When the last field column is selected, the horizontal grid scroll is moved completely to the right so the full last-column cell remains visible.
+
+While the popover search input is focused, the first visible referee is active by default. `ArrowUp` and `ArrowDown` move the active referee without moving focus away from the input, and `Enter` selects the active referee.
+
+Moving the active referee also scrolls the results list as needed so the active entry remains visible.
+
 The page supplies highlighted referee IDs. The allocator applies the corresponding cell background colors.
+
+The match information cell in `game-referee-allocator` uses a pale-red background while one or more referee positions remain unallocated. Once all referee positions are allocated, the configured division colors are used again when enabled.
+
+When at least one match is incomplete, a red warning icon appears immediately before the information icon. Its tooltip displays the number of incomplete matches and the total number of referee positions still to allocate. The warning icon is hidden when all matches are complete, and the counters are refreshed after each referee allocation change.
+
+Clicking the warning icon selects the first empty referee position, scanning all fields within each timeslot before continuing to the next timeslot, and scrolls that position into view.
 
 Keyboard events are currently managed by `tournament-referees-allocation.page.ts`. The new widget must collaborate with the page and must not introduce a competing page-level keyboard handler.
 
@@ -108,6 +146,8 @@ After the popover is open and its text input has focus, subsequent character inp
 
 The widget must preserve accessible focus, keyboard navigation, labels, and visible focus states.
 
+The allocation page displays progress messages in the loading overlay for the main stages: loading allocation configuration, loading referees and coaches, building the match grid, and loading referee allocations. The referee-selector index is prepared asynchronously after the grid data is available; its progress is displayed as a non-blocking status while the page remains usable.
+
 ## Data model and persistence
 
 No persisted schema change is currently required. The widget consumes existing `Referee`, `Attendee`, `Team`, `GameView`, `GameAttendeeAllocationView`, and allocation-period data.
@@ -115,7 +155,7 @@ No persisted schema change is currently required. The widget consumes existing `
 The proposed data flow is:
 
 1. `tournament-referees-allocation.page.ts` loads referees, games, and game-attendee allocations once for the current allocation period.
-2. The page builds an in-memory referee index containing each referee's normalized search fields, display metadata, and the list of assigned matches for the period.
+2. The page starts an asynchronous, batched preparation of an in-memory referee index containing each referee's normalized search fields, display metadata, and the list of assigned matches for the period. The batches yield to the browser event loop so the grid can render without a long synchronous freeze.
 3. `tournament-referees-allocation.page.ts` coordinates the keyboard opening action and passes an optional initial search character to `game-referee-allocator`/`RefereeSelector`.
 4. `game-referee-allocator` receives the current game context, selected referee ID, selection/highlight state, and the shared in-memory referee index.
 5. `RefereeSelector` owns only transient widget state: popover visibility, initial search text, current search text, filter values, sort order, focused card, and the derived visible list. On opening, it focuses the text input after the popover is rendered.
@@ -139,7 +179,8 @@ Existing allocations must continue to load and persist through the current Fires
 - A user can open the widget by mouse and by the specified keyboard actions.
 - A letter or number typed on the selected cell is retained as the first search character, and the popover input receives focus automatically so typing can continue seamlessly.
 - Search, special tokens, filters, and all three sort modes produce the documented results without backend requests.
-- Search terms use AND semantics, and the `Release eligibility constraints` checkbox is off by default and bypasses only automatic eligibility constraints when enabled.
+- The main allocation grid becomes visible without waiting for the complete referee-selector index; index preparation reports progress without blocking interaction.
+- Search terms use AND semantics, and the `Eligibility` checkbox is enabled by default and controls only automatic eligibility constraints.
 - Unavailable attendees and attendees exceeding the effective allocation limits are omitted by default; playing-time limits sum `Timeslot.slotType.playTime` across adjacent slots and exclude breaks.
 - Referee cards display full-time referee identity/tags or, for a `PlayerReferee`, only the team name; both types display their period-match information.
 - Selecting, replacing, and clearing a referee updates the existing allocation flow and emits the selected attendee or `null`.
@@ -188,6 +229,7 @@ Ready for implementation.
 - Test incremental index updates after create, replace, and delete operations.
 - Test keyboard activation, clear behavior, focus management, multi-selection styling, and empty state.
 - Run the frontend typecheck/build and the relevant unit-test suites; verify no Firestore request is made for widget filtering or sorting.
+- Verify that the loading overlay reports the main loading stages and that batched selector preparation does not freeze the page.
 
 ## Technical findings and proposed implementation
 
@@ -205,7 +247,8 @@ Recommended implementation shape:
 - Keep the custom selector presentation focused: it receives the current context and index and emits a selection intent. It must not read Firestore or directly mutate allocation views.
 - Use a single allocation-update callback at `game-referee-allocator`/page level to preserve existing persistence, selection actions, and optimistic in-memory updates.
 - Implement eligibility as a typed pipeline of pure constraint evaluators. Each evaluator receives the current game context, referee index entry, allocation snapshot, and effective configuration, and returns either an eligible result or a machine-readable exclusion reason. The facade composes the evaluators and exposes only eligible entries to the selector while retaining reasons for diagnostics and future UI use.
-- Apply the eligibility pipeline only when the release-constraints checkbox is disabled; keep the regular search, explicit filters, and sorting pipeline active in both modes.
+- Apply the eligibility pipeline only when the `Eligibility` checkbox is enabled; keep the regular search, explicit filters, and sorting pipeline active in both modes.
+- Prepare the shared index asynchronously in small event-loop batches and expose progress through a page-scoped status; the selector remains empty until preparation completes rather than blocking initial grid rendering.
 - Use `OnPush`, stable IDs in `@for`, pre-normalized lowercase search strings, and a single filtering/sorting pass per state change. At 300 referees, this is expected to remain comfortably within interactive latency; virtual scrolling is optional and should be added only if real match-card volume requires it.
 
 Validated technical decision: the period-wide referee/match index is held by a dedicated facade service scoped to the allocation page. This improves separation and testability while avoiding a global cache that could retain data from another tournament.
