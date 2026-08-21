@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { query, where } from '@angular/fire/firestore';
-import { Observable } from 'rxjs';
+import { getDocs, query, where, writeBatch } from '@angular/fire/firestore';
+import { from, Observable } from 'rxjs';
 import { colGameAttendeeAllocation, GameAttendeeAllocation } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 
@@ -23,5 +23,22 @@ export class GameAttendeeAllocationService extends AbstractPersistentDataService
     return this.query(query(this.itemsCollection(),
       where('tournamentId', '==', tournamentId),
       where('fragmentRefereeAllocationId', '==', refereeAllocationId)));
+  }
+
+  /** Deletes all game assignments belonging to a fragment in Firestore batches. */
+  deleteByAllocation(tournamentId: string, refereeAllocationId: string): Observable<void> {
+    const allocationQuery = query(this.itemsCollection(),
+      where('tournamentId', '==', tournamentId),
+      where('fragmentRefereeAllocationId', '==', refereeAllocationId));
+    return from(getDocs(allocationQuery).then(snapshot => {
+      const documents = snapshot.docs;
+      const commits: Promise<void>[] = [];
+      for (let index = 0; index < documents.length; index += 500) {
+        const batch = writeBatch(this.firestore);
+        documents.slice(index, index + 500).forEach(document => batch.delete(document.ref));
+        commits.push(batch.commit());
+      }
+      return Promise.all(commits).then(() => undefined);
+    }));
   }
 }

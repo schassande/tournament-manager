@@ -1,13 +1,14 @@
 # TODO list du projet Tournament Maager
 
-- Allocation : 
-  - Panel gauche avec la liste des arbitres classés / triés
-  - Ajouter la vérification des contraintes pour les arbitres: dispo, nombre de match conséqutifs
-  - Ajouter la vérification des contraintes pour les coach: dispo, nombre de match conséqutifs
-- Page des allocations à améliorer
-    - Présentation pour les tournois 1 day et une autre présentation pour les tournois multi days
+
+- Allocation : rendre visible/publier
+- statistiques d'allocation
 - Planning arbitres
 - Planning coach
+- Allocation : 
+  - Ajouter la vérification des contraintes pour les arbitres: dispo, nombre de match conséqutifs
+  - Ajouter la vérification des contraintes pour les coach: dispo, nombre de match conséqutifs
+- Ranking
 - Scorecard
 - Tournament home
   - Suggestion de la prochaine étape
@@ -16,10 +17,13 @@
   - Utilisation de Player referee
   - Divisions / nombre d'équipe
   - Match alloué / restant à allouer
-- Ranking
-- Connexion referentiel Arbitre Touch France
-- Wizard creation de tournoi
-- ==> diffusion / communication / POC
+- Allocation auto : 
+  - IA gen
+  - ou Optimiseur: https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search
+
+==> diffusion / communication / POC
+
+- Ranking method Europe
 - Candidature Arbitre
 - Candidature Referee Coach
 - Mon Planning
@@ -27,14 +31,17 @@
 - Referees: export csv
 - Games: import csv
 - Field map
-- Allocation auto : https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search
 - API
   - API Key pour un user
   - Swagger
 - Creation de game
 - Games: export csv
-- Ranking method Europe
 
+## Ideas
+
+- Allocation: Panel gauche avec la liste des arbitres classés / triés
+- Connexion referentiel Arbitre Touch France
+- Wizard creation de tournoi
 
 ## DONE
 - 2026/08/09: durcissement des règles firestore
@@ -52,7 +59,9 @@
   - Mise en page de l'allocation
 - 2026/08/20: Allocation
   - Composant graphique pour l'édition d'une case d'un referee avec une popup pour proposer des arbitres disponibles
-  - 
+- 2026/08/21: Page des allocations à améliorer
+  - Icone de retour : Allocation => Allocations
+  - Mode simple
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams

@@ -51,6 +51,12 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
       }
 
       <div class="allocation-navigation-row">
+        <span class="allocation-home-slot">
+          <i class="pi pi-home allocation-home-icon"
+            tabindex="0" role="button" aria-label="Back to referee allocations"
+            (click)="routeToAllocations()" (keydown.enter)="routeToAllocations()"
+            (keydown.space)="routeToAllocations()"></i>
+        </span>
         <p-select [options]="days()" [ngModel]="selectedDay()" (onChange)="onDaySelectionChange($event.value)"
           [style]="{ width: '190px', 'margin-right': '8px' }"
           ariaLabel="Select day" placeholder="Select day">
@@ -92,6 +98,11 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
             inputId="show-referee-coach" [binary]="true"></p-checkbox>
           <label for="show-referee-coach">Referee coach</label>
         </span>
+        <i class="pi pi-refresh allocation-reset-icon"
+          pTooltip="Reset referee and coach allocations" tooltipPosition="top"
+          tabindex="0" role="button" aria-label="Reset referee and coach allocations"
+          (click)="confirmResetAllocations()" (keydown.enter)="confirmResetAllocations()"
+          (keydown.space)="confirmResetAllocations()"></i>
         @if (selectorPreparing()) {
           <span class="selector-preparation-status" role="status">{{ selectorPreparationMessage() }}</span>
         }
@@ -200,6 +211,21 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
       cursor: help;
       vertical-align: middle;
     }
+    .allocation-home-icon {
+      font-size: 1.21rem;
+      color: black;
+      cursor: pointer;
+      display: block;
+    }
+    .allocation-home-slot {
+      align-items: center;
+      display: inline-flex;
+      justify-content: center;
+      margin-left: 6px;
+      margin-right: 2px;
+      text-align: center;
+      width: 43px;
+    }
     .allocation-summary-icons {
       align-items: center;
       display: flex;
@@ -216,6 +242,12 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
     }
     .show-coaches-option label {
       cursor: pointer;
+    }
+    .allocation-reset-icon {
+      color: black;
+      cursor: pointer;
+      font-size: 1.21rem;
+      margin-left: 10px;
     }
     .allocation-referee-status-icon {
       color: #dc3545;
@@ -560,6 +592,43 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     this.loading.set(true);
     this.router.navigate(['tournament', this.tournament()!.id, 'allocation',
       this.tournamentAllocation()!.id, 'fragment',fragmentAllocationId ]);
+  }
+  /** Returns to the tournament referee allocations page. */
+  routeToAllocations(): void {
+    this.router.navigate(['tournament', this.tournament()!.id, 'allocation']);
+  }
+  /** Asks for confirmation before removing all referee and coach assignments. */
+  confirmResetAllocations(): void {
+    this.confirmationService.confirm({
+      message: 'Do you want to reset all referee and coach allocations for this fragment?',
+      header: 'Reset allocations',
+      icon: 'pi pi-exclamation-triangle',
+      rejectLabel: 'Cancel',
+      acceptLabel: 'Reset',
+      rejectButtonProps: { label: 'Cancel', severity: 'secondary', outlined: true },
+      acceptButtonProps: { label: 'Reset', severity: 'danger' },
+      accept: () => {
+        this.resetAllocations();
+        this.confirmationService.close();
+      },
+      reject: () => this.confirmationService.close(),
+    });
+  }
+  /** Deletes all referee and coach assignments belonging to the current fragment. */
+  private resetAllocations(): void {
+    const tournament = this.tournament();
+    const allocation = this.allocation();
+    if (!tournament || !allocation) return;
+
+    this.loadingMessage.set('Resetting referee and coach allocations...');
+    this.loading.set(true);
+    this.gameAttendeeAllocationService.deleteByAllocation(tournament.id, allocation.id).subscribe({
+      next: () => this.loadData(),
+      error: error => {
+        this.loading.set(false);
+        console.error('Unable to reset referee and coach allocations', error);
+      }
+    });
   }
   onHhighlightedRefereeChange(refereeId: string|undefined, idx: number) {
     const previousValue = this.highlightedRefereeIds();

@@ -1,5 +1,5 @@
 import { Component, effect, inject, signal } from '@angular/core';
-import { map, mergeMap } from 'rxjs';
+import { catchError, map, mergeMap, of, switchMap } from 'rxjs';
 
 import { Day, PartDay, TournamentRefereeAllocation, FragmentRefereeAllocation, RefereeCoach, FragmentRefereeAllocationDesc, GeneralAllocationConfiguration } from '@tournament-manager/persistent-data-model';
 import { AbstractTournamentPage } from '../component/tournament-abstract.page';
@@ -8,7 +8,6 @@ import { TournamentRefereeAllocationService } from '../service/tournament-refere
 import { FragmentRefereeAllocationService } from '../service/fragment-referee-allocation.service';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { DatePipe } from '@angular/common';
 import { RefereeAllocationService } from '../service/referee-allocation.service';
 import { RefereeService } from '../service/referee.service';
 import { FormsModule } from '@angular/forms';
@@ -19,217 +18,224 @@ import { DialogModule } from 'primeng/dialog';
 
 @Component({
   selector: 'app-tournament-referees-allocation',
-  imports: [ ButtonModule, CardModule, ConfirmDialogModule, DatePipe, DialogModule, FormsModule, InputTextModule, SelectModule],
+  imports: [ ButtonModule, CardModule, ConfirmDialogModule, DialogModule, FormsModule, InputTextModule, SelectModule],
   template: `
-  <div style="height: 10px;">
-  </div>
-@if (tournamentAllocations().length === 0) {
-  <div style="margin: 30px auto; text-align: center;">
-    <div>Do you want to create a first allocation for the tournament?</div>
-    <div (click)="createTournamentAllocation()" style="margin-top: 10px;">
-      <i class="pi pi-plus action action-plus" aria-label="Create allocation" title="Create allocation"></i>Create
+<p-dialog header="Allocation configuration" [modal]="true" [(visible)]="modalAllocationConfig.show" [style]="{ width: '34rem' }" (onHide)="resetAllocationConfigModal()">
+  @if (modalAllocationConfig.draft) {
+    <div class="allocation-config-form">
+      <label for="maxGameInRowForReferee">Max referee consecutive game time (minutes)</label>
+      <input pInputText id="maxGameInRowForReferee" type="number" min="20" max="60" step="1" [(ngModel)]="modalAllocationConfig.draft.maxGameInRowForReferee" />
+      <label for="maxGameInRowForRefereeCoach">Max referee coach consecutive game time (minutes)</label>
+      <input pInputText id="maxGameInRowForRefereeCoach" type="number" min="20" max="200" step="1" [(ngModel)]="modalAllocationConfig.draft.maxGameInRowForRefereeCoach" />
+      <label for="maxRefereeGameTimePerDay">Max referee game time per day (minutes)</label>
+      <input pInputText id="maxRefereeGameTimePerDay" type="number" min="20" max="200" step="1" [(ngModel)]="modalAllocationConfig.draft.maxRefereeGameTimePerDay" />
+      <label for="nbRefereePerGame">Referees per game</label>
+      <input pInputText id="nbRefereePerGame" type="number" min="1" step="1" [(ngModel)]="modalAllocationConfig.draft.nbRefereePerGame" />
+      <label class="config-checkbox" for="allocateRefereeCoach"><input id="allocateRefereeCoach" type="checkbox" [(ngModel)]="modalAllocationConfig.draft.allocateRefereeCoach" /> Allocate referee coaches</label>
+      <label class="config-checkbox" for="refereeCoachTwoField"><input id="refereeCoachTwoField" type="checkbox" [(ngModel)]="modalAllocationConfig.draft.refereeCoachTwoField" /> Allow referee coaches on two fields</label>
+      @if (modalAllocationConfig.error) { <div class="config-error" role="alert">{{modalAllocationConfig.error}}</div> }
+      <div class="config-actions">
+        <p-button label="Delete" severity="danger" (click)="deleteAllocationConfig()" />
+        <span class="config-actions-spacer"></span>
+        <p-button label="Cancel" severity="secondary" (click)="modalAllocationConfig.show = false" />
+        <p-button label="Save" [disabled]="!isAllocationConfigValid()" (click)="saveAllocationConfig()" />
+      </div>
     </div>
+  }
+</p-dialog>
 
-  </div>
-} @else {
-  <p-confirmdialog />
-  <p-dialog header="New allocation" [modal]="true" [(visible)]="modalCreateAllocation.show" [style]="{ width: '25rem' }">
-      <span class="p-text-secondary block mb-8">Enter the allocation name:</span>
-      <div class="flex items-center gap-4 mb-4" style="margin-top: 10px; text-align: center;">
-          <input pInputText id="allocationName" [(ngModel)]="modalCreateAllocation.newAllocationName" class="flex-auto" autocomplete="off" required minlength="3"/>
-      </div>
-      <div class="flex justify-end gap-2" style="margin-top: 20px; text-align: right;">
-          <p-button label="Cancel" severity="secondary" (click)="modalCreateAllocation.show = false" />
-          <p-button label="Create" (click)="confirmAllocationCreation()"/>
-      </div>
-  </p-dialog>
-  <p-dialog header="Allocation configuration" [modal]="true" [(visible)]="modalAllocationConfig.show" [style]="{ width: '34rem' }" (onHide)="resetAllocationConfigModal()">
-    @if (modalAllocationConfig.draft) {
-      <div class="allocation-config-form">
-        <label for="maxGameInRowForReferee">Max referee consecutive game time (minutes)</label>
-        <input pInputText id="maxGameInRowForReferee" type="number" min="20" max="60" step="1"
-          [(ngModel)]="modalAllocationConfig.draft.maxGameInRowForReferee" />
-
-        <label for="maxGameInRowForRefereeCoach">Max referee coach consecutive game time (minutes)</label>
-        <input pInputText id="maxGameInRowForRefereeCoach" type="number" min="20" max="200" step="1"
-          [(ngModel)]="modalAllocationConfig.draft.maxGameInRowForRefereeCoach" />
-
-        <label for="maxRefereeGameTimePerDay">Max referee game time per day (minutes)</label>
-        <input pInputText id="maxRefereeGameTimePerDay" type="number" min="20" max="200" step="1"
-          [(ngModel)]="modalAllocationConfig.draft.maxRefereeGameTimePerDay" />
-
-        <label for="nbRefereePerGame">Referees per game</label>
-        <input pInputText id="nbRefereePerGame" type="number" min="1" step="1"
-          [(ngModel)]="modalAllocationConfig.draft.nbRefereePerGame" />
-
-        <label class="config-checkbox" for="allocateRefereeCoach">
-          <input id="allocateRefereeCoach" type="checkbox" [(ngModel)]="modalAllocationConfig.draft.allocateRefereeCoach" />
-          Allocate referee coaches
-        </label>
-
-        <label class="config-checkbox" for="refereeCoachTwoField">
-          <input id="refereeCoachTwoField" type="checkbox" [(ngModel)]="modalAllocationConfig.draft.refereeCoachTwoField" />
-          Allow referee coaches on two fields
-        </label>
-
-        @if (modalAllocationConfig.error) {
-          <div class="config-error" role="alert">{{modalAllocationConfig.error}}</div>
+@if (simpleMode()) {
+  <p-button label="Advanced version" [text]="true" styleClass="mode-switch-button" (click)="setSimpleMode(false)" />
+  @if (simpleModeError()) {
+    <div class="simple-mode-error" role="alert">{{simpleModeError()}}</div>
+  }
+  <div class="simple-mode-days">
+    @for (dayAllocation of dayAllocations(); track dayAllocation.day.id) {
+      <div class="simple-mode-day"
+        [class.simple-mode-day-clickable]="dayAllocation.day.parts.length <= 1"
+        (click)="dayAllocation.day.parts.length <= 1 && editSimpleDay(dayAllocation)">
+        <div class="simple-mode-day-title">Day {{dayAllocation.day.id}}</div>
+        <div>{{dayAllocation.dateStr}}</div>
+        <div>{{dateService.toDayOfWeek(dayAllocation.day.date)}}</div>
+        @if (dayAllocation.day.parts.length > 1) {
+          @for (partDay of dayAllocation.day.parts; track partDay.id) {
+            <p-button label="Edit {{partDay.id}}" styleClass="simple-edit-button" (click)="editSimpleAllocation(dayAllocation.day.id, partDay.id)" />
+          }
         }
-
-        <div class="config-actions">
-          <p-button label="Delete" severity="danger" (click)="deleteAllocationConfig()" />
-          <span class="config-actions-spacer"></span>
-          <p-button label="Cancel" severity="secondary" (click)="modalAllocationConfig.show = false" />
-          <p-button label="Save" [disabled]="!isAllocationConfigValid()" (click)="saveAllocationConfig()" />
-        </div>
       </div>
     }
-  </p-dialog>
-  <table class="dayAllocationTable">
-    <tr>
-      <td colspan="2" class="noBorder"></td>
-      <td colspan="10" style="text-align: center; font-weight: bold;">Tournament allocations</td>
-    </tr>
-    <tr class="title-row">
-      <td colspan="2" class="noBorder"></td>
-      @for(tAlloc of tournamentAllocations(); track tAlloc.data.id) {
-        <th class="colAllocation {{tAlloc.data.current ? 'current-allocation' : ''}}">
-          @if (tournamentAllocations()!.length > 1) {
-            <div style="height: 30px; text-align: center">
-              @if (tAlloc.data.current) {
-              Selected
-              } @else {
-                <div (click)="toggleAllocationActivation(tAlloc.data)" class="action-item">
-                  <i class="pi pi-play action" aria-label="Set as current allocation" title="Set as current allocation"></i>
-                  <span>Select</span>
-                </div>
-              }
-            </div>
-            <div>
-              <input type="text" pInputText [(ngModel)]="tAlloc.data.name" required
-                (ngModelChange)="onTourAllocChanged(tAlloc.data)" pSize="small" style="width: 200px;" />
-            </div>
-          }
-          <div class="action-panel">
-            <div class="action-row">
-              <div (click)="configureTournamentAllocation(tAlloc.data)" class="action-item">
-                <i class="pi pi-cog action" aria-label="Configure allocation" title="Configure allocation"></i>
+  </div>
+  <div class="simple-mode-config">
+    <p-button label="Configure" icon="pi pi-cog" [text]="true" styleClass="simple-config-button" (click)="configureSimpleTournamentAllocation()" />
+  </div>
+} @else {
+  <p-button label="Simple version" [text]="true" styleClass="mode-switch-button" (click)="setSimpleMode(true)" />
+  @if (tournamentAllocations().length === 0) {
+    <div style="margin: 30px auto; text-align: center;">
+      <div>Do you want to create a first allocation for the tournament?</div>
+      <div (click)="createTournamentAllocation()" style="margin-top: 10px;">
+        <i class="pi pi-plus action action-plus" aria-label="Create allocation" title="Create allocation"></i>Create
+      </div>
+
+    </div>
+  } @else {
+    <p-confirmdialog />
+    <p-dialog header="New allocation" [modal]="true" [(visible)]="modalCreateAllocation.show" [style]="{ width: '25rem' }">
+        <span class="p-text-secondary block mb-8">Enter the allocation name:</span>
+        <div class="flex items-center gap-4 mb-4" style="margin-top: 10px; text-align: center;">
+            <input pInputText id="allocationName" [(ngModel)]="modalCreateAllocation.newAllocationName" class="flex-auto" autocomplete="off" required minlength="3"/>
+        </div>
+        <div class="flex justify-end gap-2" style="margin-top: 20px; text-align: right;">
+            <p-button label="Cancel" severity="secondary" (click)="modalCreateAllocation.show = false" />
+            <p-button label="Create" (click)="confirmAllocationCreation()"/>
+        </div>
+    </p-dialog>
+    <table class="dayAllocationTable">
+      <tr>
+        <td colspan="2" class="noBorder"></td>
+        <td colspan="10" style="text-align: center; font-weight: bold;">Tournament allocations</td>
+      </tr>
+      <tr class="title-row">
+        <td colspan="2" class="noBorder"></td>
+        @for(tAlloc of tournamentAllocations(); track tAlloc.data.id) {
+          <th class="colAllocation {{tAlloc.data.current ? 'current-allocation' : ''}}">
+            @if (tournamentAllocations()!.length > 1) {
+              <div style="height: 30px; text-align: center">
+                @if (tAlloc.data.current) {
+                Selected
+                } @else {
+                  <div (click)="toggleAllocationActivation(tAlloc.data)" class="action-item">
+                    <i class="pi pi-play action" aria-label="Set as current allocation" title="Set as current allocation"></i>
+                    <span>Select</span>
+                  </div>
+                }
               </div>
-              <div (click)="createTournamentAllocation()" class="action-item">
-                <i class="pi pi-plus action action-plus" aria-label="Create allocation" title="Create allocation"></i>
-              </div>
-              <div (click)="duplicateTournamentAllocation(tAlloc.data)" class="action-item">
-                <i class="pi pi-copy action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
-              </div>
-              <div (click)="deleteTournamentAllocation(tAlloc.data)" class="action-item">
-                <i class="pi pi-trash action" aria-label="Remove full day allocation" title="Remove full day allocation"></i>
-              </div>
-            </div>
-          </div>
-        </th>
-      }
-    </tr>
-    @for(dayAllocation of dayAllocations(); track dayAllocation.day.id; let lastDay = $last) {
-      <tr class="fullRow">
-        <td style="text-align: center;"  [attr.rowspan]="dayAllocation.showParts ? dayAllocation.partRows.length+1 : 1">
-          <div style="font-weight: bold;">Day {{dayAllocation.day.id}}</div>
-          <div>{{dayAllocation.day.date | date:'EEEE'}}</div>
-          <div>{{dayAllocation.dateStr}}</div>
-        </td>
-        <td>Full</td>
-        @for(fav of dayAllocation.fullColumns; track fav.tournament.id) {
-          <td class="colAllocation {{fav.tournament.current ? 'current-allocation' : ''}} {{!dayAllocation.showParts && lastDay ?'last-row':''}}">
-            @if (fav.fragments.length > 0) {
               <div>
-                <p-select [options]="fav.fragments" [(ngModel)]="fav.selected" optionLabel="data.name" placeholder="Select an allocation"
-                  (onChange)="selectFragmentAllocation(fav.tournament, $event.value)"
-                  style="width: 200px;" size="small" />
+                <input type="text" pInputText [(ngModel)]="tAlloc.data.name" required
+                  (ngModelChange)="onTourAllocChanged(tAlloc.data)" pSize="small" style="width: 200px;" />
               </div>
             }
             <div class="action-panel">
               <div class="action-row">
-                @if (fav.fragments.length > 0 && fav.selected) {
-                  <div (click)="routeToAllocationEdit(fav.tournament, fav.selected.data)" class="action-item">
-                    <i class="pi pi-pencil action" aria-label="Edit allocation" title="Edit allocation"></i>
-                  </div>
-                  @if (fav.tournament.current) {
-                    <div (click)="toggleFragmentAllocationVisibilty(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
-                      @if(fav.selected.data.visible) {
-                        <i class="pi pi-eye action" aria-label="Unpublish the allocation " ></i>
-                      } @else {
-                        <i class="pi pi-eye-slash action" aria-label="Publish the allocation" ></i>
-                      }
-                    </div>
-                  }
-                }
-                <div (click)="createFragmentAllocation(fav.tournament, dayAllocation.day.id)" class="action-item">
-                  <i class="pi pi-plus action action-plus" aria-label="Create a new full day allocation" title="Create a new full day allocation"></i>
+                <div (click)="configureTournamentAllocation(tAlloc.data)" class="action-item">
+                  <i class="pi pi-cog action" aria-label="Configure allocation" title="Configure allocation"></i>
                 </div>
-                @if (fav.fragments.length > 0 && fav.selected) {
-                  <div (click)="configureFragmentAllocation(fav.selected.data)" class="action-item">
-                    <i class="pi pi-cog action" aria-label="Configure allocation" title="Configure allocation"></i>
-                  </div>
-                  <div (click)="duplicateFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
-                    <i class="pi pi-copy action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
-                  </div>
-                  <div (click)="deleteFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
-                    <i class="pi pi-trash action" aria-label="Remove full day allocation" title="Remove full day allocation"></i>
-                  </div>
-                }
+                <div (click)="createTournamentAllocation()" class="action-item">
+                  <i class="pi pi-plus action action-plus" aria-label="Create allocation" title="Create allocation"></i>
+                </div>
+                <div (click)="duplicateTournamentAllocation(tAlloc.data)" class="action-item">
+                  <i class="pi pi-copy action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
+                </div>
+                <div (click)="deleteTournamentAllocation(tAlloc.data)" class="action-item">
+                  <i class="pi pi-trash action" aria-label="Remove full day allocation" title="Remove full day allocation"></i>
+                </div>
               </div>
             </div>
-          </td>
+          </th>
         }
       </tr>
-      @if(dayAllocation.showParts) {
-        @for(partRow of dayAllocation.partRows; track partRow.partDay.id; let partDayIdx = $index; let lastPart = $last) {
-          <tr class="partRow">
-            <td>Part {{partRow.partDay.id}}</td>
-            @for(fav of partRow.columns; track fav.tournament.id) {
-              <td class="colAllocation {{fav.tournament.current ? 'current-allocation' : ''}} {{lastDay && lastPart?'last-row':''}}">
+      @for(dayAllocation of dayAllocations(); track dayAllocation.day.id; let lastDay = $last) {
+        <tr class="fullRow">
+          <td style="text-align: center;"  [attr.rowspan]="dayAllocation.showParts ? dayAllocation.partRows.length+1 : 1">
+            <div style="font-weight: bold;">Day {{dayAllocation.day.id}}</div>
+            <div>{{dateService.toDayOfWeek(dayAllocation.day.date)}}</div>
+            <div>{{dayAllocation.dateStr}}</div>
+          </td>
+          <td>Full</td>
+          @for(fav of dayAllocation.fullColumns; track fav.tournament.id) {
+            <td class="colAllocation {{fav.tournament.current ? 'current-allocation' : ''}} {{!dayAllocation.showParts && lastDay ?'last-row':''}}">
+              @if (fav.fragments.length > 0) {
                 <div>
-                <p-select [options]="fav.fragments" [(ngModel)]="fav.selected" optionLabel="data.name" placeholder="Select an allocation"
-                  (onChange)="selectFragmentAllocation(fav.tournament, $event.value)"
-                  style="width: 200px;" size="small" />
+                  <p-select [options]="fav.fragments" [(ngModel)]="fav.selected" optionLabel="data.name" placeholder="Select an allocation"
+                    (onChange)="selectFragmentAllocation(fav.tournament, $event.value)"
+                    style="width: 200px;" size="small" />
                 </div>
-                <div class="action-panel">
+              }
+              <div class="action-panel">
+                <div class="action-row">
                   @if (fav.fragments.length > 0 && fav.selected) {
-                    <div class="action-row">
-                      <div (click)="routeToAllocationEdit(fav.tournament, fav.selected.data)" class="action-item">
-                        <i class="pi pi-pencil action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
+                    <div (click)="routeToAllocationEdit(fav.tournament, fav.selected.data)" class="action-item">
+                      <i class="pi pi-pencil action" aria-label="Edit allocation" title="Edit allocation"></i>
+                    </div>
+                    @if (fav.tournament.current) {
+                      <div (click)="toggleFragmentAllocationVisibilty(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
+                        @if(fav.selected.data.visible) {
+                          <i class="pi pi-eye action" aria-label="Unpublish the allocation " ></i>
+                        } @else {
+                          <i class="pi pi-eye-slash action" aria-label="Publish the allocation" ></i>
+                        }
                       </div>
-                      @if (fav.tournament.current) {
-                        <div (click)="toggleFragmentAllocationVisibilty(fav.selected.data, fav.tournament, dayAllocation.day.id, partRow.partDay.id)" class="action-item">
-                          @if(fav.selected.data.visible) {
-                            <i class="pi pi-eye action" aria-label="Unpublish the allocation " ></i>
-                          } @else {
-                            <i class="pi pi-eye-slash action" aria-label="Publish the allocation" ></i>
-                          }
+                    }
+                  }
+                  <div (click)="createFragmentAllocation(fav.tournament, dayAllocation.day.id)" class="action-item">
+                    <i class="pi pi-plus action action-plus" aria-label="Create a new full day allocation" title="Create a new full day allocation"></i>
+                  </div>
+                  @if (fav.fragments.length > 0 && fav.selected) {
+                    <div (click)="configureFragmentAllocation(fav.selected.data)" class="action-item">
+                      <i class="pi pi-cog action" aria-label="Configure allocation" title="Configure allocation"></i>
+                    </div>
+                    <div (click)="duplicateFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
+                      <i class="pi pi-copy action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
+                    </div>
+                    <div (click)="deleteFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id)" class="action-item">
+                      <i class="pi pi-trash action" aria-label="Remove full day allocation" title="Remove full day allocation"></i>
+                    </div>
+                  }
+                </div>
+              </div>
+            </td>
+          }
+        </tr>
+        @if(dayAllocation.showParts) {
+          @for(partRow of dayAllocation.partRows; track partRow.partDay.id; let partDayIdx = $index; let lastPart = $last) {
+            <tr class="partRow">
+              <td>Part {{partRow.partDay.id}}</td>
+              @for(fav of partRow.columns; track fav.tournament.id) {
+                <td class="colAllocation {{fav.tournament.current ? 'current-allocation' : ''}} {{lastDay && lastPart?'last-row':''}}">
+                  <div>
+                  <p-select [options]="fav.fragments" [(ngModel)]="fav.selected" optionLabel="data.name" placeholder="Select an allocation"
+                    (onChange)="selectFragmentAllocation(fav.tournament, $event.value)"
+                    style="width: 200px;" size="small" />
+                  </div>
+                  <div class="action-panel">
+                    @if (fav.fragments.length > 0 && fav.selected) {
+                      <div class="action-row">
+                        <div (click)="routeToAllocationEdit(fav.tournament, fav.selected.data)" class="action-item">
+                          <i class="pi pi-pencil action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
+                        </div>
+                        @if (fav.tournament.current) {
+                          <div (click)="toggleFragmentAllocationVisibilty(fav.selected.data, fav.tournament, dayAllocation.day.id, partRow.partDay.id)" class="action-item">
+                            @if(fav.selected.data.visible) {
+                              <i class="pi pi-eye action" aria-label="Unpublish the allocation " ></i>
+                            } @else {
+                              <i class="pi pi-eye-slash action" aria-label="Publish the allocation" ></i>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                    <div class="action-row">
+                      <div (click)="createFragmentAllocation(fav.tournament, dayAllocation.day.id, partRow.partDay.id)" class="action-item">
+                        <i class="pi pi-plus action action-plus" aria-label="Create a new full day allocation" title="Create a new full day allocation"></i>
+                      </div>
+                      @if (fav.fragments.length > 0 && fav.selected) {
+                        <div (click)="duplicateFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id, partRow.partDay.id)" class="action-item">
+                          <i class="pi pi-copy action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
+                        </div>
+                        <div (click)="deleteFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id, partRow.partDay.id)" class="action-item">
+                          <i class="pi pi-trash action" aria-label="Remove full day allocation" title="Remove full day allocation"></i>
                         </div>
                       }
                     </div>
-                  }
-                  <div class="action-row">
-                    <div (click)="createFragmentAllocation(fav.tournament, dayAllocation.day.id, partRow.partDay.id)" class="action-item">
-                      <i class="pi pi-plus action action-plus" aria-label="Create a new full day allocation" title="Create a new full day allocation"></i>
-                    </div>
-                    @if (fav.fragments.length > 0 && fav.selected) {
-                      <div (click)="duplicateFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id, partRow.partDay.id)" class="action-item">
-                        <i class="pi pi-copy action" aria-label="Duplicate allocation" title="Duplicate allocation"></i>
-                      </div>
-                      <div (click)="deleteFragmentAllocation(fav.selected.data, fav.tournament, dayAllocation.day.id, partRow.partDay.id)" class="action-item">
-                        <i class="pi pi-trash action" aria-label="Remove full day allocation" title="Remove full day allocation"></i>
-                      </div>
-                    }
                   </div>
-                </div>
-              </td>
-            }
-          </tr>
+                </td>
+              }
+            </tr>
+          }
         }
       }
-    }
   </table>
+  }
 }
   `,
   styles: [`
@@ -265,18 +271,32 @@ import { DialogModule } from 'primeng/dialog';
     .config-error { color: #b91c1c; margin-top: 8px; }
     .config-actions { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
     .config-actions-spacer { flex: 1; }
+    .mode-switch-button { display: block; width: fit-content; margin: 0 10px 20px auto; color: blue; text-decoration: underline; }
+    .simple-mode-days { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .simple-mode-day { min-width: 180px; padding: 15px; text-align: center; border: 1px solid lightgray; }
+    .simple-mode-day-clickable { cursor: pointer; }
+    .simple-mode-day-clickable:hover { background-color: #f5f5f5; }
+    .simple-mode-day-title { font-weight: bold; }
+    .simple-edit-button { display: block; margin: 12px auto 0; }
+    .simple-mode-config { display: flex; justify-content: center; margin-top: 20px; }
+    .simple-config-button { color: blue; text-decoration: underline; }
+    .simple-mode-error { max-width: 500px; margin: 20px auto; color: #b91c1c; text-align: center; }
   `],
   standalone: true
 })
 export class TournamentRefereesAllocationsComponent extends AbstractTournamentPage  {
 
+  private static readonly MODE_STORAGE_KEY = 'tournament-referees-allocations-mode';
+
   private tournamentRefereeAllocationService = inject(TournamentRefereeAllocationService);
   private fragmentRefereeAllocationService = inject(FragmentRefereeAllocationService);
   private refereeAllocationService = inject(RefereeAllocationService);
-  private dateService = inject(DateService);
+  dateService = inject(DateService);
   private refereeService = inject(RefereeService);
   dayAllocations = signal<DayAllocation[]>([]);
   tournamentAllocations = signal<TournamentRefereeAllocationView[]>([]);
+  simpleMode = signal(this.readSimpleMode());
+  simpleModeError = signal('');
   modalCreateAllocation = {
     show: false,
     newAllocationName: '',
@@ -300,6 +320,132 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
         this.loadAllocations();
       }
     })
+  }
+
+  /** Reads the persisted page mode, defaulting to simple mode. */
+  private readSimpleMode(): boolean {
+    if (typeof localStorage === 'undefined') return true;
+    return localStorage.getItem(TournamentRefereesAllocationsComponent.MODE_STORAGE_KEY) !== 'advanced';
+  }
+
+  /** Changes the page mode and persists the user's preference locally. */
+  setSimpleMode(simple: boolean): void {
+    this.simpleMode.set(simple);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(TournamentRefereesAllocationsComponent.MODE_STORAGE_KEY, simple ? 'simple' : 'advanced');
+    }
+    this.simpleModeError.set('');
+    if (simple && this.tournamentAllocations().length === 0) this.loadAllocations();
+  }
+
+  /** Opens tournament-level configuration from the simple-mode action. */
+  configureSimpleTournamentAllocation(): void {
+    const allocation = this.simpleTournamentAllocation();
+    if (allocation) {
+      this.configureTournamentAllocation(allocation);
+    } else {
+      this.simpleModeError.set('No current tournament allocation is available.');
+    }
+  }
+
+  /** Opens the only part-day allocation represented by a simple-mode day card. */
+  editSimpleDay(dayAllocation: DayAllocation): void {
+    if (dayAllocation.showParts) {
+      this.editSimpleAllocation(dayAllocation.day.id, dayAllocation.day.parts[0]?.id);
+    } else {
+      this.editSimpleAllocation(dayAllocation.day.id);
+    }
+  }
+
+  /** Opens the selected fragment allocation for a day, creating it when absent. */
+  editSimpleAllocation(dayId: string, partDayId: string|undefined = undefined): void {
+    const tournamentAllocation = this.simpleTournamentAllocation();
+    if (!tournamentAllocation) {
+      this.simpleModeError.set('No current tournament allocation is available.');
+      return;
+    }
+    console.log('editSimpleAllocation', dayId, partDayId);
+    const descriptor = tournamentAllocation.fragmentRefereeAllocations
+      .find(fragment => this.isSameFragment(dayId, partDayId, fragment));
+    const fragment = descriptor ? this.findFragmentAllocation(descriptor.id) : undefined;
+    if (fragment) {
+      this.routeToAllocationEdit(tournamentAllocation, fragment);
+    } else {
+      if (descriptor) {
+        this.simpleModeError.set('The selected allocation could not be found. Please refresh and try again.');
+      } else {
+        console.log('TODO create')
+        // this.createSimpleFragmentAllocation(tournamentAllocation, dayId, partDayId);
+      }
+    }
+  }
+  isSameFragment(dayId: string, partDayId: string|undefined, fragment: FragmentRefereeAllocationDesc): boolean {
+    if (fragment.dayId !== dayId) return false;
+    if (partDayId) {
+      return fragment.partDayId === partDayId;
+    } else {
+      return ! fragment.partDayId;
+    }
+  }
+  /** Returns the active tournament allocation, or the only available allocation. */
+  private simpleTournamentAllocation(): TournamentRefereeAllocation|undefined {
+    const allocations = this.tournamentAllocations();
+    return allocations.find(view => view.data.current)?.data
+      ?? (allocations.length === 1 ? allocations[0].data : undefined);
+  }
+
+  /** Finds a loaded fragment allocation by its persistent identifier. */
+  private findFragmentAllocation(id: string): FragmentRefereeAllocation|undefined {
+    return this.dayAllocations().flatMap(day => [
+      ...day.fullColumns.flatMap(column => column.fragments),
+      ...day.partRows.flatMap(row => row.columns.flatMap(column => column.fragments))
+    ]).find(fragment => fragment.data.id === id)?.data;
+  }
+
+  /** Creates and persists a missing simple-mode fragment before navigation. */
+  private createSimpleFragmentAllocation(
+    tournamentAllocation: TournamentRefereeAllocation,
+    dayId: string,
+    partDayId?: string
+  ): void {
+    const allocation: FragmentRefereeAllocation = {
+      id: '',
+      name: this.fragmentAllocationName(dayId, partDayId),
+      tournamentId: this.tournament()!.id,
+      lastChange: Date.now(),
+      dayId,
+      partDayId,
+      refereeAllocatorAttendeeIds: [],
+      refereeCoachAllocatorAttendeeIds: [],
+      visible: false
+    };
+    this.fragmentRefereeAllocationService.save(allocation).pipe(
+      mergeMap(saved => {
+        const descriptor: FragmentRefereeAllocationDesc = { id: saved.id, dayId };
+        if (partDayId) descriptor.partDayId = partDayId;
+        const updated = {
+          ...tournamentAllocation,
+          fragmentRefereeAllocations: [
+            ...tournamentAllocation.fragmentRefereeAllocations.filter(fragment =>
+              !(fragment.dayId === dayId && fragment.partDayId === partDayId)),
+            descriptor
+          ]
+        };
+        return this.tournamentRefereeAllocationService.save(updated).pipe(map(() => saved));
+      })
+    ).subscribe({
+      next: saved => {
+        this.simpleModeError.set('');
+        this.loadAllocations();
+        this.routeToAllocationEdit(tournamentAllocation, saved);
+      },
+      error: () => this.simpleModeError.set('Unable to create the allocation. Please try again.')
+    });
+  }
+
+  /** Generates the existing fragment allocation name format. */
+  private fragmentAllocationName(dayId: string, partDayId?: string): string {
+    return 'D' + dayId + (partDayId ? '-' + partDayId : '') + '-' + Math.floor(Math.random() * 100);
   }
   duplicateTournamentAllocation(tourAlloc: TournamentRefereeAllocation) {
     this.refereeAllocationService.duplicateTournamentAllocation(tourAlloc).subscribe((ta) => this.loadAllocations());
@@ -613,7 +759,26 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
 
       // Step 2: load TournamentRefereeAllocation instances of the tournament
       mergeMap(() => this.tournamentRefereeAllocationService.byTournament(tournamentId)),
+      switchMap((allocations: TournamentRefereeAllocation[]) => {
+        if (allocations.length > 0 || !this.simpleMode()) return of(allocations);
+        const firstAllocation: TournamentRefereeAllocation = {
+          id: '',
+          name: this.tournamentAllocationName(),
+          tournamentId,
+          lastChange: Date.now(),
+          current: true,
+          fragmentRefereeAllocations: []
+        };
+        return this.tournamentRefereeAllocationService.save(firstAllocation).pipe(
+          map(saved => [saved]),
+          catchError(() => {
+            this.simpleModeError.set('Unable to create the first allocation. Please try again.');
+            return of([] as TournamentRefereeAllocation[]);
+          })
+        );
+      }),
       map((allocations: TournamentRefereeAllocation[]) => {
+        if (allocations.length > 0) this.simpleModeError.set('');
         tournamentRefereeAllocationViews = allocations.map(ta => {
           return { data: ta, refereeCoachesAllocator: [], refereesAllocator: [] };
         });
@@ -684,6 +849,11 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
         this.tournamentAllocations.set(tournamentRefereeAllocationViews);
       })
     ).subscribe();
+  }
+
+  /** Generates the name used for an automatically created first tournament allocation. */
+  private tournamentAllocationName(): string {
+    return 'Allocation-' + Math.floor(Math.random() * 100);
   }
 }
 interface TournamentRefereeAllocationView {

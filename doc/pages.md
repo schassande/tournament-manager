@@ -292,6 +292,8 @@ Fonctionnalites principales :
 - checkbox « Referee coach » pour afficher ou masquer les coaches dans la grille, avec mémorisation de la préférence par utilisateur
 - edition du nom du fragment
 - navigation entre fragments d'un meme tournoi
+- une icône `home`, alignée sur la largeur de la colonne des créneaux et située à gauche du sélecteur de jour, permet de revenir à la liste des allocations du tournoi
+- une icône `Reset` située après la checkbox `Referee coach` demande confirmation avant de supprimer toutes les affectations d'arbitres et de coaches du fragment courant ; la grille est rechargée après la fin effective de la suppression
 
 Comportements notables :
 
