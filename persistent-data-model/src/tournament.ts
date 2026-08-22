@@ -88,6 +88,8 @@ export interface Day extends WithId {
   parts: PartDay[];
 }
 export interface PartDay extends WithId {
+  /** User-visible name of this part of a tournament day. */
+  name: string;
   dayId: string;
   timeslots: Timeslot[]; // game and break timeslots
   allFieldsAvaillable: boolean;

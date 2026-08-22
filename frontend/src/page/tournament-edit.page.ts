@@ -528,6 +528,7 @@ export class TournamentEditComponent  implements OnInit {
         date: startDateEpoch,
         parts: [{
           id: '1',
+          name: '1',
           dayId: '1',
           timeslots: ts.map((t) => { return {
             id: crypto.randomUUID(),

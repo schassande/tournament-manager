@@ -761,8 +761,10 @@ export class FitMergeService {
 
   private firstPart(day: Day): PartDay {
     if (day.parts.length) return day.parts[0];
+    const id = this.newId('part');
     const part: PartDay = {
-      id: this.newId('part'),
+      id,
+      name: id,
       dayId: day.id,
       timeslots: [],
       allFieldsAvaillable: true,

@@ -23,7 +23,7 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
   public all(): Observable<T[]> {
     return this.runInContext(() =>
       collectionData(this.itemsCollection(), { idField: 'id' }) as Observable<T[]>
-    );
+    ).pipe(map(items => items.map(item => this.adjustItemOnLoad(item))));
   }
 
   public byId(id: string): Observable<T | undefined> {
@@ -31,7 +31,7 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
     const itemDoc = doc(this.firestore, path);
     return this.runInContext(() =>
       docData(itemDoc, { idField: 'id' }) as Observable<T | undefined>
-    );
+    ).pipe(map(item => item ? this.adjustItemOnLoad(item) : item));
   }
   public save(item: T): Observable<T> {
     if (this.autoIdAllocation) {

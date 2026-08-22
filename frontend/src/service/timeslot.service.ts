@@ -8,7 +8,8 @@ import { DateService } from './date.service';
 export class TimeslotService {
   dateService = inject(DateService);
 
-  public addPartAfter(day: Day, partId: string): boolean {
+  /** Adds a named one-timeslot part after the selected part. */
+  public addPartAfter(day: Day, partId: string, name: string): boolean {
     // find the position where to insert the new PartDay
     const partIdx = day.parts.findIndex(p => partId === p.id);
     if (partIdx < 0) return false;
@@ -18,6 +19,7 @@ export class TimeslotService {
     // insert a new PartDay with one time slot starting after the last time slot of the previous PartDay
     const newPart: PartDay = {
       id: (day.parts.length + 1).toString(),
+      name,
       dayId: day.id,
       timeslots : [{
         id: this.allocateTimeslotId(day),
@@ -45,6 +47,65 @@ export class TimeslotService {
     day.parts.splice(partIdx, 1);
     this.renameParts(day);
     this.adjustNextPart(day, partIdx)
+    return true;
+  }
+
+  /** Splits a part after the selected timeslot while preserving all existing IDs and slot values. */
+  public splitPart(day: Day, partId: string, afterTimeslotId: string, name: string): boolean {
+    const partIdx = day.parts.findIndex(part => part.id === partId);
+    if (partIdx < 0) return false;
+
+    const part = day.parts[partIdx];
+    const splitIdx = part.timeslots.findIndex(slot => slot.id === afterTimeslotId);
+    if (splitIdx < 0 || splitIdx >= part.timeslots.length - 1) return false;
+
+    const newPart: PartDay = {
+      id: this.allocatePartDayId(day),
+      name,
+      dayId: part.dayId,
+      timeslots: part.timeslots.splice(splitIdx + 1),
+      allFieldsAvaillable: part.allFieldsAvaillable,
+      availableFieldIds: [...part.availableFieldIds],
+    };
+    day.parts.splice(partIdx + 1, 0, newPart);
+    return true;
+  }
+
+  /** Merges a part into its predecessor without changing slot IDs or slot values. */
+  public mergePartWithPrevious(day: Day, partId: string): boolean {
+    const partIdx = day.parts.findIndex(part => part.id === partId);
+    if (partIdx <= 0) return false;
+
+    const previousPart = day.parts[partIdx - 1];
+    const part = day.parts[partIdx];
+    previousPart.timeslots.push(...part.timeslots);
+    day.parts.splice(partIdx, 1);
+    return true;
+  }
+
+  /** Moves the preceding part's last timeslot to the beginning of the selected part. */
+  public moveBoundaryUp(day: Day, currentPartId: string): boolean {
+    const partIdx = day.parts.findIndex(part => part.id === currentPartId);
+    if (partIdx <= 0) return false;
+
+    const previousPart = day.parts[partIdx - 1];
+    const currentPart = day.parts[partIdx];
+    if (previousPart.timeslots.length < 2) return false;
+
+    currentPart.timeslots.unshift(previousPart.timeslots.pop()!);
+    return true;
+  }
+
+  /** Moves the selected part's first timeslot to the end of its predecessor. */
+  public moveBoundaryDown(day: Day, currentPartId: string): boolean {
+    const partIdx = day.parts.findIndex(part => part.id === currentPartId);
+    if (partIdx <= 0) return false;
+
+    const previousPart = day.parts[partIdx - 1];
+    const currentPart = day.parts[partIdx];
+    if (currentPart.timeslots.length < 2) return false;
+
+    previousPart.timeslots.push(currentPart.timeslots.shift()!);
     return true;
   }
   public addTimeSlotAfter(day: Day, partId: string, timeslotId: string): boolean {
@@ -163,6 +224,14 @@ export class TimeslotService {
     while (usedIds.has(id)) id = crypto.randomUUID();
     return id;
   }
+
+  /** Allocates an opaque identifier that is unique among all parts of a day. */
+  private allocatePartDayId(day: Day): string {
+    const usedIds = new Set(day.parts.map(part => part.id));
+    let id = crypto.randomUUID();
+    while (usedIds.has(id)) id = crypto.randomUUID();
+    return id;
+  }
   public removeTimeSlotsOutOfDay(day: Day) {
     // remove all timeslots that are out of the day
     const dayStart = this.dateService.to00h00(day.date);
@@ -186,6 +255,7 @@ export class TimeslotService {
       const defaultDuration = 50 * 60 * 1000;
       day.parts.push({
         id: '1',
+        name: '1',
         dayId: day.id,
         timeslots : [{
           id: this.allocateTimeslotId(day),

@@ -138,6 +138,10 @@ Sous-objets embarques :
 - `Division`
 - `Team`
 
+Chaque `PartDay` possède un champ `name` affiché dans la configuration du
+tournoi. Pour les anciennes données qui ne contiennent pas ce champ, le nom
+est initialisé en mémoire avec la valeur de `PartDay.id` lors du chargement.
+
 Les `Timeslot.id` sont des identifiants opaques (UUID) uniques dans leur
 `Day`, indépendamment du `PartDay` qui les contient. La clé de résolution
 d'un timeslot est `(dayId, timeslotId)` ; déplacer un timeslot entre deux

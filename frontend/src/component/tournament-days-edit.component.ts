@@ -132,6 +132,7 @@ export class TournamentDaysEditComponent {
         parts: lastDay.parts.map(part => {
           return {
             id: part.id,
+            name: part.name || part.id,
             dayId: part.dayId,
             timeslots: part.timeslots.map(timeslot => {
               return {

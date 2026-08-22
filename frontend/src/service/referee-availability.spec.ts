@@ -11,6 +11,7 @@ describe('referee availability normalization', () => {
     date: 0,
     parts: [{
       id: 'part-1',
+      name: 'part-1',
       dayId: 'day-1',
       timeslots: [
         slot('slot-1'),

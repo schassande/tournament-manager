@@ -14,6 +14,14 @@ export class TournamentService extends AbstractPersistentDataService<Tournament>
 
   protected override getCollectionName(): string { return colTournament; }
 
+  /** Initializes the display name of legacy parts that predate the `name` field. */
+  protected override adjustItemOnLoad(item: Tournament): Tournament {
+    item.days?.forEach(day => day.parts?.forEach(part => {
+      if (!part.name) part.name = part.id;
+    }));
+    return item;
+  }
+
   /** Prevents persisting a day whose timeslot identifiers are not unique. */
   override save(item: Tournament): Observable<Tournament> {
     const duplicates = item.days.flatMap(day => duplicateTimeslotIds(day));

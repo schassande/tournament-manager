@@ -1,13 +1,13 @@
 ---
 name: analyze-change-spec
-description: Analyse le fichier de spécification Markdown indiqué dans doc/changes/, détermine s'il est suffisamment précis pour l'implémentation, pose les questions manquantes une par une avec un compteur restant, puis met à jour la spec en anglais dans une structure standard et avec sa date de mise à jour.
+description: Analyse le fichier de spécification Markdown indiqué dans /doc/changes/ du projet, détermine s'il est suffisamment précis pour l'implémentation, pose les questions manquantes une par une avec un compteur restant, puis met à jour la spec en anglais dans une structure standard et avec sa date de mise à jour.
 ---
 
 # Analyser et compléter une spécification de changement
 
 ## Objectif
 
-Analyser le fichier de spec explicitement indiqué par l'utilisateur dans `doc/changes/`. Déterminer si ses exigences sont suffisamment précises pour commencer l'implémentation. Si des informations manquent, obtenir les réponses progressivement et les écrire dans la spec.
+Analyser le fichier de spec explicitement indiqué par l'utilisateur dans `/doc/changes/`. Déterminer si ses exigences sont suffisamment précises pour commencer l'implémentation. Si des informations manquent, obtenir les réponses progressivement et les écrire dans la spec.
 
 Ne pas implémenter la fonctionnalité pendant cette analyse, sauf demande explicite distincte.
 
@@ -19,7 +19,7 @@ Ne pas implémenter la fonctionnalité pendant cette analyse, sauf demande expli
 - Lire toute la spec avant de conclure qu'une information manque.
 - Ne jamais poser une question dont la réponse figure déjà dans la spec ou dans une réponse précédente.
 - Poser une seule question par message et attendre la réponse avant de continuer.
-- Afficher le compteur sous la forme `Question X/Y — questions restantes après celle-ci : Z`.
+- Afficher le compteur sous la forme `Question X/Y`.
 - Mettre à jour la spec avec chaque réponse reçue avant de poser la question suivante.
 - Rédiger la spec en anglais, en traduisant le contenu existant si nécessaire.
 - Utiliser la structure standard définie ci-dessous, sans supprimer une exigence ou une décision existante.
@@ -95,7 +95,7 @@ Pour chaque question, préparer 2 à 4 solutions mutuellement exclusives lorsque
 S'il reste des questions :
 
 1. Poser uniquement la première question non résolue.
-2. Commencer le message par `Question X/Y — questions restantes après celle-ci : Y-X`.
+2. Commencer le message par `Question X/Y`.
 3. Formuler la question en français pour faciliter l'échange, tout en mentionnant les termes anglais à inscrire dans la spec si nécessaire.
 4. Afficher les solutions sous forme numérotée, par exemple :
 
