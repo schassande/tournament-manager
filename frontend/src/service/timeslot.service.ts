@@ -20,7 +20,7 @@ export class TimeslotService {
       id: (day.parts.length + 1).toString(),
       dayId: day.id,
       timeslots : [{
-        id: '1',
+        id: this.allocateTimeslotId(day),
         start: lastTimeslot.end,
         duration: lastTimeslot.duration,
         end: this.dateService.addMilli(lastTimeslot.end, lastTimeslot.duration),
@@ -57,7 +57,7 @@ export class TimeslotService {
     const timeslot = part.timeslots[tsIdx];
 
     // insert a new timeslot after the current timeslot
-    const newTimeslot: Timeslot = { id: '1',
+    const newTimeslot: Timeslot = { id: this.allocateTimeslotId(day),
       start: timeslot.end,
       duration: timeslot.duration, end:
       this.dateService.addMilli(timeslot.end, timeslot.duration),
@@ -68,7 +68,6 @@ export class TimeslotService {
 
     this.adjustNextTimeSlot(part, tsIdx);
     this.adjustNextPart(day, partIdx)
-    this.renameTimeslots(part);
     this.removeTimeSlotsOutOfDay(day);
     return true;
   }
@@ -81,7 +80,6 @@ export class TimeslotService {
     if (tsIdx < 0) return false;
 
     part.timeslots.splice(tsIdx, 1);
-    this.renameTimeslots(part);
     this.adjustNextPart(day, partIdx)
     return true;
   }
@@ -158,11 +156,12 @@ export class TimeslotService {
     }
   }
 
-  /**  rename id of all timeslots in order to be sure the names are ordered correctly */
-  public renameTimeslots(part: PartDay) {
-    for (let i = 0; i < part.timeslots.length; i++) {
-      part.timeslots[i].id = (i + 1).toString();
-    }
+  /** Allocates an opaque identifier that is unique among all timeslots of a day. */
+  private allocateTimeslotId(day: Day): string {
+    const usedIds = new Set(day.parts.flatMap(part => part.timeslots.map(timeslot => timeslot.id)));
+    let id = crypto.randomUUID();
+    while (usedIds.has(id)) id = crypto.randomUUID();
+    return id;
   }
   public removeTimeSlotsOutOfDay(day: Day) {
     // remove all timeslots that are out of the day
@@ -189,7 +188,7 @@ export class TimeslotService {
         id: '1',
         dayId: day.id,
         timeslots : [{
-          id: '1',
+          id: this.allocateTimeslotId(day),
           start: defaultTimeSlotStart,
           duration: defaultDuration,
           end: this.dateService.addMilli(defaultTimeSlotStart, defaultDuration),

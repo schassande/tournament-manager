@@ -759,7 +759,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
       map((games: Game[]) => {
         // console.log('loadGames', games);
         dayView.partViews.forEach((part: PartView) => {
-          games.filter((game: Game) => game.partDayId === part.id).forEach((game: Game) => {
+          games.filter((game: Game) => part.timeSlotViews.some(slot => slot.id === game.timeslotId)).forEach((game: Game) => {
             const division = this.tournament()!.divisions.find((division: Division) => division.id === game.divisionId);
             const homeTeam = division ? division!.teams.find((team: Team) => team.id === game.homeTeamId) : undefined;
             const awayTeam = division ? division!.teams.find((team: Team) => team.id === game.awayTeamId) : undefined;

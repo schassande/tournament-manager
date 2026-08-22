@@ -138,6 +138,13 @@ Sous-objets embarques :
 - `Division`
 - `Team`
 
+Les `Timeslot.id` sont des identifiants opaques (UUID) uniques dans leur
+`Day`, indépendamment du `PartDay` qui les contient. La clé de résolution
+d'un timeslot est `(dayId, timeslotId)` ; déplacer un timeslot entre deux
+parts ne modifie pas son identifiant. `Game` conserve `dayId` et
+`timeslotId`, mais ne persiste pas `partDayId` : la part se déduit du
+timeslot lorsque nécessaire.
+
 `managerAttendeeIds[]` contient les identifiants des participants qui administrent le tournoi. `managerEmails[]` contient les adresses email de tous les managers, qu'ils soient associés ou non à une `Person`/un `Attendee` ; il est utilisé par les règles Firestore pour autoriser la création, la modification et la suppression du tournoi. Un manager associé à un attendee doit donc être présent dans les deux listes, tandis qu'un manager uniquement identifié par son email est présent uniquement dans `managerEmails[]`.
 
 Dans l'etat actuel du projet, une grande partie du parametage du tournoi est embarquee dans le document `Tournament` plutot que stockee dans des sous-collections.
@@ -160,13 +167,14 @@ Champs principaux :
 - `player`
 - `referee`
 - `refereeCoach`
-- `unavailabilities[]` (optionnel) : exceptions de disponibilité par `dayId` et `partDayId`
+- `unavailabilities[]` (optionnel) : exceptions de disponibilité par `dayId` et `timeslotId`
 - `partDays[]`
 - `comments`
 
-Chaque entrée de `unavailabilities[]` contient `dayId`, `partDayId`,
-`unavailability` (`TOTAL` ou `PARTIAL`) et `unavailableSlotIds[]`. L'absence
-d'une entrée signifie que l'attendee est disponible sur tout le `PartDay`.
+Chaque entrée de `unavailabilities[]` contient `dayId`, `unavailability`
+(`TOTAL` ou `PARTIAL`) et `unavailableSlotIds[]`. Les identifiants de slots
+sont uniques dans la journée et sont résolus avec `(dayId, timeslotId)`.
+L'absence d'une entrée signifie que l'attendee est disponible toute la journée.
 Une entrée `TOTAL` utilise une liste de slots vide ; une entrée `PARTIAL`
 contient uniquement les slots indisponibles.
 
@@ -194,7 +202,7 @@ Champs principaux :
 - `tournamentId`
 - `scheduleId`
 - `divisionId`
-- `dayId`, `partDayId`, `timeslotId`, `fieldId`
+- `dayId`, `timeslotId`, `fieldId`
 - `homeTeamId`, `awayTeamId`
 - `what` : type ou libellé du match, par exemple `Pool`
 - `score`
@@ -202,7 +210,7 @@ Champs principaux :
 
 Usage :
 
-- grille des matchs par jour / part / terrain / slot
+- grille des matchs par jour / part / terrain / slot ; la part est déduite du timeslot
 - support de l'allocation des arbitres et des coaches d'arbitres
 
 ## `GameAttendeeAllocation`

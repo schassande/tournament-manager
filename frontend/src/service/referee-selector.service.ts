@@ -5,7 +5,7 @@ import {
   GeneralAllocationConfiguration,
   Referee,
   TournamentRefereeAllocation,
-  findPartDayUnavailability,
+  findDayUnavailability,
   isSlotUnavailable,
 } from '@tournament-manager/persistent-data-model';
 import { Injectable, signal } from '@angular/core';
@@ -186,7 +186,7 @@ export function isRefereeEligible(
   const attendee = entry.referee.attendee;
   const timeslot = target.timeslot;
   if (!timeslot) return false;
-  const unavailable = findPartDayUnavailability(attendee.unavailabilities, target.game.dayId, target.game.partDayId);
+  const unavailable = findDayUnavailability(attendee.unavailabilities, target.game.dayId);
   if (isSlotUnavailable(unavailable, target.game.timeslotId)) return false;
 
   const assignments = games

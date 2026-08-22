@@ -98,7 +98,6 @@ export type Unavailability = 'TOTAL' | 'PARTIAL';
 
 export interface PartDayUnavailability {
   dayId: string;
-  partDayId: string;
   unavailability: Unavailability;
   unavailableSlotIds: string[];
 }
@@ -109,16 +108,16 @@ interface Attendee {
 }
 ```
 
-Un timeslot est identifié par le triplet `dayId`, `partDayId` et `slotId`.
+Un timeslot est identifié par le couple `dayId` et `timeslotId`.
 
 Les règles de représentation sont les suivantes :
 
-- l’absence d’une entrée pour un `PartDay` signifie que tous ses slots sont
+- l’absence d’une entrée pour un `Day` signifie que tous ses slots sont
   disponibles ;
-- une entrée `TOTAL` signifie que tous les slots du `PartDay` sont indisponibles
+- une entrée `TOTAL` signifie que tous les slots du `Day` sont indisponibles
   et `unavailableSlotIds` doit être vide ;
 - une entrée `PARTIAL` signifie qu’au moins un slot, mais pas tous les slots,
-  est indisponible ; `unavailableSlotIds` doit donc être non vide et incomplet ;
+  est indisponible dans le `Day` ; `unavailableSlotIds` doit donc être non vide et incomplet ;
 - une liste vide de `unavailabilities` signifie que l’Attendee est disponible
   partout ;
 - le champ `unavailabilities` est optionnel afin de rester compatible avec les

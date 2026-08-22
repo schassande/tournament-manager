@@ -5,8 +5,8 @@ import {
   PartDayUnavailability,
   Timeslot,
   Tournament,
-  createPartDayUnavailability,
-  findPartDayUnavailability,
+  createDayUnavailability,
+  findDayUnavailability,
   isSlotUnavailable,
   normalizePartDayUnavailabilities,
 } from '@tournament-manager/persistent-data-model';
@@ -145,10 +145,11 @@ export class AttendeeUnavailabilityComponent implements OnInit {
 
   /** Returns the state summarized by a part-day header. */
   partDayState(day: Day, partDay: PartDay): AvailabilityState {
-    const entry = this.entry(day, partDay);
+    const entry = this.entry(day);
     if (!entry) return 'available';
     if (entry.unavailability === 'TOTAL') return 'total';
-    return entry.unavailableSlotIds.length === partDay.timeslots.length ? 'total' : 'partial';
+    const unavailableCount = partDay.timeslots.filter(slot => entry.unavailableSlotIds.includes(slot.id)).length;
+    return unavailableCount === partDay.timeslots.length ? 'total' : 'partial';
   }
 
   /** Returns whether a day has multiple part-days that can be displayed. */
@@ -158,28 +159,33 @@ export class AttendeeUnavailabilityComponent implements OnInit {
 
   /** Returns whether a particular slot is currently unavailable. */
   slotUnavailable(day: Day, partDay: PartDay, slot: Timeslot): boolean {
-    return isSlotUnavailable(this.entry(day, partDay), slot.id);
+    return isSlotUnavailable(this.entry(day), slot.id);
   }
 
   /** Toggles one slot and re-normalizes its part-day entry. */
   toggleSlot(day: Day, partDay: PartDay, slot: Timeslot): void {
-    const entry = this.entry(day, partDay);
+    const entry = this.entry(day);
     const currentIds = entry?.unavailability === 'TOTAL'
-      ? partDay.timeslots.map(item => item.id)
+      ? this.daySlotIds(day)
       : [...(entry?.unavailableSlotIds ?? [])];
     const slotIndex = currentIds.indexOf(slot.id);
     if (slotIndex >= 0) currentIds.splice(slotIndex, 1);
     else currentIds.push(slot.id);
-    this.replacePartDayEntry(day, partDay, currentIds);
+    this.replaceDayEntry(day, currentIds);
   }
 
   /** Sets every slot of a part-day to available or unavailable. */
   togglePartDay(day: Day, partDay: PartDay): void {
     const state = this.partDayState(day, partDay);
+    const entry = this.entry(day);
+    const currentIds = entry?.unavailability === 'TOTAL'
+      ? this.daySlotIds(day)
+      : [...(entry?.unavailableSlotIds ?? [])];
+    const partSlotIds = partDay.timeslots.map(slot => slot.id);
     const unavailableSlotIds = state === 'available'
-      ? partDay.timeslots.map(slot => slot.id)
-      : [];
-    this.replacePartDayEntry(day, partDay, unavailableSlotIds);
+      ? [...new Set([...currentIds, ...partSlotIds])]
+      : currentIds.filter(slotId => !partSlotIds.includes(slotId));
+    this.replaceDayEntry(day, unavailableSlotIds);
   }
 
   /** Sets every slot of a day to available or unavailable. */
@@ -189,16 +195,7 @@ export class AttendeeUnavailabilityComponent implements OnInit {
     const entries = (this.attendee.unavailabilities ?? [])
       .filter(entry => entry.dayId !== day.id);
     if (unavailable) {
-      for (const partDay of day.parts) {
-        if (partDay.timeslots.length > 0) {
-          entries.push({
-            dayId: day.id,
-            partDayId: partDay.id,
-            unavailability: 'TOTAL',
-            unavailableSlotIds: [],
-          });
-        }
-      }
+      entries.push({ dayId: day.id, unavailability: 'TOTAL', unavailableSlotIds: [] });
     }
     this.setEntries(entries);
   }
@@ -218,16 +215,20 @@ export class AttendeeUnavailabilityComponent implements OnInit {
     return `${this.dayLabel(day)}, ${this.partDayLabel(day, partDay)}, ${this.dateService.toTime(slot.start)}`;
   }
 
-  private entry(day: Day, partDay: PartDay): PartDayUnavailability | undefined {
-    return findPartDayUnavailability(this.attendee.unavailabilities, day.id, partDay.id);
+  private entry(day: Day): PartDayUnavailability | undefined {
+    return findDayUnavailability(this.attendee.unavailabilities, day.id);
   }
 
-  private replacePartDayEntry(day: Day, partDay: PartDay, unavailableSlotIds: string[]): void {
+  private replaceDayEntry(day: Day, unavailableSlotIds: string[]): void {
     const entries = (this.attendee.unavailabilities ?? [])
-      .filter(entry => !(entry.dayId === day.id && entry.partDayId === partDay.id));
-    const entry = createPartDayUnavailability(day.id, partDay, unavailableSlotIds);
+      .filter(entry => entry.dayId !== day.id);
+    const entry = createDayUnavailability(day.id, day, unavailableSlotIds);
     if (entry) entries.push(entry);
     this.setEntries(entries);
+  }
+
+  private daySlotIds(day: Day): string[] {
+    return day.parts.flatMap(part => part.timeslots.map(slot => slot.id));
   }
 
   private setEntries(entries: PartDayUnavailability[]): void {

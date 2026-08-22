@@ -17,7 +17,7 @@ describe('referee selector calculations', () => {
 
   it('rejects a referee unavailable on the target slot', () => {
     const entry = selectorEntry({
-      unavailabilities: [{ dayId: 'day-1', partDayId: 'part-1', unavailability: 'PARTIAL', unavailableSlotIds: ['slot-2'] }],
+      unavailabilities: [{ dayId: 'day-1', unavailability: 'PARTIAL', unavailableSlotIds: ['slot-2'] }],
     });
     const target = game('game-2', slot('slot-2', 50, 100, 40));
 
@@ -70,7 +70,7 @@ function selectorEntry(options: {
 
 function game(id: string, timeslot: ReturnType<typeof slot>, referee?: Referee): GameView {
   return {
-    game: { id, dayId: 'day-1', partDayId: 'part-1', timeslotId: timeslot.id } as GameView['game'],
+    game: { id, dayId: 'day-1', timeslotId: timeslot.id } as GameView['game'],
     timeslot,
     timeslotStr: '10:00',
     referees: referee ? [{ attendeeAlloc: { attendeeId: referee.attendee.id } as GameView['referees'][number]['attendeeAlloc'], referee }] : [],

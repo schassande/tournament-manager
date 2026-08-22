@@ -318,12 +318,12 @@ export class FitMergeService {
         plan,
       );
       const currentByTime = new Map(
-        part.timeslots.map((slot) => [
+        day.value.parts.flatMap(currentPart => currentPart.timeslots).map((slot) => [
           this.dateService.toTime(slot.start),
           slot,
         ]),
       );
-      part.timeslots = [];
+      day.value.parts.forEach(currentPart => currentPart.timeslots = []);
       let start = this.dateService.fromTime(
         day.value.date,
         fitDay.timeslots[0] ?? '09:00',
@@ -501,7 +501,6 @@ export class FitMergeService {
       game.fitGameId = fitGame.gameId;
       game.tournamentId = tournament.id;
       game.dayId = day.id;
-      game.partDayId = resolvedSlot.part.id;
       game.timeslotId = resolvedSlot.value.id;
       game.fieldId = field.id;
       game.divisionId = division.id;
@@ -543,20 +542,14 @@ export class FitMergeService {
       (left, right) => left.date - right.date,
     );
     const idByDate = new Map<string, string>();
-    const partIdByPreviousReference = new Map<string, string>();
     days.forEach((day, index) =>
       idByDate.set(this.dateService.toDate(day.date), String(index + 1)),
     );
     for (const day of days) {
       const date = this.dateService.toDate(day.date);
       const newId = idByDate.get(date)!;
-      const previousDayId = day.id;
       day.id = newId;
       day.parts.forEach((part, index) => {
-        partIdByPreviousReference.set(
-          `${previousDayId}/${part.id}`,
-          String(index + 1),
-        );
         part.id = String(index + 1);
         part.dayId = newId;
       });
@@ -573,36 +566,13 @@ export class FitMergeService {
       if (game.dayId !== newDayId) {
         const updated = this.clone(game);
         updated.dayId = newDayId;
-        const newPartId = partIdByPreviousReference.get(
-          `${game.dayId}/${game.partDayId}`,
-        );
-        if (!newPartId) {
-          plan.errors.push(`Game ${game.id} references a missing part of day.`);
-          continue;
-        }
-        updated.partDayId = newPartId;
         plan.gamesToSave.push(updated);
         plan.changes.push({
           type: 'Game',
           key: game.fitGameId?.toString() ?? game.id,
           action: 'Update',
-          details: `Update day reference to ${newDayId} and part of day reference to ${newPartId}`,
+          details: `Update day reference to ${newDayId}`,
         });
-      } else {
-        const newPartId = partIdByPreviousReference.get(
-          `${game.dayId}/${game.partDayId}`,
-        );
-        if (newPartId && newPartId !== game.partDayId) {
-          const updated = this.clone(game);
-          updated.partDayId = newPartId;
-          plan.gamesToSave.push(updated);
-          plan.changes.push({
-            type: 'Game',
-            key: game.fitGameId?.toString() ?? game.id,
-            action: 'Update',
-            details: `Update part of day reference to ${newPartId}`,
-          });
-        }
       }
     }
   }
@@ -857,7 +827,6 @@ export class FitMergeService {
       scheduleId: tournament.currentScheduleId ?? '',
       divisionId,
       dayId: day.id,
-      partDayId: day.parts[0].id,
       timeslotId: slot.id,
       fieldId,
       homeTeamId,

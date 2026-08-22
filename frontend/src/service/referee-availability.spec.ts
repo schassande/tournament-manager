@@ -24,12 +24,10 @@ describe('referee availability normalization', () => {
   it('removes invalid references and omits fully available entries', () => {
     const entries: PartDayUnavailability[] = [{
       dayId: 'missing-day',
-      partDayId: 'part-1',
       unavailability: 'PARTIAL',
       unavailableSlotIds: ['slot-1'],
     }, {
       dayId: 'day-1',
-      partDayId: 'part-1',
       unavailability: 'PARTIAL',
       unavailableSlotIds: ['missing-slot'],
     }];
@@ -40,14 +38,12 @@ describe('referee availability normalization', () => {
   it('converts a partial entry covering all remaining slots to TOTAL', () => {
     const entries: PartDayUnavailability[] = [{
       dayId: 'day-1',
-      partDayId: 'part-1',
       unavailability: 'PARTIAL',
       unavailableSlotIds: ['slot-1', 'missing-slot', 'slot-2'],
     }];
 
     expect(normalizePartDayUnavailabilities(days, entries)).toEqual([{
       dayId: 'day-1',
-      partDayId: 'part-1',
       unavailability: 'TOTAL',
       unavailableSlotIds: [],
     }]);
@@ -56,19 +52,16 @@ describe('referee availability normalization', () => {
   it('gives TOTAL priority when duplicate entries conflict', () => {
     const entries: PartDayUnavailability[] = [{
       dayId: 'day-1',
-      partDayId: 'part-1',
       unavailability: 'PARTIAL',
       unavailableSlotIds: ['slot-1'],
     }, {
       dayId: 'day-1',
-      partDayId: 'part-1',
       unavailability: 'TOTAL',
       unavailableSlotIds: ['slot-2'],
     }];
 
     expect(normalizePartDayUnavailabilities(days, entries)).toEqual([{
       dayId: 'day-1',
-      partDayId: 'part-1',
       unavailability: 'TOTAL',
       unavailableSlotIds: [],
     }]);

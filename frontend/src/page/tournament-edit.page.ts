@@ -434,7 +434,6 @@ export class TournamentEditComponent  implements OnInit {
   private applyLoadedManagers(tournament: Tournament, entries: ManagerEntry[]): void {
     // Keep email-only managers in the result, even when no Person exists for them.
     const validEntries = entries.filter(entry => entry.person !== null) as ManagerEntryWithPerson[];
-    console.debug('validEntries', validEntries);
 
     // Every resolved Person should have a manager attendee for this tournament.
     // The helper also repairs a missing TournamentManager role/flag.
@@ -530,8 +529,8 @@ export class TournamentEditComponent  implements OnInit {
         parts: [{
           id: '1',
           dayId: '1',
-          timeslots: ts.map((t,idx) => { return {
-            id: (idx+1).toString(),
+          timeslots: ts.map((t) => { return {
+            id: crypto.randomUUID(),
             start: t[0],
             duration: t[1],
             end: t[2],

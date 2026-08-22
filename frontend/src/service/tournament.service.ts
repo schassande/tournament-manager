@@ -1,4 +1,4 @@
-import { colTournament, Team, Tournament } from '@tournament-manager/persistent-data-model';
+import { colTournament, duplicateTimeslotIds, Team, Tournament } from '@tournament-manager/persistent-data-model';
 import { Injectable, signal } from '@angular/core';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 import { map, Observable, of } from 'rxjs';
@@ -13,6 +13,15 @@ export class TournamentService extends AbstractPersistentDataService<Tournament>
   public currentTournament = this.currentTournament$.asReadonly();
 
   protected override getCollectionName(): string { return colTournament; }
+
+  /** Prevents persisting a day whose timeslot identifiers are not unique. */
+  override save(item: Tournament): Observable<Tournament> {
+    const duplicates = item.days.flatMap(day => duplicateTimeslotIds(day));
+    if (duplicates.length > 0) {
+      throw new Error(`Duplicate timeslot identifiers: ${duplicates.join(', ')}`);
+    }
+    return super.save(item);
+  }
 
   public loadCurrentTournamentFromLocalStorage(): Observable<Tournament|undefined> {
     const tournamentId = localStorage.getItem('currentTournamentId');

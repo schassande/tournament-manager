@@ -1,21 +1,18 @@
 import {
   Day,
-  PartDay,
   PartDayUnavailability,
 } from './tournament';
 
 /**
- * Returns the unavailability entry for a part-day, if one exists.
+ * Returns the unavailability entry for a day, if one exists.
  * @param entries persisted unavailability entries
  * @param dayId tournament day identifier
- * @param partDayId tournament part-day identifier
  */
-export function findPartDayUnavailability(
+export function findDayUnavailability(
   entries: PartDayUnavailability[] | undefined,
   dayId: string,
-  partDayId: string,
 ): PartDayUnavailability | undefined {
-  return entries?.find(entry => entry.dayId === dayId && entry.partDayId === partDayId);
+  return entries?.find(entry => entry.dayId === dayId);
 }
 
 /**
@@ -32,7 +29,7 @@ export function isSlotUnavailable(
 }
 
 /**
- * Normalizes persisted unavailability entries against the current tournament.
+ * Normalizes persisted day-scoped unavailability entries against the current tournament.
  * Invalid references are removed, duplicate entries are merged, and TOTAL
  * entries take precedence over PARTIAL entries.
  * @param days current tournament days
@@ -45,42 +42,28 @@ export function normalizePartDayUnavailabilities(
 ): PartDayUnavailability[] | undefined {
   if (!entries?.length) return undefined;
 
-  const partDays = new Map<string, PartDay>();
+  const daySlotIds = new Map<string, Set<string>>();
   for (const day of days) {
-    for (const partDay of day.parts) {
-      if (partDay.timeslots.length > 0) {
-        partDays.set(partDayKey(day.id, partDay.id), partDay);
-      }
-    }
+    daySlotIds.set(day.id, new Set(day.parts.flatMap(part => part.timeslots.map(slot => slot.id))));
   }
 
   const merged = new Map<string, PartDayUnavailability>();
   for (const entry of entries) {
-    const partDay = partDays.get(partDayKey(entry.dayId, entry.partDayId));
-    if (!partDay) continue;
-
-    const validSlotIds = new Set(partDay.timeslots.map(slot => slot.id));
+    const validSlotIds = daySlotIds.get(entry.dayId);
+    if (!validSlotIds || validSlotIds.size === 0) continue;
     const unavailableSlotIds = unique(
       entry.unavailableSlotIds.filter(slotId => validSlotIds.has(slotId)),
     );
-    const key = partDayKey(entry.dayId, entry.partDayId);
+    const key = entry.dayId;
     const existing = merged.get(key);
 
-    if (entry.unavailability === 'TOTAL' || existing?.unavailability === 'TOTAL') {
-      merged.set(key, {
-        dayId: entry.dayId,
-        partDayId: entry.partDayId,
-        unavailability: 'TOTAL',
-        unavailableSlotIds: [],
-      });
-      continue;
-    }
-
-    const combinedSlotIds = unique([...(existing?.unavailableSlotIds ?? []), ...unavailableSlotIds]);
+    const combinedSlotIds = unique([
+      ...(existing?.unavailability === 'TOTAL' ? [...validSlotIds] : existing?.unavailableSlotIds ?? []),
+      ...(entry.unavailability === 'TOTAL' ? [...validSlotIds] : unavailableSlotIds),
+    ]);
     if (combinedSlotIds.length === 0) continue;
     merged.set(key, {
       dayId: entry.dayId,
-      partDayId: entry.partDayId,
       unavailability: combinedSlotIds.length === validSlotIds.size ? 'TOTAL' : 'PARTIAL',
       unavailableSlotIds: combinedSlotIds.length === validSlotIds.size ? [] : combinedSlotIds,
     });
@@ -90,31 +73,27 @@ export function normalizePartDayUnavailabilities(
 }
 
 /**
- * Creates a normalized entry for the selected unavailable slots.
+ * Creates a normalized entry for the selected unavailable slots in a day.
  * @param dayId tournament day identifier
- * @param partDay tournament part-day
+ * @param day tournament containing all timeslots
  * @param unavailableSlotIds selected unavailable slot identifiers
  * @returns an entry, or undefined when all slots are available
  */
-export function createPartDayUnavailability(
+export function createDayUnavailability(
   dayId: string,
-  partDay: PartDay,
+  day: Day,
   unavailableSlotIds: string[],
 ): PartDayUnavailability | undefined {
-  const slotIds = unique(unavailableSlotIds);
+  const daySlotIds = day.parts.flatMap(part => part.timeslots.map(slot => slot.id));
+  const validSlotIds = new Set(daySlotIds);
+  const slotIds = unique(unavailableSlotIds.filter(slotId => validSlotIds.has(slotId)));
   if (slotIds.length === 0) return undefined;
-  const isTotal = slotIds.length === partDay.timeslots.length;
+  const isTotal = slotIds.length === daySlotIds.length;
   return {
     dayId,
-    partDayId: partDay.id,
     unavailability: isTotal ? 'TOTAL' : 'PARTIAL',
     unavailableSlotIds: isTotal ? [] : slotIds,
   };
-}
-
-/** Returns the stable key used to identify a part-day. */
-function partDayKey(dayId: string, partDayId: string): string {
-  return `${dayId}/${partDayId}`;
 }
 
 /** Removes duplicate string values while preserving their first-seen order. */

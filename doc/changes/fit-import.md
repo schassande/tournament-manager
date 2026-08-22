@@ -417,7 +417,7 @@ Les créneaux existants sont réutilisés lorsque leur date et leur heure de dé
 
 Pour une division ou une équipe existante, le nom FIT et le nom affiché sont actualisés, mais les données locales telles que les joueurs, les couleurs, les noms courts explicitement personnalisés et les autres propriétés non issues de FIT sont conservées. Pour un terrain existant, seul le nom issu du mapping FIT est synchronisé ; `video`, `quality` et `orderView` restent inchangés. Pour un jour existant, les propriétés de disponibilité restent locales. Pour un créneau existant, la date, l'heure, la durée, le `slotType` et le caractère jouable sont recalculés selon l'algorithme de construction des timeslots ; les autres propriétés locales sont conservées.
 
-Pour un `Game` existant, la fusion met à jour les références de division, de jour, de partie de journée, de créneau, de terrain et d'équipes, ainsi que `fitGameId`. Les scores et les événements de match ne sont jamais écrasés. Les informations de tableau (`scheduleInfo`) sont conservées sauf si une règle métier dédiée de la partie 2 prévoit explicitement leur recalcul.
+Pour un `Game` existant, la fusion met à jour les références de division, de jour, de créneau, de terrain et d'équipes, ainsi que `fitGameId`. La partie de journée est déduite du timeslot et n'est pas persistée sur `Game`. Les scores et les événements de match ne sont jamais écrasés. Les informations de tableau (`scheduleInfo`) sont conservées sauf si une règle métier dédiée de la partie 2 prévoit explicitement leur recalcul.
 
 ### Suppression et éléments locaux
 
@@ -425,7 +425,7 @@ La suppression automatique des matches est limitée au jour explicitement import
 
 Les matches FIT dont `status === 'Deleted'` suivent la même règle, même s'ils sont encore présents dans le snapshot. Les matches `New`, `Update` et `Equal` sont respectivement créés, fusionnés ou laissés inchangés lorsque leur contenu ne diffère pas. Un match incomplet ou `washout` n'est pas supprimé pour cette seule raison : il est importé avec les références disponibles et ajouté au bilan des anomalies.
 
-Les divisions, équipes, terrains, jours et créneaux absents du snapshot FIT sont supprimés par l'import global. L'ensemble des divisions et des jours du tournoi devient donc celui du snapshot importé. Les jours sont triés chronologiquement puis renumérotés à partir de `"1"`; les parties de chaque jour sont renumérotées à partir de `"1"` dans leur ordre existant. Les références `Game.dayId` et `Game.partDayId` sont ajustées dans le même plan. Si un match référence un jour ou une partie supprimée et ne peut pas être réaffecté, l'import est bloqué. Les objets purement locaux qui ne sont pas représentés par ces collections FIT sont conservés.
+Les divisions, équipes, terrains, jours et créneaux absents du snapshot FIT sont supprimés par l'import global. L'ensemble des divisions et des jours du tournoi devient donc celui du snapshot importé. Les jours sont triés chronologiquement puis renumérotés à partir de `"1"`; les parties de chaque jour sont renumérotées à partir de `"1"` dans leur ordre existant. La référence `Game.dayId` est ajustée dans le même plan ; la partie de journée est toujours retrouvée via `(dayId, timeslotId)`. Si un match référence un jour ou un timeslot supprimé et ne peut pas être réaffecté, l'import est bloqué. Les objets purement locaux qui ne sont pas représentés par ces collections FIT sont conservés.
 
 ### Validation, aperçu et application
 

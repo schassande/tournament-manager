@@ -1,6 +1,6 @@
 # TODO list du projet Tournament Maager
 
-
+- Day/PartDay: split/join Part, move limit
 - Allocation : rendre visible/publier
 - statistiques d'allocation
 - Planning arbitres

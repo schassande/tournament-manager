@@ -366,9 +366,8 @@ export class TournamentGamesComponent extends AbstractTournamentPage {
       .pipe(take(1))
       .subscribe({
         next: (games) => {
-          const partGames = games.filter(
-            (game) => game.partDayId === part.part.id,
-          );
+          const partSlotIds = new Set(part.part.timeslots.map(slot => slot.id));
+          const partGames = games.filter((game) => partSlotIds.has(game.timeslotId));
           Promise.all(partGames.map((game) => this.gameService.delete(game.id)))
             .then(() => {
               this.deletePartDayId.set(null);
@@ -393,9 +392,11 @@ export class TournamentGamesComponent extends AbstractTournamentPage {
       .byDay(this.tournament()!.id, this.selectedDay.value.id)
       .pipe(
         map((games: Game[]) => {
-          // console.log('games', games);
+          console.debug('games', games);
           this.parts.set(
             this.selectedDay!.value.parts.map((part: PartDay) => {
+              console.debug('PartDay ', part);
+              // list of Part timeslots
               const playingTimeSlots: TimeSlotView[] = part.timeslots
                 .filter((ts: Timeslot) => ts.playingSlot)
                 .map((ts: Timeslot) => {
@@ -405,25 +406,20 @@ export class TournamentGamesComponent extends AbstractTournamentPage {
                     endStr: this.dateService.toTime(ts.end),
                   };
                 });
+              console.debug('playingTimeSlots ', playingTimeSlots);
+              // extract GameView of game belonging the Part
               const gvs: GameView[] = games
-                .filter((game: Game) => game.partDayId === part.id)
+                .filter((game: Game) => part.timeslots.some(slot => slot.id === game.timeslotId))
                 .map((game: Game) => {
                   const division = this.tournament()!.divisions.find(
-                    (division: Division) => division.id === game.divisionId,
-                  );
+                    (division: Division) => division.id === game.divisionId);
                   const homeTeam = division
-                    ? division!.teams.find(
-                        (team: Team) => team.id === game.homeTeamId,
-                      )
+                    ? division!.teams.find((team: Team) => team.id === game.homeTeamId)
                     : undefined;
                   const awayTeam = division
-                    ? division!.teams.find(
-                        (team: Team) => team.id === game.awayTeamId,
-                      )
+                    ? division!.teams.find((team: Team) => team.id === game.awayTeamId)
                     : undefined;
-                  const timeslot = playingTimeSlots.find(
-                    (ts) => ts.id === game.timeslotId,
-                  );
+                  const timeslot = playingTimeSlots.find((ts) => ts.id === game.timeslotId);
                   return {
                     game,
                     division,
@@ -437,7 +433,7 @@ export class TournamentGamesComponent extends AbstractTournamentPage {
                     homeTeam,
                     awayTeam,
                   };
-                });
+                }).filter(g => g.timeslot);
               const fields: Field[] = [];
               if (part.allFieldsAvaillable) {
                 fields.push(...this.tournament()!.fields);
@@ -472,7 +468,6 @@ export class TournamentGamesComponent extends AbstractTournamentPage {
         lastChange: new Date().getTime(),
         tournamentId: this.tournament()!.id,
         dayId: this.selectedDay!.value.id,
-        partDayId: pv.part.id,
         timeslotId: '',
         fieldId: '',
         divisionId: '',
@@ -554,7 +549,7 @@ export class TournamentGamesComponent extends AbstractTournamentPage {
   removeGame(gv: GameView) {
     this.gameService.delete(gv.game.id);
     this.parts.update((parts) => {
-      const part = parts.find((p) => p.part.id === gv.game.partDayId);
+      const part = parts.find((p) => p.games.some(game => game.game.id === gv.game.id));
       if (part) {
         part.games = part.games.filter((g) => g.game.id !== gv.game.id);
       }

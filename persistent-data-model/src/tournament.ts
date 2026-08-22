@@ -138,13 +138,12 @@ export interface Attendee extends PersistentObject {
   comments?: string;
 }
 
-/** Describes whether an attendee is unavailable for all or part of a part-day. */
+/** Describes whether an attendee is unavailable for all or part of a day. */
 export type Unavailability = 'TOTAL' | 'PARTIAL';
 
-/** Persisted unavailable slots for one tournament part-day. */
+/** Persisted unavailable slots for one tournament day. */
 export interface PartDayUnavailability {
   dayId: string;
-  partDayId: string;
   unavailability: Unavailability;
   unavailableSlotIds: string[];
 }
@@ -170,8 +169,7 @@ export interface Game extends PersistentObject {
   scheduleId: string; // unique identifier of the schedule
   divisionId: string; // unique identifier of the division
   dayId: string; // unique identifier of the day
-  partDayId: string; //
-  timeslotId: string; // unique identifier of the timeslot
+  timeslotId: string; // unique identifier within the day
   fieldId: string; // unique identifier of the field
   homeTeamId: string; // unique identifier of the home team
   awayTeamId: string; // unique identifier of the away team
@@ -189,6 +187,17 @@ export interface Game extends PersistentObject {
     roundGameId: string; // unique identifier of the round game
   };
   fitGameId?: number;
+}
+
+/** Returns the timeslot identifiers that are duplicated within a tournament day. */
+export function duplicateTimeslotIds(day: Day): string[] {
+  const counts = new Map<string, number>();
+  for (const timeslot of day.parts.flatMap(part => part.timeslots)) {
+    counts.set(timeslot.id, (counts.get(timeslot.id) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([id]) => id);
 }
 
 export type GameEventType =
