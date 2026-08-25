@@ -1,6 +1,6 @@
 import { PersistentObject, WithId } from './persistence';
-import { AttendeeRole } from './person';
-import { RefereeCategory, RefereeCoachInfo, RefereeInfo } from './referee';
+import { AttendeeRole, Gender } from './person';
+import { RefereeBadgeSystem, RefereeCategory, RefereeCoachBadgeSystem, RefereeCoachInfo, RefereeInfo } from './referee';
 
 export interface Tournament extends PersistentObject {
   name: string;
@@ -23,6 +23,8 @@ export interface Tournament extends PersistentObject {
   allowPlayerReferees?: boolean; // true if the tournament has player referees
   /** FIT competition selection and the user's persistent import naming rules. */
   fit?: FitTournamentConfig;
+  defaultRefereeBadgeSystem?: RefereeBadgeSystem;
+  defaultRefereeCoachBadgeSystem?: RefereeCoachBadgeSystem;
 }
 
 /** Persistent configuration used by the FIT import preparation page. */
@@ -122,7 +124,6 @@ export interface TeamDivision extends Team {
 
 export interface Attendee extends PersistentObject {
   tournamentId: string; // unique identifier of the tournament
-  personId: string; // unique identifier
   roles: AttendeeRole[]; // roles of the attendee. it can have some restrictions
   isPlayer: boolean; // true if the attendee is a player
   isReferee: boolean; // true if the attendee is a referee
@@ -132,6 +133,17 @@ export interface Attendee extends PersistentObject {
     teamId: string; // unique identifier of the team
     num?: number; // number of the player
   };
+  person?: {
+    personId?: string; // unique identifier
+    email?: string; // email of the person
+    firstName: string; // first name of the person
+    lastName: string; // name of the person
+    shortName: string; // short name of the person
+    gender?: Gender,
+    phone?: string,
+    regionId: string; // identifier of region of the person
+    countryId: string; // identifier of country of the person
+  }
   referee?: RefereeInfo;
   refereeCoach?: RefereeCoachInfo;
   /** Availability exceptions for the attendee, indexed by tournament part-day. */

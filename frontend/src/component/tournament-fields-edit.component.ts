@@ -1,4 +1,4 @@
-import { Component, model, output } from '@angular/core';
+import { Component, model, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Field, FieldQuality } from '@tournament-manager/persistent-data-model';
 import { InputTextModule } from 'primeng/inputtext';
@@ -17,8 +17,7 @@ const defaultVideo = false;
   template: `
     <p-card [style]="{'max-width': '600px'}">
     <div class="fieldTable">
-    <p-table [value]="fields()" stripedRows
-      showGridlines [size]="'small'" tableLayout="fixed"
+    <p-table [value]="fields()" stripedRows showGridlines [size]="'small'" tableLayout="fixed"
       sortField="orderView" [sortOrder]="1">
       <ng-template #header>
           <tr class="tableRowTitle">
@@ -44,7 +43,8 @@ const defaultVideo = false;
               </td>
               <td [pEditableColumn]="field.name" pEditableColumnField="name">
                 <p-cellEditor>
-                  <ng-template #input><input pInputText type="text" [(ngModel)]="field.name" (paste)="onPaste($event, ri)" /></ng-template>
+                  <ng-template #input><input pInputText type="text" [(ngModel)]="field.name"
+                    (blur)="fieldNameChanged()" (paste)="onPaste($event, ri)" /></ng-template>
                   <ng-template #output>{{ field.name }}</ng-template>
                 </p-cellEditor>
               </td>
@@ -68,11 +68,16 @@ const defaultVideo = false;
   `],
   standalone: true
 })
-export class TournamentFieldsEditComponent  {
+export class TournamentFieldsEditComponent {
   fields = model.required<Field[]>();
   fieldChanged = output<Field[]>()
 
-  addField() {
+  protected fieldNameChanged(): void {
+    console.log('fieldNameChanged', this.fields())
+    this.fieldsChanged();
+  }
+
+  protected addField() {
     this.fields.update(fields => {
       fields.push({
         id: this.computeAvailableId(fields),
@@ -82,23 +87,22 @@ export class TournamentFieldsEditComponent  {
         orderView: fields.length
       });
       fields.forEach((f, idx) => f.orderView = (idx+1));
-      this.fieldChanged.emit(fields);
-      setTimeout(() => this.fields.set(fields), 10);
-      return [];
+      return [...fields];
     });
+    this.fieldsChanged();
   }
-  removeField(fieldId: string) {
+  protected removeField(fieldId: string) {
     this.fields.update(fields => {
       const idx = fields.findIndex(f => f.id === fieldId);
       if (idx < 0) return fields;
       fields.splice(idx, 1);
       fields.forEach((f, idx) => f.orderView = (idx+1));
       this.fieldChanged.emit(fields);
-      setTimeout(() => this.fields.set(fields), 10);
-      return [];
+      return [...fields];
     });
+    this.fieldsChanged();
   }
-  onRate(fieldId: string, rate: number) {
+  protected onRate(fieldId: string, rate: number) {
     console.log('onRate', fieldId, rate);
     this.fields.update(fields => {
       // console.log('down', fieldId, JSON.stringify(fields, null, 2));
@@ -108,11 +112,11 @@ export class TournamentFieldsEditComponent  {
       fields[idx].quality = rate as FieldQuality;
 
       this.fieldChanged.emit(fields);
-      setTimeout(() => this.fields.set(fields), 10);
-      return [];
+      return [...fields];
     });
+    this.fieldsChanged();
   }
-  upField(fieldId: string) {
+  protected upField(fieldId: string) {
     this.fields.update(fields => {
       // console.log('up', fieldId, JSON.stringify(fields, null, 2));
       const idx = fields.findIndex(f => f.id === fieldId);
@@ -124,12 +128,11 @@ export class TournamentFieldsEditComponent  {
       fields[idx] = f;
 
       fields.forEach((f, idx) => f.orderView = (idx+1));
-      this.fieldChanged.emit(fields);
-      setTimeout(() => this.fields.set(fields), 10);
-      return [];
+      return [...fields];
     });
+    this.fieldsChanged();
   }
-  downField(fieldId: string) {
+  protected downField(fieldId: string) {
     this.fields.update(fields => {
       // console.log('down', fieldId, JSON.stringify(fields, null, 2));
       const idx = fields.findIndex(f => f.id === fieldId);
@@ -141,13 +144,12 @@ export class TournamentFieldsEditComponent  {
       fields[idx+1] = f;
 
       fields.forEach((f, idx) => f.orderView = (idx+1));
-      this.fieldChanged.emit(fields);
-      setTimeout(() => this.fields.set(fields), 10);
-      return [];
+      return [...fields];
     });
+    this.fieldsChanged();
   }
 
-  onPaste(event: ClipboardEvent, rowIndex: number) {
+  protected onPaste(event: ClipboardEvent, rowIndex: number) {
     event.preventDefault(); // Empêcher le collage natif
 
     const clipboardData = event.clipboardData || (window as any).clipboardData;
@@ -179,12 +181,13 @@ export class TournamentFieldsEditComponent  {
         });
 
         fields.forEach((f, idx) => f.orderView = (idx+1));
-
-        this.fieldChanged.emit(fields);
-        setTimeout(() => this.fields.set(fields), 10);
-        return [];
-        });
+        return [...fields];
+      });
+      this.fieldsChanged();
     }
+  }
+  private fieldsChanged(): void {
+    this.fieldChanged.emit(this.fields());
   }
   private toFieldVideo(str: string, defaultValue: boolean): boolean {
     if (str === undefined) return defaultValue;

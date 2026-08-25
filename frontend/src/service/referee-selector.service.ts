@@ -142,12 +142,11 @@ function buildRefereeSelectorEntry(referee: Referee, games: GameView[]): Referee
     const upgrade = (referee.attendee.referee?.upgrade?.badge ?? 0) > 0;
     const displayName = referee.isPR
       ? `PR ${referee.team?.name ?? ''}`.trim()
-      : `${referee.person?.firstName ?? ''} ${referee.person?.lastName ?? ''}`.trim();
+      : `${referee.attendee.person?.firstName ?? ''} ${referee.attendee.person?.lastName ?? ''}`.trim();
     const searchText = [
-      referee.person?.search,
-      referee.person?.firstName,
-      referee.person?.lastName,
-      referee.person?.shortName,
+      referee.attendee.person?.firstName,
+      referee.attendee.person?.lastName,
+      referee.attendee.person?.shortName,
       referee.team?.name,
       referee.team?.divisionName,
       referee.isPR ? 'pr' : '',
@@ -188,6 +187,7 @@ export function isRefereeEligible(
   if (!timeslot) return false;
   const unavailable = findDayUnavailability(attendee.unavailabilities, target.game.dayId);
   if (isSlotUnavailable(unavailable, target.game.timeslotId)) return false;
+  if (target.referees.some((allocation) => allocation.attendeeAlloc.attendeeId === attendee.id)) return false;
 
   const assignments = games
     .filter((game) => game.game.id !== target.game.id)
@@ -195,7 +195,10 @@ export function isRefereeEligible(
     .map((game) => game.timeslot ? { game, timeslot: game.timeslot } : undefined)
     .filter((value): value is { game: GameView; timeslot: NonNullable<GameView['timeslot']> } => value !== undefined);
 
-  const sameSlot = assignments.some((assignment) => assignment.timeslot.id === timeslot.id);
+  const sameSlot = assignments.some((assignment) =>
+    assignment.game.game.dayId === target.game.dayId
+    && assignment.game.game.timeslotId === target.game.timeslotId,
+  );
   if (sameSlot) return false;
 
   const dailyPlayTime = assignments
@@ -225,7 +228,7 @@ export function refereeName(referee: Referee | undefined): string {
   if (!referee) return '';
   return referee.isPR
     ? `PR ${referee.team?.name ?? ''}`.trim()
-    : `${referee.person?.firstName ?? ''} ${referee.person?.lastName ?? ''}`.trim();
+    : `${referee.attendee.person?.firstName ?? ''} ${referee.attendee.person?.lastName ?? ''}`.trim();
 }
 
 /** Returns badge colors used by the existing referee badge system. */

@@ -45,7 +45,9 @@ import { DialogModule } from 'primeng/dialog';
 </p-dialog>
 
 @if (simpleMode()) {
-  <p-button label="Advanced version" [text]="true" styleClass="mode-switch-button" (click)="setSimpleMode(false)" />
+  <div class="mode-switch-container">
+    <p-button label="Switch to advanced version" [text]="true" styleClass="mode-switch-button" (click)="setSimpleMode(false)" />
+  </div>
   @if (simpleModeError()) {
     <div class="simple-mode-error" role="alert">{{simpleModeError()}}</div>
   }
@@ -58,8 +60,29 @@ import { DialogModule } from 'primeng/dialog';
         <div>{{dayAllocation.dateStr}}</div>
         <div>{{dateService.toDayOfWeek(dayAllocation.day.date)}}</div>
         @if (dayAllocation.day.parts.length > 1) {
-          @for (partDay of dayAllocation.day.parts; track partDay.id) {
-            <p-button label="Edit {{partDay.id}}" styleClass="simple-edit-button" (click)="editSimpleAllocation(dayAllocation.day.id, partDay.id)" />
+          <div class="simple-mode-part-buttons">
+            @for (partDay of dayAllocation.day.parts; track partDay.id) {
+              <div class="simple-mode-part-action">
+                <p-button label="Edit {{partDay.name || partDay.id}}" styleClass="simple-edit-button" (click)="editSimpleAllocation(dayAllocation.day.id, partDay.id)" />
+                @if (simpleFragment(dayAllocation.day.id, partDay.id); as fragment) {
+                  <button type="button" class="fragment-visibility-button"
+                    [attr.aria-label]="fragment.visible ? 'Public allocation' : 'Private allocation'"
+                    [title]="fragment.visible ? 'Public allocation' : 'Private allocation'"
+                    (click)="$event.stopPropagation(); toggleSimpleFragmentVisibility(fragment)">
+                    <i class="pi" [class.pi-eye]="fragment.visible" [class.pi-eye-slash]="!fragment.visible"></i>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          @if (simpleFragment(dayAllocation.day.id); as fragment) {
+            <button type="button" class="fragment-visibility-button simple-mode-day-visibility"
+              [attr.aria-label]="fragment.visible ? 'Public allocation' : 'Private allocation'"
+              [title]="fragment.visible ? 'Public allocation' : 'Private allocation'"
+              (click)="$event.stopPropagation(); toggleSimpleFragmentVisibility(fragment)">
+              <i class="pi" [class.pi-eye]="fragment.visible" [class.pi-eye-slash]="!fragment.visible"></i>
+            </button>
           }
         }
       </div>
@@ -69,7 +92,9 @@ import { DialogModule } from 'primeng/dialog';
     <p-button label="Configure" icon="pi pi-cog" [text]="true" styleClass="simple-config-button" (click)="configureSimpleTournamentAllocation()" />
   </div>
 } @else {
-  <p-button label="Simple version" [text]="true" styleClass="mode-switch-button" (click)="setSimpleMode(true)" />
+  <div class="mode-switch-container">
+    <p-button label="Simple version" [text]="true" styleClass="mode-switch-button" (click)="setSimpleMode(true)" />
+  </div>
   @if (tournamentAllocations().length === 0) {
     <div style="margin: 30px auto; text-align: center;">
       <div>Do you want to create a first allocation for the tournament?</div>
@@ -271,13 +296,19 @@ import { DialogModule } from 'primeng/dialog';
     .config-error { color: #b91c1c; margin-top: 8px; }
     .config-actions { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
     .config-actions-spacer { flex: 1; }
-    .mode-switch-button { display: block; width: fit-content; margin: 0 10px 20px auto; color: blue; text-decoration: underline; }
+    .mode-switch-container { display: flex; justify-content: flex-end; margin: 0 20px 20px 0; }
+    .mode-switch-button { color: blue; text-decoration: underline; }
     .simple-mode-days { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
     .simple-mode-day { min-width: 180px; padding: 15px; text-align: center; border: 1px solid lightgray; }
     .simple-mode-day-clickable { cursor: pointer; }
     .simple-mode-day-clickable:hover { background-color: #f5f5f5; }
     .simple-mode-day-title { font-weight: bold; }
-    .simple-edit-button { display: block; margin: 12px auto 0; }
+    .simple-mode-part-buttons { display: flex; flex-direction: column; align-items: center; gap: 20px; margin-top: 20px; }
+    .simple-mode-part-action { display: flex; align-items: center; gap: 8px; }
+    .simple-edit-button { display: block; }
+    .fragment-visibility-button { display: inline-flex; align-items: center; justify-content: center; padding: 4px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+    .fragment-visibility-button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+    .simple-mode-day-visibility { margin-top: 20px; }
     .simple-mode-config { display: flex; justify-content: center; margin-top: 20px; }
     .simple-config-button { color: blue; text-decoration: underline; }
     .simple-mode-error { max-width: 500px; margin: 20px auto; color: #b91c1c; text-align: center; }
@@ -374,8 +405,7 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
       if (descriptor) {
         this.simpleModeError.set('The selected allocation could not be found. Please refresh and try again.');
       } else {
-        console.log('TODO create')
-        // this.createSimpleFragmentAllocation(tournamentAllocation, dayId, partDayId);
+        this.createSimpleFragmentAllocation(tournamentAllocation, dayId, partDayId);
       }
     }
   }
@@ -402,6 +432,25 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
     ]).find(fragment => fragment.data.id === id)?.data;
   }
 
+  /** Returns the current simple-mode fragment for a day or one of its parts. */
+  simpleFragment(dayId: string, partDayId?: string): FragmentRefereeAllocation|undefined {
+    const allocation = this.simpleTournamentAllocation();
+    const descriptor = allocation?.fragmentRefereeAllocations
+      .find(fragment => this.isSameFragment(dayId, partDayId, fragment));
+    return descriptor ? this.findFragmentAllocation(descriptor.id) : undefined;
+  }
+
+  /** Toggles and persists the publication state of a simple-mode fragment. */
+  toggleSimpleFragmentVisibility(fragment: FragmentRefereeAllocation): void {
+    fragment.visible = !fragment.visible;
+    this.fragmentRefereeAllocationService.save(fragment).subscribe({
+      error: () => {
+        fragment.visible = !fragment.visible;
+        this.simpleModeError.set('Unable to save the fragment visibility.');
+      }
+    });
+  }
+
   /** Creates and persists a missing simple-mode fragment before navigation. */
   private createSimpleFragmentAllocation(
     tournamentAllocation: TournamentRefereeAllocation,
@@ -414,11 +463,12 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
       tournamentId: this.tournament()!.id,
       lastChange: Date.now(),
       dayId,
-      partDayId,
       refereeAllocatorAttendeeIds: [],
       refereeCoachAllocatorAttendeeIds: [],
       visible: false
     };
+    if (partDayId) allocation.partDayId = partDayId;
+    
     this.fragmentRefereeAllocationService.save(allocation).pipe(
       mergeMap(saved => {
         const descriptor: FragmentRefereeAllocationDesc = { id: saved.id, dayId };

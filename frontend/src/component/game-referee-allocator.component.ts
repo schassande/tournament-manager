@@ -384,7 +384,7 @@ export function toSearchableReferee(referee: Referee|undefined): SearchableRefer
       sr.search = 'PR ' + sr.team?.name + ' ' + sr.team?.divisionName;
     } else {
       sr.search =
-        referee.person?.firstName + ' ' + referee.person?.lastName + ' ' + referee.person?.shortName
+        referee.attendee.person?.firstName + ' ' + referee.attendee.person?.lastName + ' ' + referee.attendee.person?.shortName
         'L'+referee.attendee!.referee!.badge + ( referee.attendee!.referee!.upgrade?.badge! > 0 ? '*': '')
     }
     sr.id = referee.attendee.id;
@@ -401,14 +401,14 @@ export function toSearchableCoaches(coaches: (RefereeCoach|undefined)[]): (Searc
   return coaches.map(c => toSearchableCoach(c)).filter(c => c !== undefined) as SearchableCoach[];
 }
 export function toSearchableCoach(coach: RefereeCoach|undefined): SearchableCoach|undefined {
-  if (coach == undefined || coach.person == undefined) {
+  if (coach == undefined || coach.attendee.person == undefined) {
     return undefined;
   } else {
     const sc: SearchableCoach = coach as any;
-    sc.search = coach.person!.firstName + ' ' + coach.person!.lastName + ' ' + coach.person!.shortName;
-    sc.fullLabel = coach.person!.firstName + ' ' + coach.person?.lastName + '(' +coach.person!.shortName +')';
-    sc.shortLabel = coach.person!.shortName && coach.person!.shortName.length > 0
-      ? coach.person!.shortName
+    sc.search = coach.attendee.person!.firstName + ' ' + coach.attendee.person!.lastName + ' ' + coach.attendee.person!.shortName;
+    sc.fullLabel = coach.attendee.person!.firstName + ' ' + coach.attendee.person?.lastName + '(' +coach.attendee.person!.shortName +')';
+    sc.shortLabel = coach.attendee.person!.shortName && coach.attendee.person!.shortName.length > 0
+      ? coach.attendee.person!.shortName
       : sc.fullLabel;
     sc.id = coach.attendee.id;
     return sc;

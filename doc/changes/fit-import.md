@@ -30,6 +30,8 @@ Dans la zone formulaire il faut pouvoir selectionner la competition FIT et la sa
 - Le 1er Select est la liste des compétitions
 - Le 2nd Select est la liste des saisons pour la competition selectionné dans le 1er Select
 
+Les compétitions sont triées par nom dans l'ordre alphabétique. Les saisons sont triées par nom dans l'ordre alphabétique inverse.
+
 Les 2 valeurs (competition slug et season) doivent être sauvegardé dans l'objet Tournament dans l'attribut optionnel 'fit'.
 
 Lorsqu'au moins un `FITData` est disponible, le bouton `Download` est libellé `Refresh`. Un select supplémentaire permet de choisir un snapshot FITData précédent pour l'affichage ; la sélection ne déclenche pas de nouvel appel au site FIT.
@@ -508,3 +510,7 @@ La page FIT expose les actions suivantes :
 - `Confirm ...` : applique le plan uniquement si aucune erreur bloquante n'est présente.
 
 Les divisions et équipes persistées conservent leurs clés FIT dans `fitSlug` et `fitDivisionSlug`. Les matches restent persistés dans la collection `game` via `GameService`, tandis que la structure est sauvegardée dans le document `Tournament`. L'import d'un jour exige que les divisions, équipes, terrains et créneaux correspondants aient déjà été importés par `Import structure`. Aucun bilan d'aperçu n'est persisté.
+
+### Chargement initial des compétitions
+
+Lorsqu'aucun snapshot `FITData` n'est encore disponible pour le tournoi, la page d'import reste masquée pendant le téléchargement de la liste des compétitions et affiche `Downloading of the FIT competitions ...`. La page est affichée uniquement après réussite de ce téléchargement. En cas d'échec, elle reste masquée et affiche l'erreur renvoyée, afin que sa cause soit visible. Lorsqu'un snapshot existe déjà, son affichage peut être restauré pendant le chargement de la liste des compétitions.

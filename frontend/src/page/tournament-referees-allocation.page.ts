@@ -103,6 +103,19 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
           tabindex="0" role="button" aria-label="Reset referee and coach allocations"
           (click)="confirmResetAllocations()" (keydown.enter)="confirmResetAllocations()"
           (keydown.space)="confirmResetAllocations()"></i>
+        @if (allocation()!.visible) {
+          <i class="pi pi-eye allocation-visibility-icon"
+            pTooltip="Public allocation" tooltipPosition="top"
+            tabindex="0" role="button" aria-label="Public allocation"
+            (click)="toggleAllocationVisibility()" (keydown.enter)="toggleAllocationVisibility()"
+            (keydown.space)="toggleAllocationVisibility()"></i>
+        } @else {
+          <i class="pi pi-eye-slash allocation-visibility-icon"
+            pTooltip="Private allocation" tooltipPosition="top"
+            tabindex="0" role="button" aria-label="Private allocation"
+            (click)="toggleAllocationVisibility()" (keydown.enter)="toggleAllocationVisibility()"
+            (keydown.space)="toggleAllocationVisibility()"></i>
+        }
         @if (selectorPreparing()) {
           <span class="selector-preparation-status" role="status">{{ selectorPreparationMessage() }}</span>
         }
@@ -244,6 +257,12 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
       cursor: pointer;
     }
     .allocation-reset-icon {
+      color: black;
+      cursor: pointer;
+      font-size: 1.21rem;
+      margin-left: 10px;
+    }
+    .allocation-visibility-icon {
       color: black;
       cursor: pointer;
       font-size: 1.21rem;
@@ -630,6 +649,17 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
       }
     });
   }
+  /** Toggles and persists the publication state of the current fragment. */
+  toggleAllocationVisibility(): void {
+    const currentAllocation = this.allocation();
+    if (!currentAllocation) return;
+
+    const updatedAllocation = { ...currentAllocation, visible: !currentAllocation.visible };
+    this.fragmentRefereeAllocationService.save(updatedAllocation).subscribe({
+      next: savedAllocation => this.allocation.set(savedAllocation),
+      error: error => console.error('Unable to save the fragment visibility', error)
+    });
+  }
   onHhighlightedRefereeChange(refereeId: string|undefined, idx: number) {
     const previousValue = this.highlightedRefereeIds();
     const newValue = previousValue.filter(() => true);
@@ -665,7 +695,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     if(referee.isPR) {
       return 'PR: '+ referee.team?.name;
     } else {
-      let label = referee.person?.firstName + ' ' + referee.person?.lastName;
+      let label = referee.attendee.person?.firstName + ' ' + referee.attendee.person?.lastName;
       if (this.showRefereeLevel()) {
         label += ' (L'+referee.attendee!.referee!.badge + ( referee.attendee!.referee!.upgrade?.badge! > 0 ? '*': '');
         if (this.showBadgeSystem()) {

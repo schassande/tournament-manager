@@ -64,11 +64,11 @@ interface ManagerView {
         <p-tabpanel value="general">
           <div class="form-field">
             <label for="name">Name *</label>
-            <input id="name" type="text" pInputText [(ngModel)]="tournament()!.name" required />
+            <input id="name" type="text" pInputText [(ngModel)]="tournament()!.name" required (onChange)="nameModified()"/>
           </div>
           <div class="form-field">
             <label for="description">Description</label>
-            <textarea id="description" pInputTextarea [(ngModel)]="tournament()!.description"></textarea>
+            <textarea id="description" pInputTextarea [(ngModel)]="tournament()!.description" (onChange)="descriptionModified()"></textarea>
           </div>
           <div class="form-field">
             <label for="country">Country *</label>
@@ -206,7 +206,12 @@ export class TournamentEditComponent  implements OnInit {
       return tournament;
     });
   }
-
+  nameModified() {
+    this.save();
+  }
+  descriptionModified() {
+    this.save();
+  }
   countrySelected() {
     this.tournament.update(tournament => {
       if (!tournament || !this.country) return tournament;
@@ -224,6 +229,7 @@ export class TournamentEditComponent  implements OnInit {
   }
 
   fieldsChanged() {
+    console.log('TournamentEdit: fieldsChanged', this.tournament()?.fields);
     this.save();
   }
 
@@ -357,8 +363,24 @@ export class TournamentEditComponent  implements OnInit {
 
   private ensureManagerAttendee(tournament: Tournament, person: Person, attendee?: Attendee): Observable<{ tournament: Tournament; attendee: Attendee; person: Person }> {
     const managerAttendee: Attendee = attendee ?? {
-      id: '', lastChange: Date.now(), tournamentId: tournament.id, personId: person.id,
-      roles: [], isPlayer: false, isReferee: false, isRefereeCoach: false, isTournamentManager: false
+      id: '', lastChange: Date.now(), 
+      tournamentId: tournament.id, 
+      person: {
+        personId: person.id,
+        countryId: person.countryId,
+        firstName: person.firstName,
+        lastName: person.lastName,
+        regionId: person.regionId,
+        shortName: person.shortName,
+        email: person.email,
+        gender: person.gender,
+        phone: person.phone
+      },
+      roles: [], 
+      isPlayer: false, 
+      isReferee: false, 
+      isRefereeCoach: false, 
+      isTournamentManager: false
     };
     this.markAsTournamentManager(managerAttendee);
     return of({ tournament, attendee: managerAttendee, person });

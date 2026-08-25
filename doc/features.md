@@ -27,6 +27,8 @@ L'application conserve localement :
 - le tournoi courant
 - certains filtres de recherche
 
+La suppression d'un tournoi supprime toutes les donnees Firestore rattachees a son `tournamentId`, notamment les matchs, attendees, affectations, allocations et statistiques d'arbitrage, votes d'upgrade et snapshots FIT. L'interface affiche la progression de cette suppression.
+
 Limites actuelles :
 
 - le mot de passe oublie n'est pas encore implemente
@@ -114,6 +116,7 @@ L'utilisateur peut :
 - modifier rapidement son identite
 - renseigner son niveau, sa categorie et son upgrade
 - supprimer un arbitre
+- supprimer tous les arbitres du tournoi après confirmation
 - ouvrir une popup d'edition plus detaillee
 
 ## Player referees

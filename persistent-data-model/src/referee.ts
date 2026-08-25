@@ -12,7 +12,7 @@ export interface RefereeCoachInfo {
   badgeSystem: RefereeCoachBadgeSystem; // badge system of the referee coach
   upgrade?: { // Looking for upgrade of the referee Coach
     badge: number; // badge of the referee  Coach
-    badgeSystem: RefereeBadgeSystem; // badge system of the referee coach
+    badgeSystem: RefereeCoachBadgeSystem; // badge system of the referee coach
   };
   fontColor: string;
   backgroundColor: string;

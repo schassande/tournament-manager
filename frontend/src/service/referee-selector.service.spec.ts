@@ -32,6 +32,21 @@ describe('referee selector calculations', () => {
     expect(isRefereeEligible(entry, target, [assigned], configuration(80, 80))).toBeTrue();
     expect(isRefereeEligible(entry, target, [assigned], configuration(79, 80))).toBeFalse();
   });
+
+  it('rejects a referee already assigned to another game in the same timeslot', () => {
+    const entry = selectorEntry();
+    const assigned = game('game-1', slot('slot-1', 0, 50, 20), entry.referee);
+    const target = game('game-2', slot('slot-1', 0, 50, 20));
+
+    expect(isRefereeEligible(entry, target, [assigned], configuration())).toBeFalse();
+  });
+
+  it('rejects a referee already assigned to the target game', () => {
+    const entry = selectorEntry();
+    const target = game('game-2', slot('slot-2', 50, 100, 20), entry.referee);
+
+    expect(isRefereeEligible(entry, target, [], configuration())).toBeFalse();
+  });
 });
 
 function selectorEntry(options: {

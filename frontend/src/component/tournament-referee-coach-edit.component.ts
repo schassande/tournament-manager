@@ -23,7 +23,7 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
   ],
   template: `
 <div>
-@if (coach?.person) {
+@if (coach?.attendee.person) {
   <p-tabs value="general">
     <p-tablist>
       <p-tab value="general">General</p-tab>
@@ -48,16 +48,16 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
         <p-fieldset legend="Person information" class="fieldSet">
           <div class="form-field">
             <label for="firstName">First name</label>
-            <input id="firstName" type="text" pInputText [(ngModel)]="coach!.person!.firstName"
+            <input id="firstName" type="text" pInputText [(ngModel)]="coach!.attendee.person!.firstName"
             required minlength="2" maxlength="30" class="longText"/>
           </div>
           <div class="form-field">
             <label for="lastName">Last name</label>
-            <input id="lastName" type="text" pInputText [(ngModel)]="coach!.person!.lastName" required minlength="2" maxlength="30" class="longText"/>
+            <input id="lastName" type="text" pInputText [(ngModel)]="coach!.attendee.person!.lastName" required minlength="2" maxlength="30" class="longText"/>
           </div>
           <div class="form-field">
             <label for="shortName">Short name</label>
-            <input id="shortName" type="text" pInputText [(ngModel)]="coach!.person!.shortName" required maxlength="6" minlength="3" style="width: 5rem;" />
+            <input id="shortName" type="text" pInputText [(ngModel)]="coach!.attendee.person!.shortName" required maxlength="6" minlength="3" style="width: 5rem;" />
           </div>
           <div class="form-field">
             <label for="country">Country</label>
@@ -71,15 +71,15 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
           </div>
           <div class="form-field">
             <label for="gender">Gender</label>
-            <p-select id="gender" size="small" [options]="genders" [(ngModel)]="coach!.person!.gender" appendTo="body" required/>
+            <p-select id="gender" size="small" [options]="genders" [(ngModel)]="coach!.attendee.person!.gender" appendTo="body" required/>
           </div>
           <div class="form-field">
             <label for="email">Email</label>
-            <input id="email" type="email" pInputText [(ngModel)]="coach!.person!.email" class="longText" maxlength="50"/>
+            <input id="email" type="email" pInputText [(ngModel)]="coach!.attendee.person!.email" class="longText" maxlength="50"/>
           </div>
           <div class="form-field">
             <label for="phone">Phone</label>
-            <input id="phone" type="phone" pInputText [(ngModel)]="coach!.person!.phone"/>
+            <input id="phone" type="phone" pInputText [(ngModel)]="coach!.attendee.person!.phone"/>
           </div>
         </p-fieldset>
 
@@ -114,7 +114,7 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
             <label for="background">Color</label>
             <ngx-colors class="colorPicker" ngx-colors-trigger [(ngModel)]="coach!.attendee!.refereeCoach!.fontColor"></ngx-colors>
             <ngx-colors class="colorPicker" ngx-colors-trigger [(ngModel)]="coach!.attendee!.refereeCoach!.backgroundColor"></ngx-colors>
-            <span style="margin-left: 10px; padding: 10px; color: {{coach!.attendee!.refereeCoach!.fontColor}}; background-color: {{coach!.attendee!.refereeCoach!.backgroundColor}}">{{coach!.person!.shortName}}</span>
+            <span style="margin-left: 10px; padding: 10px; color: {{coach!.attendee!.refereeCoach!.fontColor}}; background-color: {{coach!.attendee!.refereeCoach!.backgroundColor}}">{{coach!.attendee.person!.shortName}}</span>
           </div>
         </p-fieldset>
       </p-tabpanel>
@@ -157,23 +157,23 @@ export class TournamentRefereeCoachEditComponent  implements OnInit {
   existingPersons: Person[] = [];
 
   ngOnInit(): void {
-    if (this.coach && this.coach.person && this.coach.person.countryId) {
-      this.refereeCoachCountry = this.regionService.countryById(this.coach!.person!.countryId);
+    if (this.coach && this.coach.attendee.person && this.coach.attendee.person.countryId) {
+      this.refereeCoachCountry = this.regionService.countryById(this.coach!.attendee.person!.countryId);
       // console.log(this.refereeCountry);
       this.computeRefereeCoachUpgrade();
     }
   }
 
   private computeRefereeCoachUpgrade() {
-    if (!this.coach || !this.coach.attendee || !this.coach.attendee.referee) return;
+    if (!this.coach || !this.coach.attendee || !this.coach.attendee.refereeCoach) return;
     this.refereeCoachUpgrade = this.coach.attendee.refereeCoach?.upgrade?.badge === 0
       || this.coach.attendee.refereeCoach?.badge === this.coach.attendee.refereeCoach?.badgeSystem;
 
   }
   countrySelected(country: Country) {
     // console.log('Selected country',country)
-    this.coach!.person!.countryId = country.id;
-    this.coach!.person!.regionId = this.regionService.regionByCountryId(country.id)!.id;
+    this.coach!.attendee.person!.countryId = country.id;
+    this.coach!.attendee.person!.regionId = this.regionService.regionByCountryId(country.id)!.id;
   }
   searchExisting() {
     console.log('search person with keyword', this.existingStr);
@@ -183,12 +183,20 @@ export class TournamentRefereeCoachEditComponent  implements OnInit {
   }
   onSelectPerson(person: Person) {
     // console.log('onSelectPerson', person);
-    this.coach!.person = person;
-    this.coach!.attendee.personId = person.id;
-    if (person.referee) this.coach!.attendee!.referee = person.referee
-    if (person.refereeCoach) this.coach!.attendee!.refereeCoach = person.refereeCoach
+    const attendee = this.coach!.attendee;
+    attendee.person!.personId = person.id;
+    attendee.person!.firstName = person.firstName;
+    attendee.person!.lastName = person.lastName;
+    attendee.person!.shortName = person.shortName;
+    attendee.person!.countryId = person.countryId;
+    attendee.person!.regionId = person.regionId;
+    attendee.person!.email = person.email;
+    attendee.person!.phone = person.phone;
+    attendee.person!.gender = person.gender;
+    attendee.referee = person.referee
+    attendee.refereeCoach = person.refereeCoach
   }
-  personToLabel(person:any): string {
+  personToLabel(person:Person): string {
     const country = this.regionService.countryById(person.countryId)
     return person.firstName + ' ' + person.lastName + (country ? ' ('+country.shortName+')' : '');
   }
@@ -200,12 +208,8 @@ export class TournamentRefereeCoachEditComponent  implements OnInit {
       this.refereeCoachUpgrade = false;
       this.onUpgradeChange();
     }
-    this.coach!.person!.refereeCoach = this.coach!.attendee.refereeCoach;
   }
   onUpgradeChange() {
     this.computeRefereeCoachUpgrade();
-    if (this.coach && this.coach.person) {
-      this.coach.person.refereeCoach = this.coach.attendee.refereeCoach;
-    }
   }
 }

@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -63,6 +63,7 @@ interface FitDataOption {
   ],
   template: `
     <div class="fit-page">
+      @if (showPage()) {
       @if (error()) {
         <p-message severity="error">{{ error() }}</p-message>
       }
@@ -412,6 +413,16 @@ interface FitDataOption {
           </div>
         </p-dialog>
       }
+      } @else if (competitionsLoading()) {
+        <p-message severity="info"
+          >Downloading of the FIT competitions ...</p-message
+        >
+      } @else if (competitionsError()) {
+        <p-message severity="error"
+          >Could not download the FIT competitions:
+          {{ competitionsError() }}</p-message
+        >
+      }
     </div>
     <ng-template #gamesTable let-games="games">
       <div class="games-count">{{ games.length }} games</div>
@@ -563,6 +574,12 @@ export class TournamentFitImportComponent implements OnInit {
   readonly data = signal<FITData | null>(null);
   readonly fitDataSnapshots = signal<FITData[]>([]);
   readonly latestFitData = signal<FITData | null>(null);
+  readonly competitionsLoading = signal(false);
+  readonly competitionsLoaded = signal(false);
+  readonly competitionsError = signal<string | null>(null);
+  readonly showPage = computed(
+    () => this.data() !== null || this.competitionsLoaded(),
+  );
   readonly fitDataLoading = signal(false);
   readonly busy = signal(false);
   readonly renamingSaving = signal(false);
@@ -749,6 +766,7 @@ export class TournamentFitImportComponent implements OnInit {
           }
           this.tournament = tournament;
           this.applyConfiguration(tournament.fit);
+          this.competitionsLoading.set(true);
           this.fitDataLoading.set(true);
           this.fitDataService.forTournament(id).subscribe({
             next: (snapshots) => {
@@ -801,7 +819,11 @@ export class TournamentFitImportComponent implements OnInit {
     }
     this.fitService.seasons(this.competitionSlug).subscribe({
       next: (values) => {
-        this.seasons.set(values);
+        this.seasons.set(
+          values
+            .slice()
+            .sort((left, right) => right.title.localeCompare(left.title)),
+        );
         this.season = values.some((value) => value.slug === selectedSeason)
           ? selectedSeason
           : '';
@@ -816,8 +838,19 @@ export class TournamentFitImportComponent implements OnInit {
 
   private loadCompetitionsAndSeasons(): void {
     this.fitService.competitions().subscribe({
-      next: (values) => this.competitions.set(values),
-      error: (error) => this.error.set(error.message),
+      next: (values) => {
+        this.competitions.set(
+          values
+            .slice()
+            .sort((left, right) => left.title.localeCompare(right.title)),
+        );
+        this.competitionsLoaded.set(true);
+        this.competitionsLoading.set(false);
+      },
+      error: (error) => {
+        this.competitionsError.set(error.message);
+        this.competitionsLoading.set(false);
+      },
     });
     if (this.competitionSlug) this.loadSeasons(this.season);
   }

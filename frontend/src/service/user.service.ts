@@ -7,9 +7,6 @@ import { UserLocalStorageService } from './user-local-storage.service';
 import { toObservable } from '@angular/core/rxjs-interop';
 
 
-const KEY_DEFAULT_USER_EMAIL = 'DEFAULT_USER_EMAIL';
-const KEY_DEFAULT_USER_PASSWORD = 'DEFAULT_USER_PASSWORD';
-
 @Injectable({
   providedIn: 'root'
 })
@@ -38,7 +35,6 @@ export class UserService {
       mergeMap(() => this.personService.byEmail(email)),
       map((user:Person|null) => {
         this.currentUser$.set(user);
-        this.setLastUser(email, password);
         // console.debug('User connected', user);
         return user;
       }),
@@ -87,17 +83,33 @@ export class UserService {
   }
   public logout() {
     this.currentUser$.set(null);
+    this.clearLegacyCredentials();
     signOut(this.authService);
   }
+
+  /**
+   * Restore the Firebase session and load its matching application user.
+   *
+   * Firebase restores its persisted session asynchronously after a page reload.
+   * Waiting for `authStateReady` avoids attempting a second password login while
+   * that restoration is still in progress.
+   * @returns the connected person, or null when no Firebase session exists
+   */
   public autoLogin(): Observable<Person|null> {
-    const {email, password } = this.getLastUser();
-    if (email && password) {
-      // console.debug('Autologin...');
-      return this.login(email, password)
-    } else {
-      console.debug('No autologin', email, password);
-      return of(null);
-    }
+    return from(this.authService.authStateReady()).pipe(
+      switchMap(() => {
+        const firebaseUser = this.authService.currentUser;
+        if (!firebaseUser?.email) {
+          console.debug('No Firebase session to restore');
+          return of(null);
+        }
+
+        return this.personService.byEmail(firebaseUser.email).pipe(
+          tap((person) => this.currentUser$.set(person))
+        );
+      }),
+      tap(() => this.clearLegacyCredentials()),
+    );
   }
 
   public createUser(user: Person, password: string): Observable<Person> {
@@ -108,7 +120,6 @@ export class UserService {
           tap((createdPerson) => {
             this.currentCredential = userCred;
             this.currentUser$.set(createdPerson);
-            this.setLastUser(user.email, password);
           }),
           catchError((err) => from(userCred.user.delete()).pipe(
             switchMap(() => throwError(() => err))
@@ -118,23 +129,17 @@ export class UserService {
     )
   }
 
-  public setLastUser(email:string, password:string) {
-    this.userLocalStorageService.setUserProperty(KEY_DEFAULT_USER_EMAIL, email);
-    this.userLocalStorageService.setUserProperty(KEY_DEFAULT_USER_PASSWORD, password);
-  }
-
-  public getLastUser(): {email:string, password:string} {
-    return {
-      email: this.userLocalStorageService.getUserProperty(KEY_DEFAULT_USER_EMAIL),
-      password: this.userLocalStorageService.getUserProperty(KEY_DEFAULT_USER_PASSWORD)
-    };
-  }
-
   public setLocalUserProperty(key:string, value:any){
     this.userLocalStorageService.setUserProperty(this.getUserKey(key), value);
   }
   public getLocalUserProperty(key:string): any{
     return this.userLocalStorageService.getUserProperty(this.getUserKey(key));
+  }
+
+  /** Remove credentials written by versions that implemented password autologin. */
+  private clearLegacyCredentials(): void {
+    this.userLocalStorageService.removeUserProperty('DEFAULT_USER_EMAIL');
+    this.userLocalStorageService.removeUserProperty('DEFAULT_USER_PASSWORD');
   }
 
   private getUserKey(key: string): string {

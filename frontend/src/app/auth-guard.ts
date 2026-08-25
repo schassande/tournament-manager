@@ -13,23 +13,24 @@ export class AuthGuard {
 
   canActivate(next: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean|Observable<boolean> {
     if (this.userService.isConnected()) {
-      // console.debug('AuthGuard: User is connected');
+      console.debug('AuthGuard: User is connected');
       return true;
     }
+    console.debug('AuthGuard: try to autologin');
     return this.userService.autoLogin().pipe(
       map(() => {
         if (this.userService.isConnected()) {
-          // console.debug('AuthGuard: After auto login, User is connected');
+          console.debug('AuthGuard: After auto login, User is connected');
           return true;
         } else {
-          // console.debug('AuthGuard: After auto login, User is NOT connected');
+          console.debug('AuthGuard: After auto login, User is NOT connected');
           this.router.navigate(['/user/login']);
           return false;
         }
       }),
       catchError((err) => {
         console.error('AuthGuard: Error during auto login', err);
-        this.router.navigate(['/user/login?error=auth']);
+        this.router.navigate(['/user/login']);
         return of(false);
       })
     );

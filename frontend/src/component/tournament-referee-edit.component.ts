@@ -14,7 +14,7 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
   selector: 'app-tournament-referee-edit',
   template: `
 <div>
-@if (referee?.person) {
+@if (referee?.attendee?.person) {
   <p-tabs value="general">
     <p-tablist>
       <p-tab value="general">General</p-tab>
@@ -22,130 +22,122 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
     </p-tablist>
     <p-tabpanels>
       <p-tabpanel value="general">
-  <div class="fieldSet"></div>
-  @if (tournament?.allowPlayerReferees) {
-    <div class="form-field">
-      <label for="playerTeam">Player referee?</label>
-      <p-toggleswitch [(ngModel)]="referee!.isPR"/>
-    </div>
-  }
-  @if (referee!.isPR) {
-    <div class="form-field">
-      <label for="playerTeam">Team</label>
-      <p-select id="team" size="small" [options]="teams"
-        [(ngModel)]="referee!.team" class="longText"
-        appendTo="body" placeholder="Team" (onChange)="teamSelected($event.value)">
-        <ng-template let-team #item #selectedItem >
-          <div class="flex items-center gap-2">
-              <div>{{ team.divisionShortName }}/{{ team.shortName }}</div>
+        <div class="fieldSet"></div>
+        @if (tournament?.allowPlayerReferees) {
+          <div class="form-field">
+            <label for="playerTeam">Player referee?</label>
+            <p-toggleswitch [(ngModel)]="referee!.isPR"/>
           </div>
-        </ng-template>
-      </p-select>
-    </div>
-  }
-
-  @if (!referee!.isPR) {
-    <div class="form-field">
-      <label for="playerTeam">Search a person:</label>
-      <p-autocomplete [(ngModel)]="existingStr" [suggestions]="existingPersons" optionLabel="firstName"
-        [forceSelection]="true" (completeMethod)="searchExisting()" class="longText"
-        (onSelect)="onSelectPerson($event.value)">
-        <ng-template #header>
-          <div class="font-medium px-3 py-2">Found persons</div>
-        </ng-template>
-        <ng-template let-person #item>
-          <div>{{ personToLabel(person) }})</div>
-        </ng-template>
-      </p-autocomplete>
-    </div>
-  }
-
-  @if (!referee!.isPR) {
-    <div class="fieldSet"></div>
-    <p-fieldset legend="Person information" class="fieldSet">
-      <div class="form-field">
-        <label for="firstName">First name</label>
-        <input id="firstName" type="text" pInputText [(ngModel)]="referee!.person!.firstName"
-        required minlength="2" maxlength="30" class="longText"/>
-      </div>
-      <div class="form-field">
-        <label for="lastName">Last name</label>
-        <input id="lastName" type="text" pInputText [(ngModel)]="referee!.person!.lastName" required minlength="2" maxlength="30" class="longText"/>
-      </div>
-      <div class="form-field">
-        <label for="shortName">Short name</label>
-        <input id="shortName" type="text" pInputText [(ngModel)]="referee!.person!.shortName" required maxlength="6" minlength="3" style="width: 5rem;" />
-      </div>
-      <div class="form-field">
-        <label for="country">Country</label>
-        <p-select id="country" size="small" [options]="countries" optionLabel="name"
-          [(ngModel)]="refereeCountry" [filter]="true" class="longText"
-          appendTo="body" (onChange)="countrySelected($event.value)" required>
-          <ng-template let-country #item>{{ country.name }}</ng-template>
-          <ng-template let-country #selectedItem>{{ country.name }}</ng-template>
-          <ng-template #dropdownicon><i class="pi pi-map"></i></ng-template>
-        </p-select>
-      </div>
-      <div class="form-field">
-        <label for="gender">Gender</label>
-        <p-select id="gender" size="small" [options]="genders" [(ngModel)]="referee!.person!.gender" appendTo="body" required/>
-      </div>
-      <div class="form-field">
-        <label for="email">Email</label>
-        <input id="email" type="email" pInputText [(ngModel)]="referee!.person!.email" class="longText" maxlength="50"/>
-      </div>
-      <div class="form-field">
-        <label for="phone">Phone</label>
-        <input id="phone" type="phone" pInputText [(ngModel)]="referee!.person!.phone"/>
-      </div>
-    </p-fieldset>
-    <div class="fieldSet"></div>
-    <p-fieldset legend="Referee information">
-      <div class="form-field">
-        <label for="refereeBadgeSystem">Badge System</label>
-        <input id="refereeBadgeSystem" type="number" pInputText
-          [(ngModel)]="referee!.attendee!.referee!.badgeSystem"
-          min="3" max="6" style="width: 2rem;" (change)="adjustUpgrade()"/>
-          <span>levels</span>
-        @if (refereeCountry!.badgeSystem! > 0) {
-          <span class="inputInfo">Country badge system: {{refereeCountry!.badgeSystem}}</span>
         }
-      </div>
-      <div class="form-field">
-        <label for="refereeBadge">Badge Level</label>
-        <input id="refereeBadge" type="number" pInputText
-          [(ngModel)]="referee!.attendee!.referee!.badge" (change)="adjustUpgrade()"
-          min="0" max="{{referee!.attendee!.referee!.badgeSystem}}" style="width: 2rem;"/>
-      </div>
-      <div class="form-field">
-        <label for="refereeCategory">Category</label>
-        <p-select id="refereeCategory" size="small" [options]="refereeCategories" [filter]="true"
-          [(ngModel)]="referee!.attendee!.referee!.category" appendTo="body" required/>
-      </div>
-      @if (referee!.attendee!.referee!.badge < referee!.attendee!.referee!.badgeSystem) {
-        <div class="form-field">
-          <label for="refereeBadge">Upgrade?</label>
-          <span style="vertical-align: middle;">
-            <p-toggleswitch [(ngModel)]="refereeUpgrade" (onChange)="onUpgradeChange()"/>
-          </span>
-          @if (refereeUpgrade) {
-            <span style="vertical-align: middle; margin: 0 5px;">to</span>
-            <input id="refereeBadge" type="number" pInputText
-              [(ngModel)]="referee!.attendee!.referee!.upgrade!.badge"
-              min="0" max="{{referee!.attendee!.referee!.upgrade!.badgeSystem}}"
-              style="margin-left: 5px; width: 2rem;" />
-          }
-        </div>
-      }
-    </p-fieldset>
-  }
+        @if (referee!.isPR) {
+          <div class="form-field">
+            <label for="playerTeam">Team</label>
+            <p-select id="team" size="small" [options]="teams"
+              [(ngModel)]="referee!.team" class="longText"
+              appendTo="body" placeholder="Team" (onChange)="teamSelected($event.value)">
+              <ng-template let-team #item #selectedItem >
+                <div class="flex items-center gap-2">
+                    <div>{{ team.divisionShortName }}/{{ team.shortName }}</div>
+                </div>
+              </ng-template>
+            </p-select>
+          </div>
+        } @else {
+          <div class="form-field">
+            <label for="playerTeam">Search a person:</label>
+            <p-autocomplete [(ngModel)]="existingStr" [suggestions]="existingPersons" optionLabel="firstName"
+              [forceSelection]="true" (completeMethod)="searchExisting()" class="longText"
+              (onSelect)="onSelectPerson($event.value)">
+              <ng-template #header>
+                <div class="font-medium px-3 py-2">Found persons</div>
+              </ng-template>
+              <ng-template let-person #item>
+                <div>{{ personToLabel(person) }}</div>
+              </ng-template>
+            </p-autocomplete>
+          </div>
+          <div class="fieldSet"></div>
+          <p-fieldset legend="Person information" class="fieldSet">
+            <div class="form-field">
+              <label for="firstName">First name</label>
+              <input id="firstName" type="text" pInputText [(ngModel)]="referee!.attendee.person!.firstName"
+              required minlength="2" maxlength="30" class="longText"/>
+            </div>
+            <div class="form-field">
+              <label for="lastName">Last name</label>
+              <input id="lastName" type="text" pInputText [(ngModel)]="referee!.attendee.person!.lastName" required minlength="2" maxlength="30" class="longText"/>
+            </div>
+            <div class="form-field">
+              <label for="shortName">Short name</label>
+              <input id="shortName" type="text" pInputText [(ngModel)]="referee!.attendee.person!.shortName" required maxlength="6" minlength="3" style="width: 5rem;" />
+            </div>
+            <div class="form-field">
+              <label for="country">Country</label>
+              <p-select id="country" size="small" [options]="countries" optionLabel="name"
+                [(ngModel)]="refereeCountry" [filter]="true" class="longText"
+                appendTo="body" (onChange)="countrySelected($event.value)" required>
+                <ng-template let-country #item>{{ country.name }}</ng-template>
+                <ng-template let-country #selectedItem>{{ country.name }}</ng-template>
+                <ng-template #dropdownicon><i class="pi pi-map"></i></ng-template>
+              </p-select>
+            </div>
+            <div class="form-field">
+              <label for="gender">Gender</label>
+              <p-select id="gender" size="small" [options]="genders" [(ngModel)]="referee!.attendee.person!.gender" appendTo="body" required/>
+            </div>
+            <div class="form-field">
+              <label for="email">Email</label>
+              <input id="email" type="email" pInputText [(ngModel)]="referee!.attendee.person!.email" class="longText" maxlength="50"/>
+            </div>
+            <div class="form-field">
+              <label for="phone">Phone</label>
+              <input id="phone" type="phone" pInputText [(ngModel)]="referee!.attendee.person!.phone"/>
+            </div>
+          </p-fieldset>
+          <div class="fieldSet"></div>
+          <p-fieldset legend="Referee information">
+            <div class="form-field">
+              <label for="refereeBadgeSystem">Badge System</label>
+              <input id="refereeBadgeSystem" type="number" pInputText
+                [(ngModel)]="referee!.attendee!.referee!.badgeSystem"
+                min="3" max="6" style="width: 2rem;" (change)="adjustUpgrade()"/>
+                <span>levels</span>
+              @if (refereeCountry!.badgeSystem! > 0) {
+                <span class="inputInfo">Country badge system: {{refereeCountry!.badgeSystem}}</span>
+              }
+            </div>
+            <div class="form-field">
+              <label for="refereeBadge">Badge Level</label>
+              <input id="refereeBadge" type="number" pInputText
+                [(ngModel)]="referee!.attendee!.referee!.badge" (change)="adjustUpgrade()"
+                min="0" max="{{referee!.attendee!.referee!.badgeSystem}}" style="width: 2rem;"/>
+            </div>
+            <div class="form-field">
+              <label for="refereeCategory">Category</label>
+              <p-select id="refereeCategory" size="small" [options]="refereeCategories" [filter]="true"
+                [(ngModel)]="referee!.attendee!.referee!.category" appendTo="body" required/>
+            </div>
+            @if (referee!.attendee!.referee!.badge < referee!.attendee!.referee!.badgeSystem) {
+              <div class="form-field">
+                <label for="refereeBadge">Upgrade?</label>
+                <span style="vertical-align: middle;">
+                  <p-toggleswitch [(ngModel)]="refereeUpgrade" (onChange)="onUpgradeChange()"/>
+                </span>
+                @if (refereeUpgrade) {
+                  <span style="vertical-align: middle; margin: 0 5px;">to</span>
+                  <input id="refereeBadge" type="number" pInputText
+                    [(ngModel)]="referee!.attendee!.referee!.upgrade!.badge"
+                    min="0" max="{{referee!.attendee!.referee!.upgrade!.badgeSystem}}"
+                    style="margin-left: 5px; width: 2rem;" />
+                }
+              </div>
+            }
+          </p-fieldset>
+        }
       </p-tabpanel>
       <p-tabpanel value="unavailability">
         @if (referee && tournament) {
-          <app-attendee-unavailability
-            [attendee]="referee.attendee"
-            [tournament]="tournament">
-          </app-attendee-unavailability>
+          <app-attendee-unavailability [attendee]="referee.attendee" [tournament]="tournament"></app-attendee-unavailability>
         }
       </p-tabpanel>
     </p-tabpanels>
@@ -190,8 +182,8 @@ export class TournamentRefereeEditComponent implements OnInit{
   ngOnInit(): void {
     console.log('TournamentRefereeEditComponent.ngOnInit()', this.referee, this.teams, this.tournament);
 
-    if (this.referee && this.referee.person && this.referee.person.countryId) {
-      this.refereeCountry = this.regionService.countryById(this.referee!.person!.countryId);
+    if (this.referee && this.referee.attendee.person && this.referee.attendee.person.countryId) {
+      this.refereeCountry = this.regionService.countryById(this.referee!.attendee.person!.countryId);
       console.log(this.refereeCountry);
       this.computeRefereeUpgrade();
     }
@@ -205,8 +197,8 @@ export class TournamentRefereeEditComponent implements OnInit{
   }
   countrySelected(country: Country) {
     console.log('Selected country',country)
-    this.referee!.person!.countryId = country.id;
-    this.referee!.person!.regionId = this.regionService.regionByCountryId(country.id)!.id;
+    this.referee!.attendee.person!.countryId = country.id;
+    this.referee!.attendee.person!.regionId = this.regionService.regionByCountryId(country.id)!.id;
   }
   teamSelected(team: Team) {
     // update the referee with the selected team
@@ -225,8 +217,8 @@ export class TournamentRefereeEditComponent implements OnInit{
   }
   onSelectPerson(person: Person) {
     console.log('onSelectPerson', person);
-    this.referee!.person = person;
-    this.referee!.attendee.personId = person.id;
+    this.referee!.attendee.person!.personId = person.id;
+    this.referee!.attendee.person = person;
     if (person.referee) this.referee!.attendee!.referee = person.referee
     if (person.refereeCoach) this.referee!.attendee!.refereeCoach = person.refereeCoach
   }
@@ -242,12 +234,8 @@ export class TournamentRefereeEditComponent implements OnInit{
       this.refereeUpgrade = false;
       this.onUpgradeChange();
     }
-    this.referee!.person!.referee = this.referee!.attendee.referee;
   }
   onUpgradeChange() {
     this.computeRefereeUpgrade();
-    if (this.referee && this.referee.person) {
-      this.referee.person.referee = this.referee.attendee.referee;
-    }
   }
 }

@@ -26,12 +26,10 @@ import { UserService } from '../service/user.service';
 
 interface RefereeUpgradeReferee {
   attendee: Attendee;
-  person?: Person;
 }
 
 interface RefereeUpgradeCoach {
   attendee: Attendee;
-  person?: Person;
 }
 
 interface CoachVoteRow extends RefereeUpgradeReferee {
@@ -183,11 +181,11 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
 
   readonly talkCoachOptions = computed(() => [
     { label: 'Nobody', value: null },
-    ...this.coaches().map((coach) => ({ label: coach.person?.shortName ?? '', value: coach.attendee.id })),
+    ...this.coaches().map((coach) => ({ label: coach.attendee.person?.shortName ?? '', value: coach.attendee.id })),
   ]);
   readonly coachOptions = computed(() => [
     { label: 'All', value: null },
-    ...this.coaches().map((coach) => ({ label: coach.person?.shortName ?? '', value: coach.attendee.id })),
+    ...this.coaches().map((coach) => ({ label: coach.attendee.person?.shortName ?? '', value: coach.attendee.id })),
   ]);
 
   readonly coachRows = computed<CoachVoteRow[]>(() => this.filteredReferees().map((referee) => {
@@ -287,7 +285,7 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
   aggregateComments(row: PanelVoteRow): string[] {
     return this.coaches().flatMap((coach) => {
       const vote = this.coachVotes().find((item) => item.refereeAttendeeId === row.attendee.id && item.coachAttendeeId === coach.attendee.id);
-      return (vote?.comments ?? []).filter(Boolean).map((comment) => `${coach.person?.shortName ?? ''}: ${comment}`);
+      return (vote?.comments ?? []).filter(Boolean).map((comment) => `${coach.attendee.person?.shortName ?? ''}: ${comment}`);
     });
   }
 
@@ -324,8 +322,7 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
   /** Keep historical vote documents out of the active page state when their referee no longer seeks an upgrade. */
   private keepVotesForActiveReferees<T extends { refereeAttendeeId: string }>(
     votes: T[],
-    activeRefereeIds: Set<string>,
-  ): T[] {
+    activeRefereeIds: Set<string>): T[] {
     return votes.filter((vote) => activeRefereeIds.has(vote.refereeAttendeeId));
   }
 
@@ -360,20 +357,16 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
   private loadReferees(tournamentId: string): Observable<RefereeUpgradeReferee[]> {
     return this.attendeeService.findTournamentReferees(tournamentId).pipe(
       map((attendees) => attendees.filter((attendee) => attendee.referee?.upgrade && attendee.referee.upgrade.badge > 0)),
-      switchMap((attendees) => this.attachPeople(attendees)),
+      map((attendees) => this.attachPeople(attendees)),
     );
   }
 
   private loadCoaches(tournamentId: string): Observable<RefereeUpgradeCoach[]> {
-    return this.attendeeService.findTournamentRefereeCoaches(tournamentId).pipe(switchMap((attendees) => this.attachPeople(attendees)));
+    return this.attendeeService.findTournamentRefereeCoaches(tournamentId).pipe(map((attendees) => this.attachPeople(attendees)));
   }
 
-  private attachPeople<T extends Attendee>(attendees: T[]): Observable<Array<{ attendee: T; person?: Person }>> {
-    const requests = attendees.map((attendee) => this.personService.byId(attendee.personId).pipe(
-      take(1),
-      map((person) => ({ attendee, person })),
-    ));
-    return requests.length ? forkJoin(requests) : of([]);
+  private attachPeople<T extends Attendee>(attendees: T[]): Array<{ attendee: T; }> {
+    return attendees.map((attendee) => { return { attendee }; });
   }
 
   private filteredReferees(): RefereeUpgradeReferee[] {
@@ -389,7 +382,8 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
     const categories: RefereeCategory[] = ['J', 'O', 'S', 'M'];
     const category = categories.indexOf(a.attendee.referee?.category ?? 'M') - categories.indexOf(b.attendee.referee?.category ?? 'M');
     if (category) return category;
-    return `${a.person?.lastName ?? ''} ${a.person?.firstName ?? ''}`.localeCompare(`${b.person?.lastName ?? ''} ${b.person?.firstName ?? ''}`);
+    return `${a.attendee.person?.lastName ?? ''} ${a.attendee.person?.firstName ?? ''}`
+      .localeCompare(`${b.attendee.person?.lastName ?? ''} ${b.attendee.person?.firstName ?? ''}`);
   }
 
   private followUpRows(kind: 'see' | 'talk'): FollowUpRow[] {
@@ -399,24 +393,48 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
       if (!referee) continue;
       const coachIds = kind === 'see' ? panelVote.needToSee : panelVote.needToTalk ? [panelVote.needToTalk] : [];
       for (const coachId of coachIds) {
-      const coach = this.coaches().find((item) => item.attendee.id === coachId);
-        if (coach && (this.coachFilter() === null || coach.attendee.id === this.coachFilter())) rows.push({ coachShortName: coach.person?.shortName ?? '', lastName: referee.person?.lastName ?? '', firstName: referee.person?.firstName ?? '', badge: this.currentBadge(referee), badgeSystem: referee.attendee.referee?.badgeSystem, comments: kind === 'talk' ? this.aggregateCommentsFor(referee.attendee.id) : undefined });
+        const coach = this.coaches().find((item) => item.attendee.id === coachId);
+        if (coach && (this.coachFilter() === null || coach.attendee.id === this.coachFilter())) {
+          rows.push({ 
+            coachShortName: coach.attendee.person?.shortName ?? '', 
+            lastName: referee.attendee.person?.lastName ?? '', 
+            firstName: referee.attendee.person?.firstName ?? '', 
+            badge: this.currentBadge(referee), 
+            badgeSystem: referee.attendee.referee?.badgeSystem, 
+            comments: kind === 'talk' ? this.aggregateCommentsFor(referee.attendee.id) : undefined 
+          });
+        }
       }
     }
-    return rows.sort((a, b) => `${a.coachShortName} ${a.lastName} ${a.firstName}`.localeCompare(`${b.coachShortName} ${b.lastName} ${b.firstName}`));
+    return rows.sort((a, b) => 
+      `${a.coachShortName} ${a.lastName} ${a.firstName}`
+        .localeCompare(`${b.coachShortName} ${b.lastName} ${b.firstName}`));
   }
 
   private aggregateCommentsFor(refereeAttendeeId: string): string[] {
     return this.coaches().flatMap((coach) => {
       const vote = this.coachVotes().find((item) => item.refereeAttendeeId === refereeAttendeeId && item.coachAttendeeId === coach.attendee.id);
-      return (vote?.comments ?? []).filter(Boolean).map((comment) => `${coach.person?.shortName ?? ''}: ${comment}`);
+      return (vote?.comments ?? []).filter(Boolean).map((comment) => `${coach.attendee.person?.shortName ?? ''}: ${comment}`);
     });
   }
 
   private newPanelVote(refereeAttendeeId: string): RefereeUpgradePanelVote {
-    return { id: '', lastChange: 0, tournamentId: this.tournament()!.id, refereeAttendeeId, vote: 'Voting', updatedByCoachAttendeeId: this.currentCoach()?.id ?? '', needToSee: [], needToTalk: null };
+    return { 
+      id: '', 
+      lastChange: 0, 
+      tournamentId: this.tournament()!.id, 
+      refereeAttendeeId, 
+      vote: 'Voting', 
+      updatedByCoachAttendeeId: this.currentCoach()?.id ?? '', 
+      needToSee: [], 
+      needToTalk: null 
+    };
   }
 
-  private upsertCoachVote(vote: RefereeUpgradeCoachVote): void { this.coachVotes.update((votes) => [...votes.filter((item) => item.id !== vote.id), vote]); }
-  private upsertPanelVote(vote: RefereeUpgradePanelVote): void { this.panelVotes.update((votes) => [...votes.filter((item) => item.id !== vote.id), vote]); }
+  private upsertCoachVote(vote: RefereeUpgradeCoachVote): void { 
+    this.coachVotes.update((votes) => [...votes.filter((item) => item.id !== vote.id), vote]); 
+  }
+  private upsertPanelVote(vote: RefereeUpgradePanelVote): void { 
+    this.panelVotes.update((votes) => [...votes.filter((item) => item.id !== vote.id), vote]); 
+  }
 }

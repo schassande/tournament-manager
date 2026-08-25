@@ -1,7 +1,5 @@
 # TODO list du projet Tournament Maager
 
-- Day/PartDay: split/join Part, move limit
-- Allocation : rendre visible/publier
 - statistiques d'allocation
 - Planning arbitres
 - Planning coach
@@ -62,6 +60,10 @@
 - 2026/08/21: Page des allocations à améliorer
   - Icone de retour : Allocation => Allocations
   - Mode simple
+- 2026/08/22: Day/PartDay: split/join Part, move limit
+- 2026/08/23: Allocation : rendre visible/publier
+- 2026/08/25: Delete d'un tournament doit effacer toutes les données liées à un tournoi : Game, GameAttendee, Allocation, statistics, upgrade vote ...
+- 2026/08/25: Attendee contient les informations personnes. Il y aura un Person uniquement pour les utilisateurs enregistrés. 
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams

@@ -17,11 +17,15 @@ import { InputIconModule } from 'primeng/inputicon';
 import { ToggleSwitchModule } from "primeng/toggleswitch";
 import { FilterService } from 'primeng/api';
 import { SelectModule } from 'primeng/select';
+import { DialogModule } from 'primeng/dialog';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { Subscription } from 'rxjs';
+import { TournamentDeletionProgress, TournamentDeletionService } from '../service/tournament-deletion.service';
 
 @Component({
   standalone: true,
-  imports: [AsyncPipe, ButtonModule, ConfirmDialogModule, FormsModule, IconFieldModule, InputIconModule,
-    MultiSelectModule, SelectModule, TableModule, ToggleSwitchModule],
+  imports: [AsyncPipe, ButtonModule, ConfirmDialogModule, DialogModule, FormsModule, IconFieldModule, InputIconModule,
+    MultiSelectModule, ProgressBarModule, SelectModule, TableModule, ToggleSwitchModule],
   template: `
     <div>
       <p-button label="New Tournament" (click)="createTournament()"/>
@@ -104,6 +108,14 @@ import { SelectModule } from 'primeng/select';
         <div>Filter: <span [innerHTML]="filterStr"></span></div>
       }
       <p-confirmdialog />
+      <p-dialog header="Deleting tournament" [(visible)]="deletionInProgress" [modal]="true"
+        [closable]="false" [closeOnEscape]="false" [style]="{ width: '30rem' }">
+        @if (deletionProgress; as progress) {
+          <p>Deleting {{ progress.collection }}...</p>
+          <p-progressbar [value]="progress.percentage" [showValue]="true" />
+          <p>{{ progress.deletedDocuments }} / {{ progress.totalDocuments }} documents</p>
+        }
+      </p-dialog>
     </div>
   `,
   styles: [`
@@ -132,12 +144,16 @@ export class TournamentListComponent implements OnInit {
   private router = inject(Router);
   private dateService = inject(DateService);
   private regionService = inject(RegionService);
+  private tournamentDeletionService = inject(TournamentDeletionService);
 
   selectedTournament: Tournament|undefined = undefined;
   regions: Region[] = this.regionService.regions;
   countries: Country[] = this.regionService.countries;
   filters: any = {};
   filterStr: string = '';
+  deletionInProgress = false;
+  deletionProgress: TournamentDeletionProgress | undefined;
+  private deletionSubscription: Subscription | undefined;
   tournaments: Observable<TournamentView[]> = this.tournamentService.all().pipe(
     map((tournaments: Tournament[]) => {
       return tournaments.map((tournament: Tournament) => {
@@ -269,10 +285,23 @@ export class TournamentListComponent implements OnInit {
       acceptButtonProps: { label: 'Delete', severity: 'danger'},
       accept: () => {
         // The user confirm to remove the tournament
-        this.tournamentService.delete(tournament.id).then(() => {
-          console.log(`Tournament ${tournament.name} deleted.`);
-        }).catch(err => {
-          console.error('Error deleting tournament: ', err);
+        this.deletionInProgress = true;
+        this.deletionProgress = undefined;
+        this.deletionSubscription?.unsubscribe();
+        this.deletionSubscription = this.tournamentDeletionService.deleteTournament(tournament.id).subscribe({
+          next: (progress) => this.deletionProgress = progress,
+          error: (error: unknown) => {
+            this.deletionInProgress = false;
+            console.error('Error deleting tournament: ', error);
+          },
+          complete: () => {
+            this.deletionInProgress = false;
+            this.deletionProgress = undefined;
+            if (this.tournamentService.getCurrentTournament()?.id === tournament.id) {
+              this.tournamentService.setCurrentTournament(null);
+            }
+            console.log(`Tournament ${tournament.name} deleted.`);
+          },
         });
         this.confirmationService.close();
       },

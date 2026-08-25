@@ -1,7 +1,7 @@
 import { colTournament, duplicateTimeslotIds, Team, Tournament } from '@tournament-manager/persistent-data-model';
 import { Injectable, signal } from '@angular/core';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
-import { map, Observable, of } from 'rxjs';
+import { map, Observable, of, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -28,7 +28,9 @@ export class TournamentService extends AbstractPersistentDataService<Tournament>
     if (duplicates.length > 0) {
       throw new Error(`Duplicate timeslot identifiers: ${duplicates.join(', ')}`);
     }
-    return super.save(item);
+    return super.save(item).pipe(
+      tap(savedTournament => this.setCurrentTournament(savedTournament)),
+    );
   }
 
   public loadCurrentTournamentFromLocalStorage(): Observable<Tournament|undefined> {

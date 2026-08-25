@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, inject, provideAppInitializer, provideZoneChangeDetection } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter, TitleStrategy } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
@@ -16,6 +16,8 @@ import { Title } from '@angular/platform-browser';
 import { CustomTitleStrategy } from './custom-title-strategy';
 import { ConfirmationService } from 'primeng/api';
 import { DialogService } from 'primeng/dynamicdialog';
+import { catchError, of, take } from 'rxjs';
+import { UserService } from '../service/user.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -31,6 +33,12 @@ export const appConfig: ApplicationConfig = {
     provideFirestore(() => getFirestore()),
     provideFunctions(() => getFunctions()),
     provideStorage(() => getStorage()),
+    provideAppInitializer(() =>
+      inject(UserService).autoLogin().pipe(
+        take(1),
+        catchError(() => of(null)),
+      )
+    ),
     ConfirmationService,
     DialogService,
   ],

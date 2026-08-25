@@ -102,8 +102,8 @@ type SortMode = 'level-asc' | 'level-desc' | 'games-asc';
                   @if (entry.isPlayerReferee) {
                     <strong>{{ entry.referee.team?.name }}</strong>
                   } @else {
-                    <strong>{{ entry.referee.person?.firstName }} {{ entry.referee.person?.lastName }}</strong>
-                    <span class="gender-tag" [class.female]="entry.referee.person?.gender === 'F'">{{ entry.referee.person?.gender === 'F' ? 'Female' : 'Male' }}</span>
+                    <strong>{{ entry.referee.attendee.person?.firstName }} {{ entry.referee.attendee.person?.lastName }}</strong>
+                    <span class="gender-tag" [class.female]="entry.referee.attendee.person?.gender === 'F'">{{ entry.referee.attendee.person?.gender === 'F' ? 'Female' : 'Male' }}</span>
                   }
                 </div>
                 @if (!entry.isPlayerReferee) {
@@ -259,7 +259,7 @@ export class RefereeSelectorComponent implements AfterViewInit {
       matchesSearch(entry, this.search())
       && (this.level() === 'All' || entry.level === Number(this.level()))
       && (this.category() === 'All' || entry.category === this.category())
-      && (this.gender() === 'All' || entry.referee.person?.gender === this.gender())
+      && (this.gender() === 'All' || entry.referee.attendee.person?.gender === this.gender())
       && (!this.upgradeOnly() || entry.upgrade)
       && (!this.playerRefereesOnly() || entry.isPlayerReferee)
       && (!this.eligibilityEnabled() || isRefereeEligible(entry, this.game(), this.periodGames(), configuration))

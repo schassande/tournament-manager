@@ -89,11 +89,9 @@ export interface Country extends WithId {
 export interface Referee {
   attendee: Attendee;
   isPR: boolean;
-  person?: Person;
   team?: Team;
 }
 export interface RefereeCoach {
   attendee: Attendee;
-  person?: Person;
 }
 

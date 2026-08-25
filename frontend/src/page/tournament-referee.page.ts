@@ -2,7 +2,7 @@ import { ListboxModule } from 'primeng/listbox';
 import { RegionService } from '../service/region.service';
 import { Gender, Referee, RefereeBadgeSystem, RefereeCategory, Team, TeamDivision} from '@tournament-manager/persistent-data-model';
 import { Component, effect, inject, signal } from '@angular/core';
-import { forkJoin, map, mergeMap, Observable, of, take } from 'rxjs';
+import { firstValueFrom, forkJoin, last, map, mergeMap, Observable, of, take, tap } from 'rxjs';
 import { Attendee, Person } from '@tournament-manager/persistent-data-model';
 import { AttendeeService } from '../service/attendee.service';
 import { PersonService } from '../service/person.service';
@@ -20,25 +20,30 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ref } from 'firebase/storage';
+import { RefereeService } from '../service/referee.service';
 
 @Component({
   selector: 'app-tournament-referee',
   template: `<div class="application-page">
   @if (tournament() && referees()) {
-    <div style="margin-bottom: 5px; vertical-align: middle;">
-      <div style="float: right; vertical-align: middle;">
+    <div class="referee-toolbar">
+      <div class="referee-toggle-group">
+        <p-toggleswitch [(ngModel)]="tournament()!.allowPlayerReferees" (onChange)="onAllowPlayerRefereesChanged()" class="pr-toggle-switch"></p-toggleswitch>
+        <label for="name">Do you use Player Referees?</label>
+      </div>
+        @if (tournament()!.allowPlayerReferees) {
+          <p-button (click)="addAllTeamPR()" severity="info" icon="pi pi-add" label="Add a player referee for each team" class="table-buttons"></p-button>
+          <p-button (click)="addTeamReferee()" severity="info" icon="pi pi-add" label="Add a player referee" class="table-buttons"></p-button>
+        }
+      <div class="referee-actions">
+        <p-button (click)="removeAllReferees()" severity="danger" icon="pi pi-trash" label="Delete all referees"
+          [disabled]="referees().length === 0" class="table-buttons"></p-button>
         <p-button (click)="addReferee()" icon="pi pi-add" label="Add a full time referee"></p-button>
       </div>
-      <p-toggleswitch [(ngModel)]="tournament()!.allowPlayerReferees" (onChange)="onAllowPlayerRefereesChanged()" style="vertical-align: middle;" class="pr-toggle-switch"></p-toggleswitch>
-      <label for="name" style="margin-left: 10px; vertical-align: middle;">Do you use Player Referees?</label>
-      @if (tournament()!.allowPlayerReferees) {
-        <p-button (click)="addTeamReferee()" severity="info" icon="pi pi-add" label="Add a player referee" class="table-buttons"></p-button>
-        <p-button (click)="addAllTeamPR()" severity="info" icon="pi pi-add" label="Add a player referee for each team" class="table-buttons"></p-button>
-      }
-      <div style="clear: both;"></div>
     </div>
 
-    <p-table [value]="referees()" stripedRows showGridlines [size]="'small'" tableLayout="fixed">
+    <p-table [value]="referees()" stripedRows showGridlines [size]="'small'" tableLayout="fixed"
+      (paste)="onTablePaste($event)">
       <ng-template #header>
           <tr class="tableRowTitle">
             @if (tournament()!.allowPlayerReferees) {
@@ -46,14 +51,13 @@ import { ref } from 'firebase/storage';
             }
             <th style="width:20%">First name</th>
             <th style="width:20%">Last Name</th>
-            <th style="width:10%">Short Name</th>
             @if (this.tournament()?.allowPlayerReferees) {
               <th style="width:10%">Team</th>
             }
-            <th style="width:5%">Level</th>
-            <th style="width:5%">Up to</th>
-            <th style="width:5%">Category</th>
-            <th style="width:5%">Gender</th>
+            <th style="width:10%">Level</th>
+            <th style="width:10%">Category</th>
+            <th style="width:7%">Up to</th>
+            <th style="width:7%">Gender</th>
             <th style="width:10%">Action</th>
           </tr>
       </ng-template>
@@ -65,49 +69,35 @@ import { ref } from 'firebase/storage';
               </td>
             }
 
-            <td [pEditableColumn]="referee.person?.firstName" pEditableColumnField="firstName" style="text-align: center;">
+            <td [pEditableColumn]="referee.attendee.person?.firstName" pEditableColumnField="firstName" style="text-align: center;">
               @if (referee!.isPR) {
                 <span style="text-align: center;">-</span>
-              } @else if (referee?.person) {
+              } @else if (referee?.attendee.person) {
                 <p-cellEditor>
                   <ng-template #input>
-                    <input pInputText type="text" [(ngModel)]="referee.person.firstName" [disabled]="referee!.isPR"
+                    <input pInputText type="text" [(ngModel)]="referee.attendee.person.firstName" [disabled]="referee!.isPR"
                     minlength="1" maxlength="30" style="width: 15rem;"
-                    (paste)="onPasteFirstName($event, ri)" (change)="personChanged(referee)"/>
+                    (paste)="onPaste($event, ri, 'FN')" (change)="attendeeChanged(referee)"/>
                     </ng-template>
-                  <ng-template #output>{{ referee.person.firstName }}</ng-template>
+                  <ng-template #output>{{ referee.attendee.person.firstName }}</ng-template>
                 </p-cellEditor>
               }
             </td>
-            <td [pEditableColumn]="referee.person?.lastName" pEditableColumnField="lastName" style="text-align: center;">
+            <td [pEditableColumn]="referee.attendee.person?.lastName" pEditableColumnField="lastName" style="text-align: center;">
               @if (referee!.isPR) {
                 <span style="text-align: center;">-</span>
-              } @else if (referee?.person) {
+              } @else if (referee?.attendee.person) {
                 <p-cellEditor>
                   <ng-template #input>
-                    <input pInputText type="text" [(ngModel)]="referee.person.lastName" [disabled]="referee!.isPR"
+                    <input pInputText type="text" [(ngModel)]="referee.attendee.person.lastName" [disabled]="referee!.isPR"
                       minlength="1" maxlength="30" style="width: 15rem;"
-                      (paste)="onPasteLastName($event, ri)"  (change)="personChanged(referee)"/>
+                      (paste)="onPaste($event, ri, 'LN')"  (change)="attendeeChanged(referee)"/>
                     </ng-template>
-                  <ng-template #output>{{ referee.person.lastName }}</ng-template>
+                  <ng-template #output>{{ referee.attendee.person.lastName }}</ng-template>
                 </p-cellEditor>
               }
             </td>
 
-            <td [pEditableColumn]="referee.person?.shortName" pEditableColumnField="shortName" style="text-align: center;">
-              @if (referee!.isPR) {
-                <span style="text-align: center;">-</span>
-              } @else if (referee?.person) {
-                <p-cellEditor>
-                  <ng-template #input>
-                    <input pInputText type="text" [(ngModel)]="referee.person.shortName" [disabled]="referee!.isPR"
-                      minlength="3" maxlength="6" style="width: 5rem;"
-                      (paste)="onPasteLastName($event, ri)"  (change)="personChanged(referee)"/>
-                    </ng-template>
-                  <ng-template #output>{{ referee.person.shortName }}</ng-template>
-                </p-cellEditor>
-              }
-            </td>
             @if (this.tournament()?.allowPlayerReferees) {
             <td  [pEditableColumn]="referee.team?.id" pEditableColumnField="team" style="text-align: center;">
               @if (referee!.isPR) {
@@ -118,12 +108,12 @@ import { ref } from 'firebase/storage';
                       appendTo="body" placeholder="Team" (onChange)="teamSelected(referee, $event.value)">
                       <ng-template let-team #item #selectedItem >
                         <div class="flex items-center gap-2">
-                            <div>{{ team.shortName }} {{ team.divisionShortName }})</div>
+                            <div>{{ team.divisionShortName }}-{{ team.shortName }}</div>
                         </div>
                       </ng-template>
                     </p-select>
                   </ng-template>
-                  <ng-template #output>{{ referee.team?.shortName }} ({{ referee.team?.divisionShortName }})</ng-template>
+                  <ng-template #output>{{ referee.team?.divisionShortName }}-{{ referee.team?.shortName }} </ng-template>
                 </p-cellEditor>
               }
             </td>
@@ -136,10 +126,30 @@ import { ref } from 'firebase/storage';
                   // Referee level selector
                   <ng-template #input>
                     <input pInputText type="number" [(ngModel)]="referee.attendee.referee.badge"
-                      [disabled]="referee!.isPR" (paste)="onPasteLevel($event, ri)" (change)="attendeeChanged(referee)"
+                      [disabled]="referee!.isPR" (paste)="onPaste($event, ri, 'CB')" (change)="attendeeChanged(referee)"
                       min="0" max="{{referee!.attendee!.referee!.badgeSystem}}"/>
                   </ng-template>
                   <ng-template #output>{{ referee.attendee.referee.badge }}/{{ referee.attendee.referee.badgeSystem }}</ng-template>
+                </p-cellEditor>
+              }
+            </td>
+            <td [pEditableColumn]="referee.attendee.referee.category" pEditableColumnField="refereeCategory" class="full-cell-select-cell" style="text-align: center;">
+              @if (referee!.isPR) {
+                <div style="text-align: center;">-</div>
+              } @else {
+                <p-cellEditor>
+                  // Referee Category selector
+                  <ng-template #input>
+                    <select id="refereeCategory" [(ngModel)]="referee!.attendee!.referee!.category"
+                      (change)="categoryChanged(referee)" required [disabled]="referee!.isPR" class="full-cell-select"
+                      (paste)="onPaste($event, ri, 'CA')" >
+                        <option [value]="'J'">Junior</option>
+                        <option [value]="'O'">Open</option>
+                        <option [value]="'S'">Senior</option>
+                        <option [value]="'M'">Master</option>
+                    </select>
+                  </ng-template>
+                  <ng-template #output>{{ toPrintedRefereeCategory(referee.attendee.referee.category) }}</ng-template>
                 </p-cellEditor>
               }
             </td>
@@ -150,7 +160,7 @@ import { ref } from 'firebase/storage';
                 <p-cellEditor>
                   <ng-template #input>
                     <input pInputText type="number" [(ngModel)]="referee!.attendee!.referee!.upgrade!.badge" style="width: 2rem;"
-                      (paste)="onPasteLevel($event, ri)"  (ngModelChange)="upgradeChanged(referee, $event)"
+                      (paste)="onPaste($event, ri, 'UB')"  (ngModelChange)="upgradeChanged(referee, $event)"
                       min="0" max="{{referee!.attendee!.referee!.upgrade?.badgeSystem || referee!.attendee!.referee!.badgeSystem}}"/>
                   </ng-template>
                   <ng-template #output>
@@ -163,40 +173,22 @@ import { ref } from 'firebase/storage';
                 </p-cellEditor>
               }
             </td>
-            <td [pEditableColumn]="referee.attendee.referee.category" pEditableColumnField="refereeCategory" class="full-cell-select-cell" style="text-align: center;">
+            <td [pEditableColumn]="referee.attendee.person?.gender" pEditableColumnField="gender" class="full-cell-select-cell" style="text-align: center;">
               @if (referee!.isPR) {
                 <div style="text-align: center;">-</div>
-              } @else {
-                <p-cellEditor>
-                  // Referee Category selector
-                  <ng-template #input>
-                    <select id="refereeCategory" [(ngModel)]="referee!.attendee!.referee!.category"
-                      (change)="categoryChanged(referee)" required [disabled]="referee!.isPR" class="full-cell-select">
-                        <option [value]="'J'">Junior</option>
-                        <option [value]="'O'">Open</option>
-                        <option [value]="'S'">Senior</option>
-                        <option [value]="'M'">Master</option>
-                    </select>
-                  </ng-template>
-                  <ng-template #output>{{ toPrintedRefereeCategory(referee.attendee.referee.category) }}</ng-template>
-                </p-cellEditor>
-              }
-            </td>
-            <td [pEditableColumn]="referee.person?.gender" pEditableColumnField="gender" class="full-cell-select-cell" style="text-align: center;">
-              @if (referee!.isPR) {
-                <div style="text-align: center;">-</div>
-              } @else {
+              } @else if (referee?.attendee.person) {
                 <p-cellEditor>
                   <ng-template #input>
-                    <select id="gender" [(ngModel)]="referee!.person!.gender"
-                      (change)="personChanged(referee)" [disabled]="referee!.isPR" class="full-cell-select">
+                    <select id="gender" [(ngModel)]="referee!.attendee.person!.gender"
+                      (change)="attendeeChanged(referee)" [disabled]="referee!.isPR" class="full-cell-select"
+                      (paste)="onPaste($event, ri, 'G')" >
                         <option [value]="'M'">Male</option>
                         <option [value]="'F'">Female</option>
                     </select>
                   </ng-template>
                   <ng-template #output>
-                    @if (referee?.person) {
-                      {{ toPrintedGender(referee.person.gender) }}
+                    @if (referee?.attendee.person) {
+                      {{ toPrintedGender(referee.attendee.person.gender) }}
                     }
                   </ng-template>
                 </p-cellEditor>
@@ -210,14 +202,24 @@ import { ref } from 'firebase/storage';
       </ng-template>
     </p-table>
 
-    <div style="float: right; vertical-align: middle; margin-top: 5px;">
-      <p-button (click)="addReferee()" icon="pi pi-add" label="Add a full time referee"></p-button>
-    </div>
-    <div style="clear: both"></div>
   }
   <p-confirmDialog [style]="{width: '40vw'}"></p-confirmDialog>
   </div>`,
   styles: [`
+    .referee-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 5px;
+    }
+    .referee-toggle-group,
+    .referee-actions {
+      display: flex;
+      align-items: center;
+    }
+    .referee-toggle-group label { margin-left: 10px; }
+    .referee-actions { margin-left: auto; }
     .tableRowTitle th { text-align: center;}
     .action { font-size: 1.3rem}
     .action-remove { margin-right: 10px; color: red;}
@@ -267,6 +269,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
 
   attendeeService = inject(AttendeeService);
   personService = inject(PersonService);
+  refereeService = inject(RefereeService);
   regionService = inject(RegionService);
   confirmationService = inject(ConfirmationService);
   dialogService = inject(DialogService);
@@ -305,16 +308,12 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
   private loadReferees() {
     //find attendees having isReferee = true
     this.attendeeService.findTournamentReferees(this.tournament()!.id).pipe(
-      map((attendees) => { // convert attendees to referees
+      map((attendees) => { 
+        // convert attendees to referees
         const referees: Referee[] = attendees.map((attendee: Attendee) => {
           return { attendee, isPR: attendee.isReferee && attendee.isPlayer };
         });
-        return referees;
-      }),
-
-      // complete the referee attributes
-      mergeMap((referees: Referee[]) => {
-        let obs: Observable<any>[] = [of('')];
+        // complete the referee attributes when it is player referee
         referees.forEach(referee => {
           if (referee.attendee.player && referee.attendee.player.teamId) {
             //console.log('loading: teamId=', referee.attendee.player.teamId, 'for referee', referee);
@@ -332,28 +331,9 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
               }
             });
           }
-          if (referee.attendee.personId) {
-            // console.log('Loading person: personId=', referee.attendee.personId);
-            //load person
-            obs.push(this.personService.byId(referee.attendee.personId).pipe(
-              map((person: Person|undefined) => {
-                if (person) referee.person = person;
-                // console.debug('Loaded person: personId=', referee.attendee.personId, person);
-                return referee;
-              }),
-              take(1) // due to the use of the forkJoin operator
-            ));
-          }
         });
-        // return referees after all observables are completed;
-        return forkJoin(obs).pipe(map(()=> referees));
-      }),
-      map(referees => {
-        //console.log('data loaded='+JSON.stringify(a));
         this.sortReferees(referees);
-        this.referees.set([]);
-        setTimeout(() => this.referees.set(referees), 100)
-
+        this.referees.set(referees);
       }),
     ).subscribe()
   }
@@ -370,8 +350,8 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
           return r1.team!.name.localeCompare(r2.team!.name);
 
         } else { //both referees are Full time referee
-          if (r1.person && r2.person) {
-            return r1.person.lastName.localeCompare(r2.person.lastName);
+          if (r1.attendee.person && r2.attendee.person) {
+            return r1.attendee.person.lastName.localeCompare(r2.attendee.person.lastName);
           } else {
             return 0;
           }
@@ -381,15 +361,18 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
       }
     })
   }
-  onAllowPlayerRefereesChanged() {
-    console.debug('onAllowPlaeyrRefereesChanged', this.tournament()!.allowPlayerReferees)
+
+  protected onAllowPlayerRefereesChanged() {
+    // console.debug('onAllowPlaeyrRefereesChanged', this.tournament()!.allowPlayerReferees)
     if (this.tournament()!.allowPlayerReferees) {
       this.onTournamentConfigChanged();
       return;
     }
+    // the user decided to unallow Player referees.
+    
     // check if there are Player referees as attendee
     const prs: Referee[] = this.referees().filter(referee => referee.isPR);
-    console.debug('PRs', prs)
+    // console.debug('PRs', prs)
     if (prs.length === 0) {
       this.onTournamentConfigChanged();
       return;
@@ -417,7 +400,8 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
       },
     });
   }
-  onPRChanged(referee: Referee) {
+
+  protected onPRChanged(referee: Referee) {
     if (referee.isPR) {
       referee.attendee.isPlayer = true;
       if (!referee.attendee.player) {
@@ -429,83 +413,122 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
     }
     this.attendeeChanged(referee);
   }
-  addReferee(team: Team|undefined = undefined) {
-    this.referees.update((referees) => {
-      return [...referees, this._addReferee(team) ];
+  protected addReferee(team: Team|undefined = undefined) {
+    this.createReferee(team).then(referee => {
+      this.referees.update((referees) => {
+        return [...referees,  referee];
+      });
     });
   }
-  private _addReferee(team: Team|undefined = undefined): Referee {
-    const tournamentCuntry = this.regionService.countryById(this.tournament()!.countryId);
-    const defaultBadgeSystem: RefereeBadgeSystem = tournamentCuntry?.badgeSystem ? tournamentCuntry.badgeSystem : 5;
+  private createReferee(
+    team: Team|undefined = undefined,
+    pastedData: PersonPastedData|undefined = undefined): Promise<Referee> {
+    if (!this.tournament()!.defaultRefereeBadgeSystem) {
+      const tournamentCountry = this.regionService.countryById(this.tournament()!.countryId);
+      this.tournament()!.defaultRefereeBadgeSystem = tournamentCountry?.badgeSystem ?? 5;
+    }
+    console.log('createReferee, pastedData=', pastedData);
     const attendee: Attendee = {
       id: '',
-      personId: '',
       tournamentId: this.tournament()!.id,
       isReferee: true,
       isPlayer: false,
       isRefereeCoach: false,
       isTournamentManager: false,
       referee: {
-        badge: 0,
-        badgeSystem: defaultBadgeSystem,
-        category: 'O',
-        upgrade : { badge: 0, badgeSystem: defaultBadgeSystem }
+        badge: pastedData?.currentBadge ?? 0,
+        badgeSystem: (pastedData?.currentBadgeSystem ?? this.tournament()!.defaultRefereeBadgeSystem! ?? 5) as RefereeBadgeSystem,
+        category: pastedData?.category ?? 'O',
       },
       roles: [],
       lastChange: 0
     };
-    if (team) {
+
+    if (pastedData?.upgradePlusOne ) {
+      pastedData.upgradeBadge = Math.min(attendee.referee!.badge + 1, attendee.referee!.badgeSystem);
+      console.log('createReferee upgradePlusOne', pastedData);
+    }
+
+    if (pastedData?.upgradeBadge != undefined && pastedData.upgradeBadge >= 0)  {
+      attendee.referee!.upgrade = { 
+        badge: pastedData?.upgradeBadge ?? 0, 
+        badgeSystem: (pastedData?.upgradeBadgeSystem ?? this.tournament()!.defaultRefereeCoachBadgeSystem! ?? 5) as RefereeBadgeSystem,
+      }
+      console.log('createReferee upgradeBadge', attendee.referee);
+    }
+
+    if (team) { // Player referee
       attendee.isPlayer = true;
       attendee.player = { teamId: team.id }
-      this.attendeeService.save(attendee).subscribe()
-      return { attendee, isPR: true, team };
+      return firstValueFrom(this.attendeeService.save(attendee).pipe(
+        map((att) => { return { attendee: att, isPR: true, team }; } )
+      ));
+    } else { // Full time referee
+      attendee.person = {
+        firstName: pastedData?.firstName ?? '',
+        lastName: pastedData?.lastName ?? '',
+        gender: pastedData?.gender ?? 'M',
+        shortName: '',
+        regionId: this.tournament()!.regionId,
+        countryId: this.tournament()!.countryId
+      };
+      this.autoComputeShortName(attendee);
+      return firstValueFrom(this.attendeeService.save(attendee).pipe(
+        map((att) => { return { attendee: att, isPR: false }; } )
+      ));
     }
-    const person: Person = {
-      id: '',
-      firstName: '',
-      lastName: '',
-      gender: 'M',
-      email: '',
-      userAuthId: '',
-      shortName: '',
-      regionId: this.tournament()!.regionId,
-      countryId: this.tournament()!.countryId,
-      lastChange: 0,
-      referee: {
-        badge: 0,
-        badgeSystem: defaultBadgeSystem,
-        category: 'O',
-        upgrade : { badge: 0, badgeSystem: defaultBadgeSystem }
-      },
-    };
-    this.personService.save(person).pipe(
-      map((p) => {
-        person.id = p.id;
-        attendee.personId = p.id;
-        return person;
-      }),
-      mergeMap(() => this.attendeeService.save(attendee)),
-      map(a => attendee.id = a.id)
-    ).subscribe();
-    return { attendee, person, isPR: false };
   }
 
+  /**
+   * Removes the selected referee roles, deleting attendees that have no other role.
+   */
+  async removeReferee(...refereesToremove: Referee[]) {
+    // remove the referee from the list
+    const referees = this.referees().filter((referee) =>
+      !refereesToremove.some(refereeToRemove => referee.attendee.id === refereeToRemove.attendee.id)
+    );
+    this.referees.set([...referees]);
 
-  removeReferee(...refereesToremove: Referee[]) {
-      // remove the referee from the list
-      const referees = this.referees().filter((r1) =>  refereesToremove.filter(r2 => r1.attendee.id !== r2.attendee.id).length > 0 );
-      refereesToremove.forEach(referee => {
-        if (referee.attendee.id && this.attendeeService.isOnlyReferee(referee.attendee)) {
+    // Delete the attendee or the Refere role of each referee
+    await Promise.all(refereesToremove.map(async referee => {
+      if (referee.attendee.id) {
+        if (this.attendeeService.isOnlyReferee(referee.attendee)) {
           // remove the attendee from the database
-          this.attendeeService.delete(referee.attendee.id);
-          // Note: Use less person will be removed by daily job
+          await this.attendeeService.delete(referee.attendee.id);
+        } else {
+          // remove the role and save the change in the database
+          referee.attendee.isReferee = false;
+          referee.attendee.roles = referee.attendee.roles.filter(r => r !== 'Referee');
+          await this.attendeeService.save(referee.attendee);
+        }
+        //TODO remove the referee from the allocation, upgrades, ranking ...
+      } // else the attendee is not saved yet, so we just remove it from the list
+    }));
+  }
 
-          //TODO remove the referee from the games
+  /**
+   * Ask for confirmation before removing every referee currently attached to the tournament.
+   */
+  removeAllReferees(): void {
+    const refereesToRemove = this.referees();
+    if (refereesToRemove.length === 0) {
+      return;
+    }
 
-        } // else the attendee is not saved yet, so we just remove it from the list
-      });
-      this.referees.set([]);
-      setTimeout(() => this.referees.set(referees), 100);
+    this.confirmationService.confirm({
+      message: `Do you want to delete all ${refereesToRemove.length} referees?`,
+      header: 'Danger Zone',
+      icon: 'pi pi-exclamation-triangle',
+      rejectLabel: 'Cancel',
+      acceptLabel: 'Delete all',
+      rejectButtonProps: { label: 'Cancel', severity: 'secondary', outlined: true },
+      acceptButtonProps: { label: 'Delete all', severity: 'danger' },
+      accept: () => {
+        void this.removeReferee(...refereesToRemove);
+        this.confirmationService.close();
+      },
+      reject: () => this.confirmationService.close()
+    });
   }
 
   async editReferee(referee: Referee) {
@@ -530,12 +553,16 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
     });
     ref.onClose.subscribe(() => {
       this.referees.update(referees => {
-        this.attendeeChanged(referee);
-        if (!referee.isPR) this.personChanged(referee);
         const idx = referees.findIndex(r => r.attendee.id === referee.attendee.id);
-        if (idx >= 0) referees.splice(idx, 1, referee);
-        setTimeout(() => this.referees.set(referees), 100);
-        return [];
+        if (idx >= 0) {
+          // replace element in the list
+          referees.splice(idx, 1, referee);
+          this.attendeeChanged(referee); // Async save
+          return [...referees];
+        } else {
+          // return the same array because no change
+          return referees;
+        }
       });
     });
   }
@@ -551,142 +578,226 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
         referee.attendee.player = { teamId: teamId, num: -1 };
       }
       this.attendeeChanged(referee);
-      return referees;
+      return [...referees];
     });
   }
   attendeeChanged(referee: Referee) {
+    this.autoComputeShortName(referee.attendee);
     this.attendeeService.save(referee.attendee).subscribe();
   }
-  autoComputeShortName(p: Person): boolean {
-    if (!p.shortName && p.firstName.length > 0 && p.lastName.length > 1) {
-      p.shortName =
-        p.firstName.substring(0, 1).toUpperCase()
-        + p.lastName.substring(0, 1).toUpperCase()
-        + p.lastName.substring(p.lastName.length-1, p.lastName.length).toUpperCase();
-      return true;
+  autoComputeShortName(attendee: Attendee): boolean {
+    if (attendee.person) {
+      const p = attendee.person;
+      if (!p.shortName && p.firstName.length > 0 && p.lastName.length > 1) {
+        p.shortName =
+          p.firstName.substring(0, 1).toUpperCase()
+          + p.lastName.substring(0, 1).toUpperCase()
+          + p.lastName.substring(p.lastName.length-1, p.lastName.length).toUpperCase();
+        return true;
+      }
     }
     return false;
   }
+  async onPaste(event: any, ri:number|undefined, col: 'FN'|'LN'|'CB'|'CA'|'UB'|'G' = 'FN') {
+    event.preventDefault(); // Empêcher le collage natif
+    // console.debug('Paste first names : begin');
+    const clipboardData = event.clipboardData || (window as any).clipboardData;
+    const pastedText = clipboardData.getData('text'); // Récupérer le texte collé
+    if (!pastedText) return;
+    const rows: string[][] = pastedText.split('\n') // split by row
+      .filter((r:string) => r.trim().length > 0) // ignore empty lines
+      .map((r:string) => r.split('\t').map(c => c.trim())) // split by column
+      .filter((r:string[]) => r.length > 0); // ignore empty line
+    
+      // parse clipboard and filter values
+    const referees = this.referees();
+    let refereeIdx = ri ?? referees.length;
+    const initialSize = this.referees().length;
+    await Promise.allSettled(rows.map(async(row:string[]) => {
+      // extract data
+      const pastedData: PersonPastedData = {};
+      if (col === 'FN') {
+        this.parseFromFirstName(row, 0, pastedData);
+      } else if (col === 'LN') {
+        this.parseFromLastName(row, 0, pastedData);
+      } else if (col === 'CB') {
+        this.parseFromBadge(row, 0, pastedData);
+      } else if (col === 'CA') {
+        this.parseFromCategory(row, 0, pastedData);
+      } else if (col === 'UB') {
+        this.parseFromUpgrade(row, 0, pastedData);
+      } else if (col === 'G') {
+        this.parseFromGender(row, 0, pastedData);
+      }
+      // console.debug('paste', row, pastedData);
+      if (pastedData.firstName && pastedData.lastName 
+        && referees.find(ref => ref.attendee.person 
+          && ref.attendee.person.firstName === pastedData.firstName 
+          && ref.attendee.person.lastName === pastedData.lastName)) {
+        return; // ignore
+      }
 
-  personChanged(referee: Referee) {
-    const p:Person = referee.person!;
-    this.autoComputeShortName(p);
-    if (!referee.isPR) this.personService.save(p).subscribe({
-      error: (err) => console.error('Error when saving ', p, err)
+      if (refereeIdx >= initialSize) {
+        // add a new full time referee with the data
+        referees.push(await this.createReferee(undefined, pastedData));
+      } else {
+        // update the current referee line
+
+        // => become a full time referee
+        referees[refereeIdx].isPR = false;
+        referees[refereeIdx].team = undefined;
+
+        this.pasteOnExistingAttendee(referees[refereeIdx].attendee, pastedData);
+      }
+      refereeIdx++; // move to next row
+    }));
+    // when all referee are added, update the signal/view
+    this.referees.set([...referees]);
+  }
+
+  /**
+   * Captures a paste on the table when no cell editor owns the event.
+   *
+   * Paste events emitted by an active cell editor are ignored here because
+   * the editor-specific handlers above already process them.
+   */
+  onTablePaste(event: ClipboardEvent): void {
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest('td.p-cell-editing')) {
+      return;
+    }
+    this.onPaste(event, undefined, 'FN');
+  }
+
+
+  pasteOnExistingAttendee(attendee: Attendee, pastedData: PersonPastedData) {
+    // console.log('pasteOnExistingAttendee begin', attendee, pastedData);
+    // badge levels
+    if (pastedData.currentBadge != undefined) {
+      attendee.referee!.badge = pastedData.currentBadge;
+      // console.log('Set badge', pastedData.currentBadge);
+      if (pastedData.currentBadgeSystem != undefined) {
+        attendee.referee!.badgeSystem = pastedData.currentBadgeSystem as RefereeBadgeSystem;
+        // console.log('Set badge system', pastedData.currentBadgeSystem);
+      }
+    }
+    if (pastedData.upgradeBadge !== undefined) {
+      // console.log('Set upgrade', pastedData.upgradeBadge);
+      if (!attendee.referee!.upgrade) attendee.referee!.upgrade = { badge: 0, badgeSystem: 5 }
+      attendee.referee!.upgrade!.badge = pastedData.upgradeBadge;
+      if (pastedData.upgradeBadgeSystem !== undefined) {
+        attendee.referee!.upgrade!.badgeSystem = pastedData.upgradeBadgeSystem as RefereeBadgeSystem;
+        // console.log('Set upgrade system', pastedData.upgradeBadgeSystem);
+      }
+    } else if (pastedData.upgradePlusOne) {
+      if (!attendee.referee!.upgrade) attendee.referee!.upgrade = { badge: 0, badgeSystem: 5 }
+      attendee.referee!.upgrade!.badge = attendee.referee!.badge + 1;
+      attendee.referee!.upgrade!.badgeSystem = attendee.referee!.badgeSystem
+      // console.log('Set upgrade +1', attendee.referee!.upgrade!.badge, attendee.referee!.upgrade!.badgeSystem);
+    }
+    //person fields
+    if (attendee.person) {
+        console.log('override person fields');
+      // override first name and last name if defined
+      if (pastedData.firstName) {
+        // console.log('Set firstName', pastedData.firstName);
+        attendee.person!.firstName = pastedData.firstName;
+      }
+      if (pastedData.lastName) {
+        // console.log('Set firstName', pastedData.firstName);
+        attendee.person!.lastName = pastedData.lastName;
+      }
+    } else {
+      // console.log('override person fields');
+      // create the person
+      attendee.person = {
+        firstName: pastedData.firstName ?? '',
+        lastName: pastedData.lastName ?? '',
+        gender: pastedData.gender ?? 'M',
+        shortName: '',
+        regionId: this.tournament()!.regionId,
+        countryId: this.tournament()!.countryId
+      }
+    }
+    // console.log('pasteOnExistingAttendee end', attendee, pastedData);
+  }
+
+  parseFromFirstName(row: string[], startIdx:number = 0, pastedData: PersonPastedData) {
+    if (row.length <= startIdx) return;
+    if (row[startIdx].length > 0) {
+      //console.debug('parseFromFirstName', row, startIdx, pastedData);
+      pastedData.firstName = row[startIdx];    
+    }
+    this.parseFromLastName(row, startIdx + 1, pastedData);
+  }
+  parseFromLastName(row: string[], startIdx:number = 0, pastedData: PersonPastedData) {
+    if (row.length <= startIdx) return;
+    if (row[startIdx].length > 0) {
+      //console.debug('parseFromLastName', row, startIdx, pastedData);
+      pastedData.lastName = row[startIdx];    
+    }
+    this.parseFromBadge(row, startIdx + 1, pastedData);
+  }
+  parseFromBadge(row: string[], startIdx:number = 0, pastedData: PersonPastedData) {
+    if (row.length <= startIdx) return;
+    if (row[startIdx].length > 0) {
+      //console.debug('parseFromBadge', row, startIdx, pastedData);
+      const parsedLevel = this.refereeService.parseLevel(row[startIdx])
+      pastedData.currentBadge = parsedLevel.badge;
+      if (parsedLevel.system) pastedData.currentBadgeSystem = parsedLevel.system;
+    }
+    this.parseFromCategory(row, startIdx+1, pastedData);
+  }
+  parseFromCategory(row: string[], startIdx:number = 0, pastedData: PersonPastedData) {
+    if (row.length <= startIdx) return;
+    if (row[startIdx].length > 0) {
+      //console.debug('parseFromCategory', row, startIdx, pastedData);
+      const parsedLevel = this.refereeService.parseLevel(row[startIdx])
+      if (parsedLevel.category) {
+        pastedData.category = parsedLevel.category;
+      }
+    }
+    this.parseFromUpgrade(row, startIdx+1, pastedData);
+  }
+  parseFromUpgrade(row: string[], startIdx:number = 0, pastedData: PersonPastedData) {
+    if (row.length <= startIdx) return;
+    if (row[startIdx].length > 0) {
+      //console.debug('parseFromUpgrade', row, startIdx, pastedData);
+      if ('*' === row[startIdx] || 'YES' === row[startIdx].toUpperCase() || 'Y' === row[startIdx].toUpperCase()) {
+        pastedData.upgradePlusOne = true;
+      } else {
+        const parsedLevel = this.refereeService.parseLevel(row[startIdx]);
+        pastedData.upgradeBadge = parsedLevel.badge;
+        if (parsedLevel.system) pastedData.upgradeBadgeSystem = parsedLevel.system;
+      }
+    }
+    this.parseFromGender(row, startIdx+1, pastedData);
+  }
+  parseFromGender(row: string[], startIdx:number = 0, pastedData: PersonPastedData) {
+    if (row.length <= startIdx) return;
+    if (row[startIdx].length > 0) {
+      //console.debug('parseFromGender', row, startIdx, pastedData);
+      if ('M' === row[startIdx] || 'MALE' === row[startIdx].toUpperCase() || 'H' === row[startIdx].toUpperCase() || 'Homme' === row[startIdx].toUpperCase()) {
+        pastedData.gender = 'M'
+      } else if ('F' === row[startIdx] || 'FEMALE' === row[startIdx].toUpperCase() || 'Femme' === row[startIdx].toUpperCase()) {
+        pastedData.gender = 'F'
+      }
+    }
+  }
+
+  addTeamReferee() {
+    this.teams().find(team => {
+      // search if there already exists a referee linked to this team.
+      const refereeTeam = this.referees().find(referee => referee.isPR && referee.team?.id === team.id);
+      if (!refereeTeam) { // no referee linked to this team
+        this.addReferee(team);
+        return true;
+      }
+      return false;
     });
   }
-  onPasteFirstName(event: any, ri:number) {
-    event.preventDefault(); // Empêcher le collage natif
-    console.debug('Paste first names : begin');
-    const clipboardData = event.clipboardData || (window as any).clipboardData;
-    const pastedText = clipboardData.getData('text'); // Récupérer le texte collé
-    if (!pastedText) return;
-    this.referees.update(referees => {
-      // parse clipboard and filter values
-      const rows: string[][] = pastedText.split('\n')
-        .filter((r:string) => r.trim() !== '')
-        .map((r:string) => r.split('\t').filter(c => c.trim().length > 0))
-        .filter((r:string[]) => r.length > 0 && r[0].trim().length > 0);
-      let refereeIdx = ri;
-      rows.forEach((row:string[]) => {
-        while(refereeIdx < referees.length && referees[refereeIdx].isPR) refereeIdx++;
-        if (refereeIdx === referees.length) {
-          referees.push(this._addReferee());
-        }
-        const referee = referees[refereeIdx];
-        if (referee && referee.person && !referee.isPR) {
-          let personChanged = false;
-          if (row.length > 0 && row[0] && row[0].trim().length > 0) {
-            referee.person.firstName  = row[0].trim();
-            personChanged = true;
-          }
-          if (row.length > 1 && row[1] && row[1].trim().length > 0) {
-            referee.person.lastName   = row[1].trim();
-            personChanged = true;
-          }
-          if (row.length > 2 && row[2] && row[2].trim().length > 0) {
-            referee.person.shortName  = row[2].trim();
-            personChanged = true;
-          }
-          if (row.length === 2) { // paste first and and last Name => try to auto compute short name
-            if (this.autoComputeShortName(referee.person)) personChanged = true;
-          }
-          if (personChanged) {
-            this.personChanged(referee);
-          }
-        }
-        refereeIdx++;
-      })
-      return referees;
-    });
-  }
-  onPasteLastName(event: any, ri:number) {
-    event.preventDefault(); // Empêcher le collage natif
-    const clipboardData = event.clipboardData || (window as any).clipboardData;
-    const pastedText = clipboardData.getData('text'); // Récupérer le texte collé
-    if (!pastedText) return;
-    this.referees.update(referees => {
-      // parse clipboard and filter values
-      const rows: string[][] = pastedText.split('\n')
-        .filter((r:string) => r.trim() !== '')
-        .map((r:string) => r.split('\t').filter(c => c.trim().length > 0))
-        .filter((r:string[]) => r.length > 0 && r[0].trim().length > 0);
-      let refereeIdx = ri;
-      rows.forEach((row:string[]) => {
-        while(refereeIdx < referees.length && referees[refereeIdx].isPR) refereeIdx++;
-        if (refereeIdx === referees.length) {
-          referees.push(this._addReferee());
-        }
-        const referee = referees[refereeIdx];
-        if (referee && referee.person && !referee.isPR) {
-          let personChanged = false;
-          if (row.length > 0 && row[0] && row[0].trim().length > 0) {
-            referee.person.lastName  = row[0].trim();
-            personChanged = true;
-          }
-          if (row.length > 1 && row[1] && row[1].trim().length > 0) {
-            referee.person.shortName = row[1].trim();
-            personChanged = true;
-          }
-          if (row.length === 1) { // paste last name => try to auto compute short name
-            if (this.autoComputeShortName(referee.person)) personChanged = true;
-          }
-          if (personChanged) this.personChanged(referee);
-        }
-        refereeIdx++;
-      })
-      return referees;
-    });
-  }
-  onPasteLevel(event: any, ri:number) {
-    event.preventDefault(); // Empêcher le collage natif
-    const clipboardData = event.clipboardData || (window as any).clipboardData;
-    const pastedText = clipboardData.getData('text'); // Récupérer le texte collé
-    if (!pastedText) return;
-    this.referees.update(referees => {
-      // parse clipboard and filter values
-      const rows: string[][] = pastedText.split('\n')
-        .filter((r:string) => r.trim() !== '')
-        .map((r:string) => r.split('\t').filter(c => c.trim().length > 0))
-        .filter((r:string[]) => r.length > 0 && r[0].trim().length > 0);
-      let refereeIdx = ri;
-      rows.forEach((row:string[]) => {
-        while(refereeIdx < referees.length && referees[refereeIdx].isPR) refereeIdx++;
-        if (refereeIdx < referees.length && referees[refereeIdx]
-          && row.length > 0 && row[0] && row[0].trim().length > 0) {
-          const badge = Number.parseInt(row[0].trim());
-          if (!isNaN(badge) && badge >= 0 && badge <= referees[refereeIdx].attendee.referee!.badgeSystem) {
-            referees[refereeIdx].attendee.referee!.badge = badge;
-            this.attendeeChanged(referees[refereeIdx]);
-          }
-        }
-        refereeIdx++;
-      })
-      return referees;
-    });
-  }
+
   addAllTeamPR() {
-    console.log('TODO addAllTeamPR');
     this.teams().forEach(team => {
       // search if there already exists a referee linked to this team.
       const refereeTeam = this.referees().find(referee => referee.isPR && referee.team?.id === team.id);
@@ -696,26 +807,15 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
     });
   }
 
-  addTeamReferee() {
-
-  }
 
   upgradeChanged(referee: Referee, value:number) {
     if (referee.attendee.referee) {
       referee.attendee.referee.upgrade!.badge = value;
       this.attendeeChanged(referee);
     }
-    if (referee && referee.person) {
-      referee.person.referee = referee.attendee.referee;
-      this.personChanged(referee);
-    }
   }
   categoryChanged(referee: Referee) {
     this.attendeeChanged(referee);
-    if (referee && referee.person) {
-      referee.person.referee = referee.attendee.referee;
-      this.personChanged(referee);
-    }
   }
   toPrintedRefereeCategory(category: RefereeCategory) {
     switch(category) {
@@ -732,3 +832,15 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
     }
   }
 }
+interface PersonPastedData {
+  firstName?: string; // first name of the person
+  lastName?: string; // name of the person
+  currentBadge?: number; // badge
+  currentBadgeSystem?: number; // badge
+  upgradeBadge?: number; // badge
+  upgradeBadgeSystem?: number; // badge
+  upgradePlusOne?: boolean;
+  category?: RefereeCategory;
+  gender?: Gender;
+}
+  

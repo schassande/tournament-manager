@@ -97,6 +97,8 @@ The effective allocation configuration is the fragment `generalConfig` when defi
 
 - `maxGameInRowForReferee`: maximum consecutive game time for the referee.
 - `maxRefereeGameTimePerDay`: maximum referee game time during the relevant day.
+- A referee already allocated to another game in the same timeslot, identified by `(dayId, timeslotId)`, is not eligible for the target game.
+- A referee already allocated to the target game is not eligible again for that same game.
 
 Validated time-calculation rule: constraints use playing time, not complete timeslot duration. Breaks contained in a timeslot do not count. For consecutive adjacent timeslots, the evaluator sums the `playTime` of each period in those timeslots. For example, two 50-minute timeslots containing two 20-minute periods each represent 80 minutes of referee playing time.
 

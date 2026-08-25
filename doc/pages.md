@@ -53,13 +53,16 @@ Fonction :
 
 - formulaire de connexion email / mot de passe
 - connexion avec Google via une popup Firebase
-- option "remember me"
-- auto-login base sur les identifiants stockes en local
+- option "remember me" pour la connexion email / mot de passe
+- auto-login base sur la session Firebase persistée dans le navigateur
 
 Comportements notables :
 
 - appelle `UserService.login()`
 - appelle `UserService.loginWithGoogle()` pour la connexion Google
+- lance également la restauration de session au démarrage de l’application via `provideAppInitializer()`
+- attend la restauration asynchrone de la session Firebase avant de charger la fiche `Person`
+- ne stocke plus de mot de passe dans le stockage local ; les anciens identifiants locaux sont supprimés lors de la reconnexion
 - redirige vers `/home` en cas de succes
 - affiche un spinner et desactive le bouton Login pendant la connexion email / mot de passe afin d'eviter les appels multiples
 - crée automatiquement une fiche `Person` si l’adresse Google n’existe pas encore
@@ -108,6 +111,9 @@ Comportements notables :
 - enrichit l'affichage avec les labels region/pays
 - sauvegarde les filtres dans `localStorage`
 - clique sur une ligne : ouvre la home du tournoi
+- un tournoi nouvellement cree ou modifie devient automatiquement le tournoi courant apres une sauvegarde reussie
+- la suppression d'un tournoi supprime aussi, par requete `tournamentId`, ses attendees, matchs, affectations, allocations d'arbitrage, statistiques, votes d'upgrade et snapshots `fit-data`
+- une barre de progression modale reste affichee jusqu'a la fin de la suppression
 
 ## `/tournament/create`
 
@@ -185,7 +191,9 @@ Fonctionnalites principales :
 - liaison d'un player referee a une equipe
 - ouverture d'une popup detail d'edition
 - edition des disponibilites par jour, `PartDay` et timeslot dans l'onglet `Unavailability`
-- suppression
+- suppression individuelle
+- suppression de tous les arbitres après confirmation
+- capture du collage clavier au niveau du tableau lorsqu'aucun editeur de cellule n'est ouvert (traitement metier a implementer)
 
 Comportements notables :
 
