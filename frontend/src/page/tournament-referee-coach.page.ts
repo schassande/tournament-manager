@@ -41,7 +41,7 @@ import { DialogService } from 'primeng/dynamicdialog';
                 <ng-template #input>
                   <input pInputText type="text" [(ngModel)]="coach.attendee.person.firstName"
                   minlength="1" maxlength="30" style="width: 15rem;"
-                  (paste)="onPaste($event, ri, 'FN')" (change)="attendeeChanged(coach)"/>
+                  (paste)="onPaste($event, ri, 'FN')" (ngModelChange)="attendeeChanged(coach)"/>
                   </ng-template>
                 <ng-template #output>{{ coach.attendee.person.firstName }}</ng-template>
               </p-cellEditor>
@@ -52,7 +52,7 @@ import { DialogService } from 'primeng/dynamicdialog';
                 <ng-template #input>
                   <input pInputText type="text" [(ngModel)]="coach.attendee.person.lastName"
                     minlength="1" maxlength="30" style="width: 15rem;"
-                    (paste)="onPaste($event, ri, 'LN')"  (change)="attendeeChanged(coach)"/>
+                    (paste)="onPaste($event, ri, 'LN')"  (ngModelChange)="attendeeChanged(coach)"/>
                   </ng-template>
                 <ng-template #output>{{ coach.attendee.person.lastName }}</ng-template>
               </p-cellEditor>
@@ -64,17 +64,16 @@ import { DialogService } from 'primeng/dynamicdialog';
                 <ng-template #input>
                   <input pInputText type="text" [(ngModel)]="coach.attendee.person.shortName"
                     minlength="3" maxlength="6" style="width: 5rem;"
-                    (change)="attendeeChanged(coach)"/>
+                    (ngModelChange)="attendeeChanged(coach)"/>
                   </ng-template>
                 <ng-template #output>{{ coach.attendee.person.shortName }}</ng-template>
               </p-cellEditor>
             </td>
             <td [pEditableColumn]="coach.attendee.refereeCoach.badge" pEditableColumnField="refereeCoachLevel" style="text-align: center;">
               <p-cellEditor>
-                // Referee level selector
                 <ng-template #input>
                   <input pInputText type="number" [(ngModel)]="coach.attendee.refereeCoach.badge"
-                    (paste)="onPaste($event, ri, 'CB')" (change)="attendeeChanged(coach)"
+                    (paste)="onPaste($event, ri, 'CB')" (ngModelChange)="attendeeChanged(coach)"
                     min="0" max="{{coach!.attendee!.refereeCoach!.badgeSystem}}"/>
                 </ng-template>
                 <ng-template #output>L{{ coach.attendee.refereeCoach.badge }}/{{ coach.attendee.refereeCoach.badgeSystem }}</ng-template>
@@ -103,9 +102,6 @@ import { DialogService } from 'primeng/dynamicdialog';
           </tr>
       </ng-template>
     </p-table>
-    <div class="buttonPanel">
-      <p-button (click)="addRefereeCoach()" icon="pi pi-add" label="Add a referee coach"></p-button>
-    </div>
   }
     <p-confirmDialog [style]="{width: '40vw'}"></p-confirmDialog>
   `,
@@ -248,7 +244,7 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentPage {
     });
   }
   attendeeChanged(coach: RefereeCoach) {
-    console.debug('Saving coach', coach);
+    // console.debug('Saving coach', coach);
     this.autoComputeShortName(coach.attendee);
     this.attendeeService.save(coach.attendee).subscribe();
   }

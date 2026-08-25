@@ -194,6 +194,7 @@ Fonctionnalites principales :
 - suppression individuelle
 - suppression de tous les arbitres après confirmation
 - capture du collage clavier au niveau du tableau lorsqu'aucun editeur de cellule n'est ouvert (traitement metier a implementer)
+- le tableau utilise son propre defilement vertical ; sa ligne de titre reste visible pendant le defilement, sans ajouter un second defilement vertical a la page
 
 Comportements notables :
 
