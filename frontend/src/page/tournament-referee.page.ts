@@ -42,7 +42,8 @@ import { RefereeService } from '../service/referee.service';
       </div>
     </div>
 
-    <p-table [value]="referees()" stripedRows showGridlines [size]="'small'" tableLayout="fixed"
+    <p-table class="referee-table" [value]="referees()" stripedRows showGridlines [size]="'small'"
+      [scrollable]="true" scrollHeight="flex" tableLayout="fixed"
       (paste)="onTablePaste($event)">
       <ng-template #header>
           <tr class="tableRowTitle">
@@ -212,6 +213,21 @@ import { RefereeService } from '../service/referee.service';
       justify-content: space-between;
       gap: 1rem;
       margin-bottom: 5px;
+    }
+    .application-page {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 60px;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .referee-table {
+      flex: 1 1 auto;
+      min-height: 0;
     }
     .referee-toggle-group,
     .referee-actions {
@@ -427,7 +443,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
       const tournamentCountry = this.regionService.countryById(this.tournament()!.countryId);
       this.tournament()!.defaultRefereeBadgeSystem = tournamentCountry?.badgeSystem ?? 5;
     }
-    console.log('createReferee, pastedData=', pastedData);
+    //console.log('createReferee, pastedData=', pastedData);
     const attendee: Attendee = {
       id: '',
       tournamentId: this.tournament()!.id,
@@ -446,7 +462,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
 
     if (pastedData?.upgradePlusOne ) {
       pastedData.upgradeBadge = Math.min(attendee.referee!.badge + 1, attendee.referee!.badgeSystem);
-      console.log('createReferee upgradePlusOne', pastedData);
+      //console.log('createReferee upgradePlusOne', pastedData);
     }
 
     if (pastedData?.upgradeBadge != undefined && pastedData.upgradeBadge >= 0)  {
@@ -454,7 +470,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
         badge: pastedData?.upgradeBadge ?? 0, 
         badgeSystem: (pastedData?.upgradeBadgeSystem ?? this.tournament()!.defaultRefereeCoachBadgeSystem! ?? 5) as RefereeBadgeSystem,
       }
-      console.log('createReferee upgradeBadge', attendee.referee);
+      //console.log('createReferee upgradeBadge', attendee.referee);
     }
 
     if (team) { // Player referee
