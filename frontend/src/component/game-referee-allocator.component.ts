@@ -260,11 +260,13 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   }
   refereeSelected(refereeAttendeeId: string, idx:number) {
     const existingIdx = this.game().referees.findIndex(r => r.attendeeAlloc.attendeePosition === idx);
-    const rav: GameAttendeeAllocationView|undefined = existingIdx >= 0 ? this.game().referees[existingIdx] : undefined;
-    const referee = refereeAttendeeId ? this.referees().find(r => r?.id === refereeAttendeeId) : undefined;
+    const rav: GameAttendeeAllocationView|undefined = existingIdx >= 0 
+      ? this.game().referees[existingIdx] : undefined;
+    const referee = refereeAttendeeId 
+      ? this.referees().find(r => r?.id === refereeAttendeeId) : undefined;
     if (referee) {
       if (rav) {
-        console.log('Update allocation with the new selected referee', idx, referee, rav);
+        // console.log('Update allocation with the new selected referee', idx, referee, rav);
         rav.attendeeAlloc.attendeeId = referee.attendee.id;
         rav.referee = referee;
         this.gameAttendeeAllocationService.save(rav.attendeeAlloc).subscribe(() => {
@@ -272,7 +274,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           this.allocationChanged.emit();
         });
       } else {
-        console.log('Create allocation with the selected referee', idx, referee);
+        // console.log('Create allocation with the selected referee', idx, referee);
         const newAlloc: GameAttendeeAllocation = {
           id: '',
           lastChange: new Date().getTime(),
@@ -285,7 +287,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           gameId: this.game().game.id,
         }
         this.gameAttendeeAllocationService.save(newAlloc).subscribe(savedAlloc => {
-          console.log('Allocation created', savedAlloc);
+          // console.log('Allocation created', savedAlloc);
           // create the GAV view and add it to the game
           const gav = {attendeeAlloc: savedAlloc, referee: referee };
           this.game().referees.push(gav);
@@ -299,11 +301,11 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
         return;
       }
       if (rav) {
-        console.log('Delete the previous allocation', idx, rav);
+        // console.log('Delete the previous allocation', idx, rav);
         this.gameAttendeeAllocationService.delete(rav.attendeeAlloc.id);
         this.allocationChanged.emit();
       } else {
-        console.log('Still no referee selected on position ', idx);
+        // console.log('Still no referee selected on position ', idx);
       }
     }
     this.lastRefereeChange.set(this.lastRefereeChange() + 1);
@@ -321,7 +323,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   }
 
   coachesSelected(attendeeIds: string[]) {
-    console.debug('coachesSelected', attendeeIds);
+    // console.debug('coachesSelected', attendeeIds);
     const coaches: RefereeCoach[] = this.coaches().filter(c => c && attendeeIds.includes(c.attendee.id)) as RefereeCoach[];
 
     // search coaches to deallocate among already allocated coach
@@ -342,9 +344,9 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
     coaches.forEach((coach) => {
       const gav = this.game().coaches.find(gav => gav.attendeeAlloc.attendeeId === coach.attendee.id);
       if (gav) {
-        console.log('Already existing allocation with the selected coach', coach);
+        // console.log('Already existing allocation with the selected coach', coach);
       } else { // need to create the allocation
-        console.log('Create allocation with the selected coach', coach);
+        // console.log('Create allocation with the selected coach', coach);
         const newAlloc: GameAttendeeAllocation = {
           id: '',
           lastChange: new Date().getTime(),
@@ -357,7 +359,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           gameId: this.game().game.id,
         }
         this.gameAttendeeAllocationService.save(newAlloc).subscribe(savedAlloc => {
-          console.log('Allocation created', savedAlloc);
+          // console.log('Allocation created', savedAlloc);
           // create the GAV view and add it to the game
           const gav = {attendeeAlloc: savedAlloc, coach: coach };
           this.game().coaches.push(gav);
