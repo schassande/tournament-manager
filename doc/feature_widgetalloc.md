@@ -20,7 +20,7 @@ Seules les lignes du RefereeCoach et des arbitres peuvent être sélectionner.
 Lorsqu'une case est sélectionnée alors la bordure est plus épaisse et de la couleur bleu. L'épaisseur et la couleur seront définis dans un style CSS du composant.
 
 ## Colorisation / Highlight
-TODO
+Les sélecteurs de highlight sont indépendants de la sélection de la grille. Lorsqu'un utilisateur clique dans un sélecteur de highlight, la sélection courante de la grille est vidée afin que la saisie clavier serve au filtrage du sélecteur et ne puisse pas ouvrir ou piloter le `RefereeSelector` d'une case.
 
 ## Ligne des RefereeCoach
 

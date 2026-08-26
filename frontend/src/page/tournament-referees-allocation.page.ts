@@ -77,7 +77,7 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
         }
         @if (showReferees()) {
           @for(hlrId of highlightedRefereeIds(); let idx=$index; track idx) {
-            <p-select [options]="referees()" [ngModel]="highlightedRefereeIds()[idx]" (onChange)="onHhighlightedRefereeChange($event.value, idx)"
+            <p-select [options]="referees()" [ngModel]="highlightedRefereeIds()[idx]" (click)="clearSelectionForHighlight()" (onChange)="onHhighlightedRefereeChange($event.value, idx)"
               optionValue="id"
               style="width: 246px; margin: 0 2px;"
               [filter]="true" filterBy="search" size="small"
@@ -670,6 +670,10 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     }
     this.highlightedRefereeIds.set(newValue);
     // console.debug('Highlighted[', idx,'] changed from', previousValue, 'to', this.highlightedRefereeIds()[idx]);
+  }
+  /** Clears the grid selection before typing in a referee highlight selector. */
+  clearSelectionForHighlight(): void {
+    this.selectionService.setCurrentSelection(null);
   }
   private loadFragmentAllocation(refereeAllocationId: string): Observable<FragmentRefereeAllocation|undefined> {
     // console.debug('loadAllocation', refereeAllocationId);
