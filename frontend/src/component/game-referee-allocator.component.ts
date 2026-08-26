@@ -7,7 +7,7 @@ import { GameAttendeeAllocationView, GameView } from '../allocation-data-model';
 
 import { GameAttendeeAllocationService } from '../service/game-attendee-allocation.service';
 import { SelectModule } from 'primeng/select';
-import { MultiSelectModule } from 'primeng/multiselect';
+import { MultiSelect, MultiSelectModule } from 'primeng/multiselect';
 import { ChipModule } from 'primeng/chip';
 import { AllocationAction, SelectionService } from '../service/selection.service';
 import { Subscription } from 'rxjs';
@@ -26,11 +26,13 @@ import { TooltipModule } from 'primeng/tooltip';
     <div class="teamsCell" [attr.data-allocation-game]="game().game.id" [attr.tabindex]="gameProblemMessage() ? 0 : null" [pTooltip]="gameProblemMessage()" tooltipPosition="top" style="{{teamsCellStyle()}}">{{game().division!.shortName}}: {{game().homeTeam?.shortName}} - {{game().awayTeam?.shortName}}</div>
     @if (showCoaches() && coaches()) {
       <div class="coaches {{ coachCellSelected() ? 'selectable':''}}">
-        <p-multiselect [options]="availableCoaches()" [ngModel]="_gameCoachIds" optionLabel="shortLabel" optionValue="id"
+        <p-multiselect #coachMultiselect [options]="availableCoaches()" [ngModel]="_gameCoachIds" optionLabel="shortLabel" optionValue="id"
           style="text-align: center;" size="small"
           [maxSelectedLabels]="3" [selectionLimit]="3"
           style="width: 100%" display="chip"
-          class="auto-grow" [filter]="true" (onChange)="coachesSelected($event.value)">
+          class="auto-grow" [filter]="true"
+          (onChange)="coachesSelected($event.value); closeCoachMultiselect(coachMultiselect)"
+          (onRemove)="closeCoachMultiselect(coachMultiselect)">
           <ng-template let-coach #item>
             <span class="coachShortName"
               [style.color]="coach.attendee.refereeCoach?.fontColor"
@@ -435,6 +437,9 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           // create the GAV view and add it to the game
           const gav = {attendeeAlloc: savedAlloc, coach: coach };
           this.game().coaches.push(gav);
+          // `game.coaches` is a mutable view model, so the computed value does
+          // not invalidate itself when the asynchronous save completes.
+          this.synchronizeCoachSelection();
           this.allocationChanged.emit();
         });
       } else {
@@ -442,6 +447,17 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
       }
     });
     this.lastCoachChange.set(this.lastCoachChange() + 1);
+  }
+
+  /** Refreshes the multiselect model after a persisted coach allocation changes the game view. */
+  private synchronizeCoachSelection(): void {
+    this.lastCoachChange.update(change => change + 1);
+    this._gameCoachIds = this.gameCoachIds();
+  }
+
+  /** Closes the coach multiselect after a selection or chip removal. */
+  closeCoachMultiselect(multiselect: MultiSelect): void {
+    multiselect.hide();
   }
 }
 

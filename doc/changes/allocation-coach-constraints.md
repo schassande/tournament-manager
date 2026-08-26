@@ -281,6 +281,18 @@ Coach availability and constraints apply to manual allocation and to any future 
 - The existing `GameAttendeeAllocation.half` representation is used to verify the one-half-per-game condition for the two-field case.
 - The active allocation page has a complete in-memory `GameView[]` snapshot for the games whose coach assignments affect eligibility.
 
+### Allocation display synchronization
+
+After a coach allocation is successfully persisted, the allocation grid must refresh
+the multiselect model from the updated in-memory game view. This is required because
+the game view is updated by mutation in the asynchronous save callback; without an
+explicit refresh, the first newly allocated coach is stored correctly but only appears
+selected after a page reload.
+
+The coach multiselect closes after each coach selection or deselection. This keeps
+the common one-coach allocation flow compact while still allowing additional coaches
+to be added by reopening the control.
+
 ### Recommended implementation breakdown
 
 1. Extract a pure typed coach eligibility evaluator that checks attendee availability, resolves configuration, and evaluates same-timeslot and consecutive-time rules.
