@@ -22,3 +22,8 @@
   border-radius: 8px;
 }
 
+/* ngx-colors renders its panel under document.body with an inline z-index of 2000. */
+.referee-coach-color-picker-overlay {
+  z-index: 20000 !important;
+}
+

@@ -59,7 +59,9 @@ import { DialogService } from 'primeng/dynamicdialog';
             </td>
 
             <td [pEditableColumn]="coach.attendee.person?.shortName" pEditableColumnField="shortName"
-              style="text-align: center; color: {{coach!.attendee!.refereeCoach!.fontColor}}; background-color: {{coach!.attendee!.refereeCoach!.backgroundColor}}">
+              style="text-align: center; 
+                  color: {{coach!.attendee!.refereeCoach?.fontColor}}; 
+                  background-color: {{coach!.attendee!.refereeCoach?.backgroundColor}}">
               <p-cellEditor>
                 <ng-template #input>
                   <input pInputText type="text" [(ngModel)]="coach.attendee.person.shortName"

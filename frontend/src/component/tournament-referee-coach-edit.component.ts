@@ -6,8 +6,11 @@ import { AutoCompleteModule } from 'primeng/autocomplete';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FieldsetModule } from 'primeng/fieldset';
+import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TabsModule } from 'primeng/tabs';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { NgxColorsModule } from 'ngx-colors';
 import { AttendeeUnavailabilityComponent } from './attendee-unavailability.component';
 
 @Component({
@@ -18,12 +21,15 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
     CommonModule,
     FieldsetModule,
     FormsModule,
+    InputTextModule,
+    NgxColorsModule,
     SelectModule,
     TabsModule,
+    ToggleSwitchModule,
   ],
   template: `
 <div>
-@if (coach?.attendee.person) {
+@if (coach?.attendee?.person) {
   <p-tabs value="general">
     <p-tablist>
       <p-tab value="general">General</p-tab>
@@ -40,7 +46,7 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
               <div class="font-medium px-3 py-2">Found persons</div>
             </ng-template>
             <ng-template let-person #item>
-              <div>{{ personToLabel(person) }})</div>
+              <div>{{ personToLabel(person) }}</div>
             </ng-template>
           </p-autocomplete>
         </div>
@@ -88,7 +94,7 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
             <label for="refereeBadgeSystem">Badge System</label>
             <input id="refereeBadgeSystem" type="number" pInputText
               [(ngModel)]="coach!.attendee!.refereeCoach!.badgeSystem"
-              min="3" max="6" style="width: 2rem;" (change)="adjustUpgrade()"/>
+              min="3" max="6" style="width: 4rem;" (change)="adjustUpgrade()"/>
               <span>levels</span>
             <span class="inputInfo" *ngIf="refereeCoachCountry!.badgeSystem! > 0">Country badge system: {{refereeCoachCountry!.badgeSystem}}</span>
           </div>
@@ -96,7 +102,7 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
             <label for="refereeCoachBadge">Badge Level</label>
             <input id="refereeCoachBadge" type="number" pInputText
               [(ngModel)]="coach!.attendee!.refereeCoach!.badge" (change)="adjustUpgrade()"
-              min="0" max="{{coach!.attendee!.refereeCoach!.badgeSystem}}" style="width: 2rem;"/>
+              min="0" max="{{coach!.attendee!.refereeCoach!.badgeSystem}}" style="width: 4rem;"/>
           </div>
           <div class="form-field" *ngIf="coach!.attendee!.refereeCoach!.badge < coach!.attendee!.refereeCoach!.badgeSystem">
             <label for="refereeBadge">Upgrade?</label>
@@ -110,12 +116,16 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
               style="margin-left: 5px; width: 2rem;"
               *ngIf="refereeCoachUpgrade"/>
           </div>
-          <div class="form-field">
-            <label for="background">Color</label>
-            <ngx-colors class="colorPicker" ngx-colors-trigger [(ngModel)]="coach!.attendee!.refereeCoach!.fontColor"></ngx-colors>
-            <ngx-colors class="colorPicker" ngx-colors-trigger [(ngModel)]="coach!.attendee!.refereeCoach!.backgroundColor"></ngx-colors>
-            <span style="margin-left: 10px; padding: 10px; color: {{coach!.attendee!.refereeCoach!.fontColor}}; background-color: {{coach!.attendee!.refereeCoach!.backgroundColor}}">{{coach!.attendee.person!.shortName}}</span>
-          </div>
+          @if (coach?.attendee?.refereeCoach) {
+            <div class="form-field">
+              <label for="background">Color</label>
+              Font: <ngx-colors class="colorPicker" ngx-colors-trigger overlayClassName="referee-coach-color-picker-overlay"
+                [(ngModel)]="coach!.attendee!.refereeCoach!.fontColor"></ngx-colors>
+              Bakckground: <ngx-colors class="colorPicker" ngx-colors-trigger overlayClassName="referee-coach-color-picker-overlay"
+                [(ngModel)]="coach!.attendee!.refereeCoach!.backgroundColor"></ngx-colors>
+              <span style="margin-left: 10px; padding: 10px; color: {{coach!.attendee!.refereeCoach!.fontColor}}; background-color: {{coach!.attendee!.refereeCoach!.backgroundColor}}">{{coach!.attendee.person!.shortName}}</span>
+            </div>
+          }
         </p-fieldset>
       </p-tabpanel>
 
@@ -182,19 +192,24 @@ export class TournamentRefereeCoachEditComponent  implements OnInit {
     });
   }
   onSelectPerson(person: Person) {
-    // console.log('onSelectPerson', person);
     const attendee = this.coach!.attendee;
-    attendee.person!.personId = person.id;
-    attendee.person!.firstName = person.firstName;
-    attendee.person!.lastName = person.lastName;
-    attendee.person!.shortName = person.shortName;
-    attendee.person!.countryId = person.countryId;
-    attendee.person!.regionId = person.regionId;
-    attendee.person!.email = person.email;
-    attendee.person!.phone = person.phone;
-    attendee.person!.gender = person.gender;
-    attendee.referee = person.referee
-    attendee.refereeCoach = person.refereeCoach
+    // console.log('onSelectPerson', person, attendee.person);
+    attendee.person!.personId = person.id ?? '';
+    attendee.person!.firstName = person.firstName ?? '';
+    attendee.person!.lastName = person.lastName ?? '';
+    attendee.person!.shortName = person.shortName ?? '';
+    attendee.person!.countryId = person.countryId ?? '';
+    attendee.person!.regionId = person.regionId ?? '';
+    attendee.person!.email = person.email ?? '';
+    attendee.person!.phone = person.phone ?? '';
+    attendee.person!.gender = person.gender ?? 'M';
+    attendee.refereeCoach = person.refereeCoach ?? { 
+      backgroundColor: 'white', 
+      fontColor: 'black', 
+      badge: 0, 
+      badgeSystem: 5,
+      upgrade: {badge: 0, badgeSystem: 5}
+    };
   }
   personToLabel(person:Person): string {
     const country = this.regionService.countryById(person.countryId)
