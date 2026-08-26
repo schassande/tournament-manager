@@ -3,7 +3,6 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   Attendee,
-  Person,
   RefereeBadgeColor,
   RefereeBadgeColors,
   RefereeCategory,
@@ -24,38 +23,18 @@ import { RefereeUpgradeCoachVoteService } from '../service/referee-upgrade-coach
 import { RefereeUpgradePanelVoteService } from '../service/referee-upgrade-panel-vote.service';
 import { UserService } from '../service/user.service';
 
-interface RefereeUpgradeReferee {
-  attendee: Attendee;
-}
-
-interface RefereeUpgradeCoach {
-  attendee: Attendee;
-}
-
-interface CoachVoteRow extends RefereeUpgradeReferee {
-  vote: UpgradeVote;
-  commentText: string;
-}
-
-interface PanelVoteRow extends RefereeUpgradeReferee {
-  panelVote: RefereeUpgradePanelVote;
-  coachVotes: Map<string, UpgradeVote>;
-}
-
-interface FollowUpRow {
-  coachShortName: string;
-  lastName: string;
-  firstName: string;
-  badge: number;
-  badgeSystem?: number;
-  comments?: string[];
-}
-
 /** Page used by referee coaches to evaluate and deliberate referee upgrades. */
 @Component({
   selector: 'app-tournament-referee-upgrade',
   standalone: true,
-  imports: [CommonModule, FormsModule, MultiSelectModule, SelectModule, TableModule, TabsModule, TextareaModule],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    MultiSelectModule, 
+    SelectModule, 
+    TableModule, 
+    TabsModule, 
+    TextareaModule],
   template: `
     @if (tournament() && dataLoaded()) {
       <div class="page">
@@ -92,21 +71,84 @@ interface FollowUpRow {
 
             <p-tabpanel value="panel">
               <div class="filters">
-                <div class="filter-field"><label for="panel-badge-filter">Badge</label><p-select inputId="panel-badge-filter" [options]="badgeOptions" [ngModel]="badgeFilter()" (ngModelChange)="badgeFilter.set($event)" optionLabel="label" optionValue="value" placeholder="Any badge" /></div>
-                <div class="filter-field"><label for="panel-category-filter">Category</label><p-select inputId="panel-category-filter" [options]="categoryOptions" [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)" optionLabel="label" optionValue="value" placeholder="Any category" /></div>
+                <div class="filter-field">
+                  <label for="panel-badge-filter">Badge</label>
+                  <p-select inputId="panel-badge-filter" [options]="badgeOptions" 
+                    [ngModel]="badgeFilter()" (ngModelChange)="badgeFilter.set($event)" 
+                    optionLabel="label" optionValue="value" placeholder="Any badge" />
+                </div>
+                <div class="filter-field">
+                  <label for="panel-category-filter">Category</label>
+                  <p-select inputId="panel-category-filter" [options]="categoryOptions" 
+                    [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)" 
+                    optionLabel="label" optionValue="value" placeholder="Any category" />
+                </div>
               </div>
               <div class="wide-table">
                 <p-table [value]="panelRows()" stripedRows showGridlines [scrollable]="true" scrollHeight="60vh" frozenWidth="260px">
-                  <ng-template #header><tr><th pFrozenColumn>Last name</th><th pFrozenColumn>First name</th><th>Badge</th><th>Category</th><th>Gender</th><th>Panel Vote</th>@for (coach of coaches(); track coach.attendee.id) {<th>{{ coach.person?.shortName }} ({{ coach.attendee.refereeCoach?.badge }}/{{ coach.attendee.refereeCoach?.badgeSystem }})</th>}<th>Need to See</th><th>Need to talk</th><th>Comment</th></tr></ng-template>
+                  <ng-template #header>
+                    <tr>
+                      <th pFrozenColumn>Last name</th>
+                      <th pFrozenColumn>First name</th>
+                      <th>Badge</th>
+                      <th>Category</th>
+                      <th>Gender</th>
+                      <th>Panel Vote</th>
+                      @for (coach of coaches(); track coach.attendee.id) {
+                        <th>{{ coach.attendee.person?.shortName }} 
+                          ({{ coach.attendee.refereeCoach?.badge }}/{{ coach.attendee.refereeCoach?.badgeSystem }})
+                        </th>
+                      }
+                      <th>Need to See</th>
+                      <th>Need to talk</th>
+                      <th>Comment</th>
+                    </tr>
+                  </ng-template>
                   <ng-template #body let-row>
                     <tr>
-                      <td pFrozenColumn [style.background-color]="badgeColor(row).background" [style.color]="badgeColor(row).font">{{ row.person?.lastName }}</td><td pFrozenColumn [style.background-color]="badgeColor(row).background" [style.color]="badgeColor(row).font">{{ row.person?.firstName }}</td>
-                      <td [style.background-color]="badgeColor(row).background" [style.color]="badgeColor(row).font"><span class="badge-value">{{ currentBadge(row) }}/{{ row.attendee.referee?.badgeSystem }}</span></td><td>{{ categoryLabel(row.attendee.referee?.category) }}</td><td>{{ row.person?.gender }}</td>
-                      <td class="editable-cell" [style.background-color]="voteColor(row.panelVote.vote).background" [style.color]="voteColor(row.panelVote.vote).font"><p-select [options]="voteOptions" [fluid]="true" [styleClass]="voteClass(row.panelVote.vote)" appendTo="body" [(ngModel)]="row.panelVote.vote" [disabled]="!canEdit()" (onChange)="savePanelVote(row)" /></td>
-                      @for (coach of coaches(); track coach.attendee.id) {@let coachVote = row.coachVotes.get(coach.attendee.id) ?? 'Voting'; <td [style.background-color]="voteColor(coachVote).background" [style.color]="voteColor(coachVote).font">{{ coachVote }}</td>}
-                      <td class="editable-cell"><p-multiselect [options]="coaches()" [fluid]="true" appendTo="body" optionLabel="person.shortName" optionValue="attendee.id" [(ngModel)]="row.panelVote.needToSee" [disabled]="!canEdit()" (onChange)="savePanelVote(row)" /></td>
-                      <td class="editable-cell"><p-select [options]="talkCoachOptions()" [fluid]="true" appendTo="body" optionLabel="label" optionValue="value" [(ngModel)]="row.panelVote.needToTalk" [disabled]="!canEdit() || row.panelVote.vote !== 'Not yet'" (onChange)="savePanelVote(row)" /></td>
-                      <td class="comments">@for (line of aggregateComments(row); track $index) {<div>• {{ line }}</div>}</td>
+                      <td pFrozenColumn [style.background-color]="badgeColor(row).background" 
+                        [style.color]="badgeColor(row).font">
+                        {{ row.person?.lastName }}
+                      </td>
+                      <td pFrozenColumn [style.background-color]="badgeColor(row).background" 
+                        [style.color]="badgeColor(row).font">
+                        {{ row.person?.firstName }}
+                      </td>
+                      <td [style.background-color]="badgeColor(row).background" [style.color]="badgeColor(row).font">
+                        <span class="badge-value">{{ currentBadge(row) }}/{{ row.attendee.referee?.badgeSystem }}</span>
+                      </td>
+                      <td>{{ categoryLabel(row.attendee.referee?.category) }}</td>
+                      <td>{{ row.person?.gender }}</td>
+                      <td class="editable-cell" [style.background-color]="voteColor(row.panelVote.vote).background" 
+                        [style.color]="voteColor(row.panelVote.vote).font">
+                        <p-select [options]="voteOptions" [fluid]="true" 
+                          [styleClass]="voteClass(row.panelVote.vote)" 
+                          appendTo="body" [(ngModel)]="row.panelVote.vote" 
+                          [disabled]="!canEdit()" (onChange)="savePanelVote(row)" />
+                      </td>
+                      @for (coach of coaches(); track coach.attendee.id) {
+                        @let coachVote = row.coachVotes.get(coach.attendee.id) ?? 'Voting'; 
+                        <td [style.background-color]="voteColor(coachVote).background" 
+                          [style.color]="voteColor(coachVote).font">
+                          {{ coachVote }}
+                        </td>
+                      }
+                      <td class="editable-cell"><p-multiselect [options]="coaches()" [fluid]="true" 
+                        appendTo="body" optionLabel="person.shortName" optionValue="attendee.id" 
+                        [(ngModel)]="row.panelVote.needToSee" [disabled]="!canEdit()" 
+                        (onChange)="savePanelVote(row)" />
+                      </td>
+                      <td class="editable-cell"><p-select [options]="talkCoachOptions()" [fluid]="true" 
+                        appendTo="body" optionLabel="label" optionValue="value" 
+                        [(ngModel)]="row.panelVote.needToTalk" 
+                        [disabled]="!canEdit() || row.panelVote.vote !== 'Not yet'" 
+                        (onChange)="savePanelVote(row)" />
+                      </td>
+                      <td class="comments">
+                        @for (line of aggregateComments(row); track $index) {
+                          <div>• {{ line }}</div>
+                        }
+                      </td>
                     </tr>
                   </ng-template>
                 </p-table>
@@ -413,8 +455,11 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
 
   private aggregateCommentsFor(refereeAttendeeId: string): string[] {
     return this.coaches().flatMap((coach) => {
-      const vote = this.coachVotes().find((item) => item.refereeAttendeeId === refereeAttendeeId && item.coachAttendeeId === coach.attendee.id);
-      return (vote?.comments ?? []).filter(Boolean).map((comment) => `${coach.attendee.person?.shortName ?? ''}: ${comment}`);
+      const vote = this.coachVotes().find((item) => 
+        item.refereeAttendeeId === refereeAttendeeId 
+        && item.coachAttendeeId === coach.attendee.id);
+      return (vote?.comments ?? []).filter(Boolean)
+        .map((comment) => `${coach.attendee.person?.shortName ?? ''}: ${comment}`);
     });
   }
 
@@ -437,4 +482,31 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
   private upsertPanelVote(vote: RefereeUpgradePanelVote): void { 
     this.panelVotes.update((votes) => [...votes.filter((item) => item.id !== vote.id), vote]); 
   }
+}
+
+interface RefereeUpgradeReferee {
+  attendee: Attendee;
+}
+
+interface RefereeUpgradeCoach {
+  attendee: Attendee;
+}
+
+interface CoachVoteRow extends RefereeUpgradeReferee {
+  vote: UpgradeVote;
+  commentText: string;
+}
+
+interface PanelVoteRow extends RefereeUpgradeReferee {
+  panelVote: RefereeUpgradePanelVote;
+  coachVotes: Map<string, UpgradeVote>;
+}
+
+interface FollowUpRow {
+  coachShortName: string;
+  lastName: string;
+  firstName: string;
+  badge: number;
+  badgeSystem?: number;
+  comments?: string[];
 }
