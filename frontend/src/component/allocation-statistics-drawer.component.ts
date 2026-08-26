@@ -5,6 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { DrawerModule } from 'primeng/drawer';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { SelectModule } from 'primeng/select';
@@ -31,6 +33,7 @@ import { RefereeAllocationStatisticsApiService } from '../service/referee-alloca
 import { FragmentRefereeAllocationStatisticsService } from '../service/fragment-referee-allocation-statistics.service';
 import { TournamentRefereeAllocationStatisticsService } from '../service/tournament-referee-allocation-statistics.service';
 import { UserService } from '../service/user.service';
+import { RefereeService } from '../service/referee.service';
 
 const KEY_STATISTICS_DRAWER_WIDTH = 'tournament-referee-allocation.statistics-drawer-width';
 
@@ -52,6 +55,8 @@ interface CoachStatisticsRow {
     CommonModule,
     DrawerModule,
     FormsModule,
+    IconFieldModule,
+    InputIconModule,
     InputTextModule,
     RadioButtonModule,
     SelectModule,
@@ -84,20 +89,29 @@ interface CoachStatisticsRow {
       ></ng-template>
       <div class="statistics-filters">
         <div class="statistics-search-row">
-          <input
-            pInputText
-            type="text"
-            placeholder="Search referee"
-            [ngModel]="search()"
-            (ngModelChange)="search.set($event)"
-          />
+          <p-iconfield class="statistics-search-field">
+            <input
+              pInputText
+              type="text"
+              placeholder="Search referee"
+              [ngModel]="search()"
+              (ngModelChange)="search.set($event)"
+            />
+            @if (search()) {
+              <button
+                type="button"
+                class="p-inputicon pi pi-times statistics-search-clear"
+                aria-label="Clear referee search"
+                (click)="clearSearch()"
+              ></button>
+            }
+          </p-iconfield>
           <div class="statistics-filter-field statistics-scope-field">
-            <span>Scope</span
-            ><p-select
+            <p-select
               class="statistics-scope-select"
               [options]="scopes()"
               [ngModel]="scope()"
-              (ngModelChange)="scope.set($event)"
+              (ngModelChange)="scope.set($event ?? 'fragment')"
               optionLabel="label"
               optionValue="value"
             />
@@ -105,26 +119,31 @@ interface CoachStatisticsRow {
         </div>
         <div class="statistics-options-row">
           <div class="statistics-filter-field">
-            <span>Level</span><p-select [options]="levels" [ngModel]="level()" (ngModelChange)="level.set($event)" />
-          </div>
-          <div class="statistics-filter-field">
-            <span>Category</span
-            ><p-select
-              [options]="categories"
-              [ngModel]="category()"
-              (ngModelChange)="category.set($event)"
-              optionLabel="label"
-              optionValue="value"
+            <p-select
+              [options]="levels"
+              [ngModel]="level()"
+              (ngModelChange)="level.set($event ?? 'All levels')"
+              [showClear]="true"
             />
           </div>
           <div class="statistics-filter-field">
-            <span>Gender</span
-            ><p-select
-              [options]="genders"
-              [ngModel]="gender()"
-              (ngModelChange)="gender.set($event)"
+            <p-select
+              [options]="categories"
+              [ngModel]="category()"
+              (ngModelChange)="category.set($event ?? 'All')"
               optionLabel="label"
               optionValue="value"
+              [showClear]="true"
+            />
+          </div>
+          <div class="statistics-filter-field">
+            <p-select
+              [options]="genders"
+              [ngModel]="gender()"
+              (ngModelChange)="gender.set($event ?? 'All')"
+              optionLabel="label"
+              optionValue="value"
+              [showClear]="true"
             />
           </div>
           <label class="statistics-checkbox"
@@ -160,8 +179,10 @@ interface CoachStatisticsRow {
               <th pSortableColumn="games">Games <p-sortIcon field="games" /></th>
               <th pSortableColumn="badField">Bad field <p-sortIcon field="badField" /></th>
               <th pSortableColumn="video">Video <p-sortIcon field="video" /></th>
-              <th pSortableColumn="firstSlot">First slot <p-sortIcon field="firstSlot" /></th>
-              <th pSortableColumn="lastSlot">Last slot <p-sortIcon field="lastSlot" /></th></tr></ng-template
+              @if (scope() === 'fragment') {
+                <th pSortableColumn="firstSlot">First slot <p-sortIcon field="firstSlot" /></th>
+                <th pSortableColumn="lastSlot">Last slot <p-sortIcon field="lastSlot" /></th>
+              }</tr></ng-template
           ><ng-template #body let-row
             ><tr>
               <td>
@@ -180,12 +201,14 @@ interface CoachStatisticsRow {
               <td>{{ row.games }}</td>
               <td>{{ row.badField }}</td>
               <td>{{ row.video }}</td>
-              <td [class.statistics-first-slot]="isFirstDaySlot(row.firstTimeSlotIdx)">{{ row.firstSlot }}</td>
-              <td [class.statistics-last-slot]="isLastDaySlot(row.lastTimeSlotIdx)">{{ row.lastSlot }}</td>
+              @if (scope() === 'fragment') {
+                <td [class.statistics-first-slot]="isFirstDaySlot(row.firstTimeSlotIdx)">{{ row.firstSlot }}</td>
+                <td [class.statistics-last-slot]="isLastDaySlot(row.lastTimeSlotIdx)">{{ row.lastSlot }}</td>
+              }
             </tr></ng-template
           ><ng-template #emptymessage
             ><tr>
-              <td colspan="6">No statistics available</td>
+              <td [attr.colspan]="scope() === 'fragment' ? 6 : 4">No statistics available</td>
             </tr></ng-template
           ></p-table
         >
@@ -483,6 +506,14 @@ interface CoachStatisticsRow {
         min-width: 0;
         width: 100%;
       }
+      .statistics-search-field {
+        width: 100%;
+      }
+      .statistics-search-clear {
+        border: 0;
+        cursor: pointer;
+        padding: 0;
+      }
       .statistics-scope-field {
         justify-self: end;
       }
@@ -642,6 +673,7 @@ export class AllocationStatisticsDrawerComponent {
   readonly tournamentAllocation = input.required<TournamentRefereeAllocation>();
   readonly referees = input.required<(Referee | undefined)[]>();
   readonly coaches = input.required<(RefereeCoach | undefined)[]>();
+  readonly refreshToken = input(0);
   readonly visibleChange = output<boolean>();
   readonly gameSelected = output<{ gameId: string; refereeAttendeeId: string }>();
   private readonly gameService = inject(GameService);
@@ -651,8 +683,9 @@ export class AllocationStatisticsDrawerComponent {
   private readonly fragmentService = inject(FragmentRefereeAllocationStatisticsService);
   private readonly tournamentService = inject(TournamentRefereeAllocationStatisticsService);
   private readonly userService = inject(UserService);
+  private readonly refereeService = inject(RefereeService);
   readonly search = signal('');
-  readonly level = signal('All');
+  readonly level = signal('All levels');
   readonly category = signal('All');
   readonly gender = signal('All');
   readonly upgradeOnly = signal(false);
@@ -663,16 +696,16 @@ export class AllocationStatisticsDrawerComponent {
   readonly gamesSort = signal<'asc' | 'desc' | 'name'>('asc');
   readonly buddiesSort = signal<'asc' | 'desc' | 'name'>('asc');
   readonly refreshing = signal(false);
-  readonly levels = ['All', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6'];
+  readonly levels = ['All levels', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6'];
   readonly categories = [
-    { label: 'All', value: 'All' },
+    { label: 'All categories', value: 'All' },
     { label: 'Junior', value: 'J' },
     { label: 'Open', value: 'O' },
     { label: 'Senior', value: 'S' },
     { label: 'Master', value: 'M' },
   ];
   readonly genders = [
-    { label: 'All', value: 'All' },
+    { label: 'All genders', value: 'All' },
     { label: 'Male', value: 'M' },
     { label: 'Female', value: 'F' },
   ];
@@ -681,6 +714,7 @@ export class AllocationStatisticsDrawerComponent {
   readonly tournamentStatistics = signal<TournamentRefereeAllocationStatistics[]>([]);
   readonly games = signal<Game[]>([]);
   readonly allocations = signal<GameAttendeeAllocation[]>([]);
+  readonly tournamentReferees = signal<Referee[]>([]);
   readonly drawerWidth = signal<number | undefined>(undefined);
   readonly drawerStyle = computed(() => ({
     width: `${this.drawerWidth() ?? this.defaultDrawerWidthPixels()}px`,
@@ -708,7 +742,7 @@ export class AllocationStatisticsDrawerComponent {
       const referee = this.referees().find((item) => item?.attendee.id === stat.refereeAttendeeId);
       const info = referee?.attendee.referee;
       return (
-        (this.level() === 'All' || `Level ${info?.badge}` === this.level()) &&
+        (this.level() === 'All levels' || `Level ${info?.badge}` === this.level()) &&
         (this.category() === 'All' || info?.category === this.category()) &&
         (this.gender() === 'All' || referee?.attendee.person?.gender === this.gender()) &&
         (!this.upgradeOnly() || (info?.upgrade?.badge ?? 0) > 0) &&
@@ -757,6 +791,7 @@ export class AllocationStatisticsDrawerComponent {
   constructor() {
     this.loadDrawerWidthPreference();
     effect(() => {
+      this.refreshToken();
       if (this.visible()) void this.load();
     });
   }
@@ -850,11 +885,12 @@ export class AllocationStatisticsDrawerComponent {
   /** Loads persisted statistics and the tournament reference data used by the cards. */
   private async load(): Promise<void> {
     const id = this.tournament().id;
-    const [fragment, tournament, games, allocations] = await Promise.all([
+    const [fragment, tournament, games, allocations, tournamentReferees] = await Promise.all([
       firstValueFrom(this.fragmentService.byTournament(id)),
       firstValueFrom(this.tournamentService.byTournament(id)),
       firstValueFrom(this.gameService.byTournament(id)),
       firstValueFrom(this.allocationService.byTournament(id)),
+      firstValueFrom(this.refereeService.findReferees(this.tournament())),
     ]);
     this.fragmentStatistics.set(fragment.filter((item) => item.fragmentRefereeAllocationId === this.allocation().id));
     this.tournamentStatistics.set(
@@ -862,30 +898,88 @@ export class AllocationStatisticsDrawerComponent {
     );
     this.games.set(games);
     this.allocations.set(allocations);
+    this.tournamentReferees.set(tournamentReferees);
+    console.debug('[AllocationStatistics] Loaded drawer data', {
+      tournamentId: id,
+      fragmentAllocationId: this.allocation().id,
+      fragmentStatistics: fragment.length,
+      currentFragmentStatistics: this.fragmentStatistics().length,
+      tournamentStatistics: this.tournamentStatistics().length,
+      games: games.length,
+      allocations: allocations.length,
+      tournamentReferees: tournamentReferees.length,
+    });
   }
+  /** Returns identifiers of referees available for the displayed allocation period. */
+  private periodRefereeIds(): string[] {
+    return [
+      ...new Set(this.referees().filter((referee): referee is Referee => referee !== undefined).map((referee) => referee.attendee.id)),
+    ];
+  }
+
+  /** Returns identifiers of all referees registered for the tournament. */
+  private tournamentRefereeIds(): string[] {
+    return [...new Set(this.tournamentReferees().map((referee) => referee.attendee.id))];
+  }
+
+  /** Clears the referee search text. */
+  clearSearch(): void {
+    this.search.set('');
+  }
+
   /** Recomputes all statistics in groups of ten requests. */
   async refreshAll(): Promise<void> {
-    if (this.refreshing()) return;
+    if (this.refreshing()) {
+      console.debug('[AllocationStatistics] Ignored refresh because one is already running');
+      return;
+    }
     this.refreshing.set(true);
     try {
       await this.load();
-      const stats = this.scope() === 'fragment' ? this.fragmentStatistics() : this.tournamentStatistics();
-      const ids = [...new Set(stats.map((item) => item.refereeAttendeeId))];
       const fragments =
         this.scope() === 'fragment'
           ? [this.allocation().id]
           : this.tournamentAllocation().fragmentRefereeAllocations.map((item) => item.id);
-      for (let i = 0; i < fragments.length * ids.length; i += 10) {
-        const batch = fragments
-          .flatMap((fragmentId) => ids.map((refereeId) => ({ fragmentId, refereeId })))
-          .slice(i, i + 10);
-        await Promise.all(
+      const ids = this.scope() === 'fragment' ? this.periodRefereeIds() : this.tournamentRefereeIds();
+      const requests = fragments.flatMap((fragmentId) => ids.map((refereeId) => ({ fragmentId, refereeId })));
+
+      console.debug('[AllocationStatistics] Starting manual refresh', {
+        scope: this.scope(),
+        tournamentAllocationId: this.tournamentAllocation().id,
+        fragments,
+        refereeIds: ids,
+        requestCount: requests.length,
+      });
+
+      if (requests.length === 0) {
+        console.warn('[AllocationStatistics] No refresh requests generated', {
+          scope: this.scope(),
+          fragments,
+          availableReferees: this.referees().length,
+        });
+      }
+
+      for (let i = 0; i < requests.length; i += 10) {
+        const batch = requests.slice(i, i + 10);
+        console.debug('[AllocationStatistics] Sending refresh batch', {
+          batchNumber: Math.floor(i / 10) + 1,
+          batchSize: batch.length,
+          requests: batch,
+        });
+        const results = await Promise.allSettled(
           batch.map((item) =>
             firstValueFrom(this.api.compute(this.tournamentAllocation().id, item.fragmentId, [item.refereeId])),
           ),
         );
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error('[AllocationStatistics] Refresh request failed', batch[index], result.reason);
+          }
+        });
       }
       await this.load();
+    } catch (error) {
+      console.error('[AllocationStatistics] Manual refresh failed before completion', error);
     } finally {
       this.refreshing.set(false);
     }

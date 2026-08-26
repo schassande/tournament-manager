@@ -192,7 +192,7 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
     </div>
     <app-allocation-statistics-drawer [visible]="statisticsDrawerVisible()" (visibleChange)="statisticsDrawerVisible.set($event)" (gameSelected)="onStatisticsGameSelected($event)"
       [tournament]="tournament()!" [allocation]="allocation()!" [tournamentAllocation]="tournamentAllocation()!"
-      [referees]="referees()" [coaches]="coaches()" />
+      [referees]="referees()" [coaches]="coaches()" [refreshToken]="allocationStatisticsRefreshVersion()" />
     <p-dialog header="Allocation problems" [modal]="true" [visible]="problemDialogVisible()" (visibleChange)="problemDialogVisible.set($event)" [style]="{ width: '42rem', 'max-width': '95vw' }">
       <div class="allocation-problem-summary">{{allocationProblemSummary()}}</div>
       @for (problem of displayAllocationProblems(); track problem.id) {
@@ -412,6 +412,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   });
   private readonly refereePositionsPerGame = 3;
   private readonly allocationChangeVersion = signal(0);
+  readonly allocationStatisticsRefreshVersion = signal(0);
   incompleteMatchCount = computed(() => {
     this.allocationChangeVersion();
     return this.periodGames().filter(game => this.missingRefereeSlots(game) > 0).length;
@@ -546,6 +547,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   onAllocationChanged(): void {
     this.refereeSelectorFacade.refresh();
     this.allocationChangeVersion.update(version => version + 1);
+    this.allocationStatisticsRefreshVersion.update(version => version + 1);
   }
 
   /** Opens the statistics drawer and loads the persisted records for both scopes. */

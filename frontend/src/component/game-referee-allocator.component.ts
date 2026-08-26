@@ -10,11 +10,12 @@ import { SelectModule } from 'primeng/select';
 import { MultiSelect, MultiSelectModule } from 'primeng/multiselect';
 import { ChipModule } from 'primeng/chip';
 import { AllocationAction, SelectionService } from '../service/selection.service';
-import { Subscription } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { RefereeSelectorComponent } from './referee-selector.component';
 import { RefereeSelectorActivation, RefereeSelectorEntry } from '../service/referee-selector.service';
 import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data-model';
 import { AllocationProblem, isCoachEligible, resolveAllocationConfiguration } from '../service/allocation-problem.service';
+import { RefereeAllocationStatisticsApiService } from '../service/referee-allocation-statistics-api.service';
 import { TooltipModule } from 'primeng/tooltip';
 
 @Component({
@@ -109,6 +110,7 @@ import { TooltipModule } from 'primeng/tooltip';
 })
 export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   gameAttendeeAllocationService = inject(GameAttendeeAllocationService);
+  private readonly refereeAllocationStatisticsApi = inject(RefereeAllocationStatisticsApiService);
   selectionService = inject(SelectionService);
 
   // Input parameters //
@@ -330,6 +332,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
     }
     this.lastRefereeChange.set(this.lastRefereeChange() + 1);
   }
+  /** Persists the referee assigned to one position and refreshes its statistics. */
   refereeSelected(refereeAttendeeId: string, idx:number) {
     const existingIdx = this.game().referees.findIndex(r => r.attendeeAlloc.attendeePosition === idx);
     const rav: GameAttendeeAllocationView|undefined = existingIdx >= 0 
@@ -339,11 +342,12 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
     if (referee) {
       if (rav) {
         // console.log('Update allocation with the new selected referee', idx, referee, rav);
+        const previousRefereeId = rav.attendeeAlloc.attendeeId;
         rav.attendeeAlloc.attendeeId = referee.attendee.id;
         rav.referee = referee;
         this.gameAttendeeAllocationService.save(rav.attendeeAlloc).subscribe(() => {
           this.lastRefereeChange.set(this.lastRefereeChange() + 1);
-          this.allocationChanged.emit();
+          void this.recomputeGameStatistics([previousRefereeId]).then(() => this.allocationChanged.emit());
         });
       } else {
         // console.log('Create allocation with the selected referee', idx, referee);
@@ -364,7 +368,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           const gav = {attendeeAlloc: savedAlloc, referee: referee };
           this.game().referees.push(gav);
           this.lastRefereeChange.set(this.lastRefereeChange() + 1);
-          this.allocationChanged.emit();
+          void this.recomputeGameStatistics().then(() => this.allocationChanged.emit());
         });
       }
     } else {
@@ -374,8 +378,11 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
       }
       if (rav) {
         // console.log('Delete the previous allocation', idx, rav);
-        this.gameAttendeeAllocationService.delete(rav.attendeeAlloc.id);
-        this.allocationChanged.emit();
+        void this.gameAttendeeAllocationService.delete(rav.attendeeAlloc.id).then(() => {
+          return this.recomputeGameStatistics([rav.attendeeAlloc.attendeeId]);
+        }).then(() => {
+          this.allocationChanged.emit();
+        }).catch(error => console.error('Unable to delete referee allocation', error));
       } else {
         // console.log('Still no referee selected on position ', idx);
       }
@@ -383,18 +390,25 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
     this.lastRefereeChange.set(this.lastRefereeChange() + 1);
   }
 
+  /** Deletes all referee allocations at one position and refreshes affected statistics. */
   clearReferee(idx: number) {
     const gavs = this.game().referees.filter(gav => gav.attendeeAlloc.attendeePosition === idx);
-    for (let gav of gavs) {
+    const removedRefereeIds = gavs.map(gav => gav.attendeeAlloc.attendeeId);
+    const deletions = gavs.map(gav => {
       console.debug('Delete referee allocation', idx, gav);
-      this.gameAttendeeAllocationService.delete(gav.attendeeAlloc.id);
-    }
+      return this.gameAttendeeAllocationService.delete(gav.attendeeAlloc.id);
+    });
     this.game().referees = this.game().referees.filter(gav => gav.attendeeAlloc.attendeePosition !== idx);
-    this.allocationChanged.emit();
+    void Promise.all(deletions).then(() => {
+      return this.recomputeGameStatistics(removedRefereeIds);
+    }).then(() => {
+      this.allocationChanged.emit();
+    }).catch(error => console.error('Unable to delete referee allocations', error));
     this.lastRefereeChange.set(this.lastRefereeChange() + 1);
   }
 
-  coachesSelected(attendeeIds: string[]) {
+  /** Persists the selected coach allocations and refreshes statistics for the affected game. */
+  async coachesSelected(attendeeIds: string[]): Promise<void> {
     // console.debug('coachesSelected', attendeeIds);
     const coaches: RefereeCoach[] = this.coaches().filter(c => c && attendeeIds.includes(c.attendee.id)) as RefereeCoach[];
     const configuration = resolveAllocationConfiguration(this.allocation(), this.tournamentAllocation());
@@ -407,14 +421,14 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
         toRemove.push(gav);
       }
     });
-    toRemove.forEach(gav => {
-        console.debug('Delete coach allocation', gav);
-        this.gameAttendeeAllocationService.delete(gav.attendeeAlloc.id);
-        this.game().coaches = this.game().coaches.filter(c => c.coach?.attendee.id !== gav.coach?.attendee.id);
-        this.allocationChanged.emit();
+    const deletions = toRemove.map(gav => {
+      console.debug('Delete coach allocation', gav);
+      return this.gameAttendeeAllocationService.delete(gav.attendeeAlloc.id);
     });
+    this.game().coaches = this.game().coaches.filter(gav => !toRemove.includes(gav));
 
     // Search new allocated coaches
+    const creations: Promise<void>[] = [];
     coaches.forEach((coach) => {
       const gav = this.game().coaches.find(gav => gav.attendeeAlloc.attendeeId === coach.attendee.id);
       if (gav) {
@@ -432,7 +446,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           half: 0,
           gameId: this.game().game.id,
         }
-        this.gameAttendeeAllocationService.save(newAlloc).subscribe(savedAlloc => {
+        const creation = firstValueFrom(this.gameAttendeeAllocationService.save(newAlloc)).then(savedAlloc => {
           // console.log('Allocation created', savedAlloc);
           // create the GAV view and add it to the game
           const gav = {attendeeAlloc: savedAlloc, coach: coach };
@@ -440,13 +454,36 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           // `game.coaches` is a mutable view model, so the computed value does
           // not invalidate itself when the asynchronous save completes.
           this.synchronizeCoachSelection();
-          this.allocationChanged.emit();
         });
+        creations.push(creation);
       } else {
         console.warn('Coach allocation rejected by constraints', coach.attendee.id, this.game().game.id);
       }
     });
+    try {
+      await Promise.all([...deletions, ...creations]);
+      await this.recomputeGameStatistics();
+      this.allocationChanged.emit();
+    } catch (error) {
+      console.error('Unable to update coach allocations', error);
+    }
     this.lastCoachChange.set(this.lastCoachChange() + 1);
+  }
+
+  /** Recomputes statistics for the changed game after its allocations are persisted. */
+  private async recomputeGameStatistics(additionalRefereeIds: string[] = []): Promise<void> {
+    const refereeIds = this.game().referees.map(referee => referee.attendeeAlloc.attendeeId);
+    const ids = [...new Set([...refereeIds, ...additionalRefereeIds])];
+    try {
+      await firstValueFrom(this.refereeAllocationStatisticsApi.compute(
+        this.tournamentAllocation()?.id ?? '',
+        this.allocation().id,
+        ids,
+        this.game().game.id,
+      ));
+    } catch (error) {
+      console.error('Unable to recompute referee allocation statistics', error);
+    }
   }
 
   /** Refreshes the multiselect model after a persisted coach allocation changes the game view. */

@@ -29,6 +29,7 @@ export class RefereeAllocationStatisticsApiService {
     refereeAttendeeIds: string[] = [],
     gameId?: string,
   ): Observable<RefereeAllocationStatisticsResponse> {
+    console.log('compute statistics', 'fragment', fragmentAllocationId, 'referees', refereeAttendeeIds, 'game', gameId);
     let params = new HttpParams()
       .set('tournamentAllocationId', tournamentAllocationId)
       .set('fragmentAllocationId', fragmentAllocationId);

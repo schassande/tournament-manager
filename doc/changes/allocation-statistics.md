@@ -2,6 +2,10 @@
 
 Last updated: 2026-08-26
 
+## Manual refresh when statistics are missing
+
+Manual refresh uses the referees available for the displayed allocation period for Fragment scope, and all referees registered in the tournament for Tournament scope, rather than the persisted statistics population. This allows a new or otherwise empty fragment, including a fragment with only a small number of games, to trigger the backend computation and create its initial statistics. Refresh requests are sent in batches of at most 10, and individual request failures are logged while the remaining requests and final reload continue.
+
 ## Bug fix: coach allocation role recognition
 
 Coach allocations created from the allocation page use the `Coach` attendee role. The shared `isRefereeCoach()` predicate therefore recognizes `Coach`, `PlayerCoach`, `CoachReferee`, and `PlayerCoachReferee`, so the backend statistics calculation includes all supported coach assignment roles. The Coaches view leaves the average level empty when `nbCoachedGames` is zero; persisted statistics may continue to use `-1` as the no-data sentinel.
@@ -55,7 +59,7 @@ The frontend calls the computation API after the allocation save succeeds and do
 - The drawer contains a compact filter area at the top and a tab area below it.
 - The layout should be inspired by `RefereeSelector`.
 - Display a refresh icon in the top-right corner of the statistics drawer.
-- Clicking the refresh icon starts a manual recalculation of all statistics in the currently selected scope (Fragment or Tournament), regardless of the active display filters.
+- Clicking the refresh icon starts a manual recalculation in the currently selected scope (Fragment or Tournament), regardless of the active display filters. The Fragment scope uses all referees available for the displayed allocation period; the Tournament scope uses all referees registered in the tournament. Neither scope relies on the already persisted statistics population.
 - While the manual recalculation is running, replace the refresh icon with a spinner and prevent another manual refresh from starting.
 - Parallelize the calculations in batches of at most 10 referees. The spinner remains visible until every batch has completed.
 - After all calculations have completed, reload the statistics and update the drawer contents.
@@ -77,6 +81,9 @@ The frontend calls the computation API after the allocation save succeeds and do
 The filter area contains:
 
 - A text input for search.
+- When the search input is not empty, display an icon button in the input to clear the search text.
+- Select controls do not display separate text labels. Their default options are `All levels`, `All categories`, and `All genders`.
+- The level, category, and gender selects display a clear icon; clearing a selection restores its default value. The scope select has no clear icon.
 - A level selector: All, Level 1 through Level 6.
 - A category selector: All, Junior, Open, Senior, Master.
 - An upgrade-only checkbox.
@@ -107,6 +114,8 @@ Display a sortable table for the selected referees. Columns:
 - `lastTimeSlot`.
 - In the `First slot` column, use a pale blue background when the referee's first slot is the first slot of the day.
 - In the `Last slot` column, use a pale orange background when the referee's last slot is the last slot of the day.
+
+In Tournament scope, omit the `First slot` and `Last slot` columns because the tournament-wide statistics do not represent a single day.
 
 All General columns must be sortable using PrimeNG table functionality. Clicking a column header selects that column; clicking the same header again toggles ascending and descending order. This applies to the referee name, all counters, and both time-slot columns. The first and last slot background highlights remain attached to their respective values when sorting.
 
@@ -158,6 +167,7 @@ All columns must be sortable using PrimeNG table functionality. Clicking a colum
 - Existing frontend services provide access to both statistics collections: `FragmentRefereeAllocationStatisticsService` and `TournamentRefereeAllocationStatisticsService`.
 - The existing backend route is `/refereeAllocationStatistics/compute` and accepts `tournamentAllocationId`, `fragmentAllocationId`, `refereeAttendeeIds`, and/or `gameId` according to its current contract.
 - No new persisted fields are currently required.
+- Allocation changes made in `GameRefereeAllocator` trigger the existing computation route after the Firestore write completes. The request targets the changed game; when a referee is removed, its identifier is also sent so its persisted statistics are recalculated with no assigned games. An open statistics drawer reloads after the recalculation.
 - Map `firstTimeSlotIdx` and `lastTimeSlotIdx` to the corresponding tournament time-slot display values. Resolve referee and coach names, levels, categories, upgrade markers, divisions, teams, fields, and game details from the existing tournament and attendee data. Generate Coaches columns dynamically from the coaches present in the selected statistics and display zero when a referee has no occurrence with a given coach.
 
 ## Errors, validation, and permissions
@@ -193,7 +203,7 @@ All columns must be sortable using PrimeNG table functionality. Clicking a colum
 - Fragment and Tournament scopes display the corresponding persisted statistics, and only referees with an available statistic are listed.
 - Missing, loading, and failed statistics states do not block allocation; available statistics remain displayed and failures are logged.
 - The manual refresh spinner disappears only after all recalculation batches have completed, including failed calculations.
-- The manual refresh covers every referee with a statistics document in the selected scope, not only the referees currently visible after filtering.
+- The manual refresh covers every available referee in the selected fragment scope, or every tournament referee in the selected tournament scope, not only referees with an existing statistics document or referees currently visible after filtering.
 
 ## Open decisions
 
