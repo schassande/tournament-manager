@@ -25,13 +25,15 @@ import { FragmentRefereeAllocationService } from '../service/fragment-referee-al
 import { TournamentRefereeAllocationService } from '../service/tournament-referee-allocation.service';
 import { UserService } from '../service/user.service';
 import { RefereeSelectorActivation, RefereeSelectorFacade } from '../service/referee-selector.service';
+import { AllocationProblem, AllocationProblemLocation, buildAllocationProblems, resolveAllocationConfiguration } from '../service/allocation-problem.service';
+import { DialogModule } from 'primeng/dialog';
 
 const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
 
 @Component({
   selector: 'app-tournament-referees-allocation',
   providers: [RefereeSelectorFacade],
-  imports: [CheckboxModule, CommonModule, ConfirmDialogModule, DatePipe, FormsModule, GameRefereeAllocatorComponent, InputTextModule, ProgressSpinnerModule, SelectModule, TooltipModule],
+  imports: [CheckboxModule, CommonModule, ConfirmDialogModule, DatePipe, DialogModule, FormsModule, GameRefereeAllocatorComponent, InputTextModule, ProgressSpinnerModule, SelectModule, TooltipModule],
   template: `
   @if (loading()) {
     <div class="allocation-loading-overlay" role="dialog" aria-modal="true" aria-label="Loading allocation">
@@ -120,11 +122,12 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
           <span class="selector-preparation-status" role="status">{{ selectorPreparationMessage() }}</span>
         }
         <span class="allocation-summary-icons">
-          @if (incompleteMatchCount() > 0) {
+          @if (allocationProblems().length > 0) {
             <i class="pi pi-exclamation-triangle allocation-referee-status-icon"
-              [pTooltip]="incompleteAllocationMessage()" tooltipPosition="top"
-              tabindex="0" role="button" [attr.aria-label]="incompleteAllocationMessage()"
-              (click)="selectFirstEmptyRefereeSlot()" (keydown.enter)="selectFirstEmptyRefereeSlot()"></i>
+              [pTooltip]="allocationProblemSummary()" tooltipPosition="top"
+              tabindex="0" role="button" [attr.aria-label]="allocationProblemSummary()"
+              (click)="problemDialogVisible.set(true)" (keydown.enter)="problemDialogVisible.set(true)"
+              (keydown.space)="problemDialogVisible.set(true)"></i>
           }
           <i class="pi pi-info-circle allocation-summary-info"
             [pTooltip]="allocationSummary()" tooltipPosition="top"
@@ -154,6 +157,7 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
                         <app-game-referee-allocator 
                           [game]="field.game" 
                           [coaches]="coaches()"
+                          [allocationProblems]="allocationProblems()"
                           [showCoaches]="showCoaches()" 
                           [showReferees]="showReferees()" 
                           [showRefereeLevel]="showRefereeLevel()"
@@ -181,6 +185,21 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
         </div>
       }
     </div>
+    <p-dialog header="Allocation problems" [modal]="true" [visible]="problemDialogVisible()" (visibleChange)="problemDialogVisible.set($event)" [style]="{ width: '42rem', 'max-width': '95vw' }">
+      <div class="allocation-problem-summary">{{allocationProblemSummary()}}</div>
+      @for (problem of displayAllocationProblems(); track problem.id) {
+        <div class="allocation-problem-row">
+          <div class="allocation-problem-message">{{problem.message}}</div>
+          <div class="allocation-problem-locations">
+            @for (location of problem.locations; track locationKey(location)) {
+              <button type="button" class="allocation-problem-location" (click)="navigateToProblem(location)">
+                {{problemLocationLabel(location)}}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </p-dialog>
   }
   `,
   styles: [`
@@ -199,6 +218,11 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
       overflow: auto;
       position: relative;
     }
+    .allocation-problem-summary { margin-bottom: 12px; font-weight: 600; }
+    .allocation-problem-row { padding: 10px 0; border-bottom: 1px solid #ddd; text-align: left; }
+    .allocation-problem-message { color: #8b0000; }
+    .allocation-problem-locations { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .allocation-problem-location { cursor: pointer; border: 1px solid #aaa; border-radius: 4px; background: #fff; padding: 4px 8px; }
     .allocation-table {
       border-collapse: separate;
       border-spacing: 0;
@@ -372,9 +396,12 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   loadingMessage = signal('Loading allocation configuration...');
   selectorPreparing = signal(false);
   selectorPreparationMessage = signal('Preparing referee selector...');
-  periodGames = computed<GameView[]>(() => this.day()?.partViews.flatMap(part =>
-    part.timeSlotViews.flatMap(timeslot => timeslot.fields.flatMap(field => field.game ? [field.game] : []))
-  ) ?? []);
+  periodGames = computed<GameView[]>(() => {
+    this.allocationChangeVersion();
+    return this.day()?.partViews.flatMap(part =>
+      part.timeSlotViews.flatMap(timeslot => timeslot.fields.flatMap(field => field.game ? [field.game] : []))
+    ) ?? [];
+  });
   private readonly refereePositionsPerGame = 3;
   private readonly allocationChangeVersion = signal(0);
   incompleteMatchCount = computed(() => {
@@ -388,6 +415,97 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
   incompleteAllocationMessage = computed(() =>
     `Incomplete matches: ${this.incompleteMatchCount()} · Referee slots to allocate: ${this.refereeSlotsToAllocate()}`
   );
+  allocationProblems = computed<AllocationProblem[]>(() => buildAllocationProblems(
+    this.periodGames(),
+    this.referees(),
+    this.coaches(),
+    resolveAllocationConfiguration(this.allocation(), this.tournamentAllocation()),
+  ));
+  displayAllocationProblems = computed<AllocationProblem[]>(() => [...this.allocationProblems()].sort((left, right) => {
+    const leftMissing = left.kind === 'missing-referee' ? 1 : 0;
+    const rightMissing = right.kind === 'missing-referee' ? 1 : 0;
+    return leftMissing - rightMissing;
+  }));
+  problemDialogVisible = signal(false);
+
+  /** Returns a compact global summary for the warning icon and dialog. */
+  allocationProblemSummary(): string {
+    const count = this.allocationProblems().length;
+    return `${count} allocation problem${count === 1 ? '' : 's'}`;
+  }
+
+  /** Navigates to one exact grid location referenced by a diagnostic. */
+  navigateToProblem(location: AllocationProblemLocation): void {
+    const dayView = this.day();
+    if (!dayView) return;
+    const partIdx = dayView.partViews.findIndex(part => part.timeSlotViews.some(slot => slot.id === location.timeslotId));
+    if (partIdx < 0) return;
+    const part = dayView.partViews[partIdx];
+    const timeslotIdx = part.timeSlotViews.findIndex(slot => slot.id === location.timeslotId);
+    if (timeslotIdx < 0) return;
+    const timeslot = part.timeSlotViews[timeslotIdx];
+    const fieldIdx = timeslot.fields.findIndex(field => field.id === location.fieldId);
+    if (fieldIdx < 0) return;
+    const game = timeslot.fields[fieldIdx].game;
+    if (!game) return;
+    if (location.attendeeRole === 'Coach' && !this.showCoaches()) this.showCoaches.set(true);
+    if (location.attendeeRole === 'Referee' && !this.showReferees()) this.showReferees.set(true);
+    const position = location.attendeeRole === 'Referee'
+      ? (location.attendeeId
+        ? Math.max(0, game.referees.findIndex(allocation => allocation.attendeeAlloc.attendeeId === location.attendeeId))
+        : [0, 1, 2].find(candidate => !game.referees.some(referee => referee.attendeeAlloc.attendeePosition === candidate)) ?? 0)
+      : 0;
+    const selection: SelectionDescriptor = {
+      tournamentId: this.tournament()!.id,
+      viewName: 'Appointments',
+      partId: part.id,
+      partIdx,
+      timeslotId: timeslot.id,
+      timeslotIdx,
+      fieldId: timeslot.fields[fieldIdx].id,
+      fieldIdx,
+      cellType: location.attendeeRole === 'Coach' ? 'Coach' : 'Referee',
+      inCellPosition: position,
+      nbLine: 1,
+    };
+    this.problemDialogVisible.set(false);
+    this.selectionService.setCurrentSelection(selection);
+    this.scrollSelectionIntoView(selection);
+    setTimeout(() => this.focusProblemLocation(location), 0);
+  }
+
+  /** Returns a stable DOM key for a diagnostic location. */
+  problemLocationSelector(location: AllocationProblemLocation): string {
+    if (!location.attendeeRole) return `[data-allocation-game="${location.gameId ?? ''}"]`;
+    const role = location.attendeeRole.toLowerCase();
+    return `[data-allocation-${role}="${location.gameId ?? ''}:${location.attendeeId ?? ''}"]`;
+  }
+
+  private focusProblemLocation(location: AllocationProblemLocation): void {
+    const element = document.querySelector<HTMLElement>(this.problemLocationSelector(location));
+    element?.focus();
+  }
+
+  /** Returns a stable template key for one problem location. */
+  locationKey(location: AllocationProblemLocation): string {
+    return [location.gameId, location.fieldId, location.attendeeId].filter(Boolean).join(':');
+  }
+
+  /** Formats a problem location for the problem dialog. */
+  problemLocationLabel(location: AllocationProblemLocation): string {
+    const game = this.periodGames().find(candidate => candidate.game.id === location.gameId);
+    const fieldName = game?.field?.name ?? location.fieldId ?? '';
+    const field = fieldName ? `Field ${fieldName}` : '';
+    const attendee = location.attendeeId
+      ? this.coaches().find(coach => coach?.attendee.id === location.attendeeId)?.shortLabel
+        ?? (() => {
+          const referee = this.referees().find(candidate => candidate?.attendee.id === location.attendeeId);
+          return referee ? this.refereeToString(referee) : undefined;
+        })()
+      : undefined;
+    return [game ? `${game.timeslotStr} ${field}` : `${location.dayId} ${location.timeslotId}`, attendee]
+      .filter(Boolean).join(' - ');
+  }
 
   constructor() {
     super();

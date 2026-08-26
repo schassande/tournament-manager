@@ -14,17 +14,19 @@ import { Subscription } from 'rxjs';
 import { RefereeSelectorComponent } from './referee-selector.component';
 import { RefereeSelectorActivation, RefereeSelectorEntry } from '../service/referee-selector.service';
 import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data-model';
+import { AllocationProblem, isCoachEligible, resolveAllocationConfiguration } from '../service/allocation-problem.service';
+import { TooltipModule } from 'primeng/tooltip';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, MultiSelectModule, ChipModule, RefereeSelectorComponent, SelectModule],
+  imports: [CommonModule, FormsModule, MultiSelectModule, ChipModule, RefereeSelectorComponent, SelectModule, TooltipModule],
   selector: 'app-game-referee-allocator',
   template: `
   <div>
-    <div class="teamsCell" style="{{teamsCellStyle()}}">{{game().division!.shortName}}: {{game().homeTeam?.shortName}} - {{game().awayTeam?.shortName}}</div>
+    <div class="teamsCell" [attr.data-allocation-game]="game().game.id" [attr.tabindex]="gameProblemMessage() ? 0 : null" [pTooltip]="gameProblemMessage()" tooltipPosition="top" style="{{teamsCellStyle()}}">{{game().division!.shortName}}: {{game().homeTeam?.shortName}} - {{game().awayTeam?.shortName}}</div>
     @if (showCoaches() && coaches()) {
       <div class="coaches {{ coachCellSelected() ? 'selectable':''}}">
-        <p-multiselect [options]="coaches()" [ngModel]="_gameCoachIds" optionLabel="shortLabel" optionValue="id"
+        <p-multiselect [options]="availableCoaches()" [ngModel]="_gameCoachIds" optionLabel="shortLabel" optionValue="id"
           style="text-align: center;" size="small"
           [maxSelectedLabels]="3" [selectionLimit]="3"
           style="width: 100%" display="chip"
@@ -41,6 +43,11 @@ import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data
               <p-chip
                 [label]="coach.shortLabel"
                 [removable]="true"
+                [attr.data-allocation-coach]="game().game.id + ':' + coach.id"
+                [attr.tabindex]="coachProblemMessage(coach.id) ? 0 : null"
+                [class.invalid-coach]="coachProblemMessage(coach.id) !== ''"
+                [pTooltip]="coachProblemMessage(coach.id)"
+                tooltipPosition="top"
                 style="border-radius: 9999px"
                 [style.color]="coach.attendee.refereeCoach?.fontColor"
                 [style.background-color]="coach.attendee.refereeCoach?.backgroundColor"
@@ -61,10 +68,10 @@ import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data
     @if (showReferees() && referees()) {
     <div class="referees">
       @for(gameRefereeId of _gameRefereeIds;  let idx = $index; track idx) {
-        <div class="{{ selection() 
+        <div [attr.data-allocation-referee]="game().game.id + ':' + gameRefereeId" [attr.tabindex]="refereeProblemMessage(gameRefereeId) ? 0 : null" [pTooltip]="refereeProblemMessage(gameRefereeId)" tooltipPosition="top" class="{{ selection() 
             && refereeCellSelected() >=0
             && refereeCellSelected() <= idx 
-            && idx <= (refereeCellSelected()+selection()!.nbLine-1)  ? 'selectable' : ''}}">
+            && idx <= (refereeCellSelected()+selection()!.nbLine-1)  ? 'selectable' : ''}} {{refereeProblemMessage(gameRefereeId) ? 'invalid-referee' : ''}}">
           <app-referee-selector 
             [game]="game()" 
             [position]="idx" 
@@ -94,6 +101,8 @@ import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data
        margin-right: 4px;
        display: inline-block;
     }
+    .invalid-coach { background-color: #dc3545 !important; color: #ffffff !important; }
+    .invalid-referee { background-color: #ffcccc; color: #000000; }
   `],
 })
 export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
@@ -106,6 +115,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   refereeSelectorEntries = input.required<RefereeSelectorEntry[]>()
   periodGames = input.required<GameView[]>()
   coaches = input.required<(SearchableCoach|undefined)[]>()
+  allocationProblems = input.required<AllocationProblem[]>()
   allocation = input.required<FragmentRefereeAllocation>();
   tournamentAllocation = input<TournamentRefereeAllocation>();
   selectorActivation = input<RefereeSelectorActivation>();
@@ -119,6 +129,48 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   highlightedRefereeIds = input.required<(string|undefined)[]>();
   lastRefereeChange = signal(0);
   lastCoachChange = signal(0);
+
+  /** Keeps current invalid assignments visible while filtering new candidates. */
+  availableCoaches = computed<SearchableCoach[]>(() => {
+    const selectedIds = new Set(this.gameCoachIds());
+    const configuration = resolveAllocationConfiguration(this.allocation(), this.tournamentAllocation());
+    return this.coaches()
+      .filter((coach): coach is SearchableCoach => coach !== undefined)
+      .filter(coach => selectedIds.has(coach.id)
+        || isCoachEligible(coach, this.game(), this.periodGames(), configuration).eligible);
+  });
+
+  /** Returns all diagnostics affecting one displayed coach chip. */
+  coachProblemMessage(attendeeId: string): string {
+    return this.allocationProblems()
+      .filter(problem => problem.locations.some(location =>
+        location.gameId === this.game().game.id && location.attendeeId === attendeeId,
+      ))
+      .map(problem => problem.message)
+      .filter((message, index, messages) => messages.indexOf(message) === index)
+      .join(' ');
+  }
+
+  /** Returns all diagnostics affecting the match context/header. */
+  gameProblemMessage(): string {
+    return this.allocationProblems()
+      .filter(problem => problem.locations.some(location => location.gameId === this.game().game.id))
+      .map(problem => problem.message)
+      .filter((message, index, messages) => messages.indexOf(message) === index)
+      .join(' ');
+  }
+
+  /** Returns all diagnostics affecting one referee cell. */
+  refereeProblemMessage(attendeeId: string | undefined): string {
+    if (!attendeeId) return '';
+    return this.allocationProblems()
+      .filter(problem => problem.locations.some(location =>
+        location.gameId === this.game().game.id && location.attendeeId === attendeeId && location.attendeeRole === 'Referee',
+      ))
+      .map(problem => problem.message)
+      .filter((message, index, messages) => messages.indexOf(message) === index)
+      .join(' ');
+  }
 
   selection = this.selectionService.currentSelection;
   coachCellSelected = computed<boolean>(() => {
@@ -343,6 +395,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   coachesSelected(attendeeIds: string[]) {
     // console.debug('coachesSelected', attendeeIds);
     const coaches: RefereeCoach[] = this.coaches().filter(c => c && attendeeIds.includes(c.attendee.id)) as RefereeCoach[];
+    const configuration = resolveAllocationConfiguration(this.allocation(), this.tournamentAllocation());
 
     // search coaches to deallocate among already allocated coach
     const toRemove: GameAttendeeAllocationView[] = [];
@@ -356,6 +409,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
         console.debug('Delete coach allocation', gav);
         this.gameAttendeeAllocationService.delete(gav.attendeeAlloc.id);
         this.game().coaches = this.game().coaches.filter(c => c.coach?.attendee.id !== gav.coach?.attendee.id);
+        this.allocationChanged.emit();
     });
 
     // Search new allocated coaches
@@ -363,7 +417,7 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
       const gav = this.game().coaches.find(gav => gav.attendeeAlloc.attendeeId === coach.attendee.id);
       if (gav) {
         // console.log('Already existing allocation with the selected coach', coach);
-      } else { // need to create the allocation
+      } else if (isCoachEligible(coach, this.game(), this.periodGames(), configuration).eligible) { // need to create the allocation
         // console.log('Create allocation with the selected coach', coach);
         const newAlloc: GameAttendeeAllocation = {
           id: '',
@@ -381,10 +435,13 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
           // create the GAV view and add it to the game
           const gav = {attendeeAlloc: savedAlloc, coach: coach };
           this.game().coaches.push(gav);
+          this.allocationChanged.emit();
         });
+      } else {
+        console.warn('Coach allocation rejected by constraints', coach.attendee.id, this.game().game.id);
       }
     });
-    this.lastCoachChange.set(this.lastRefereeChange() + 1);
+    this.lastCoachChange.set(this.lastCoachChange() + 1);
   }
 }
 

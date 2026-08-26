@@ -3,11 +3,9 @@
 - statistiques d'allocation
 - Planning arbitres
 - Planning coach
-- Allocation : 
-  - Ajouter la vérification des contraintes pour les arbitres: dispo, nombre de match conséqutifs
-  - Ajouter la vérification des contraintes pour les coach: dispo, nombre de match conséqutifs
 - Ranking
 - Scorecard
+- Water carrier
 - Tournament home
   - Suggestion de la prochaine étape
   - chart des arbitres: pyramide par niveau homme/femme
@@ -15,31 +13,35 @@
   - Utilisation de Player referee
   - Divisions / nombre d'équipe
   - Match alloué / restant à allouer
+- Wizard de creation de tournoi
+- (Des)Activation de fonctionnalités : ranking, scorecard, upgrade, Gestion des matches
 - Allocation auto : 
   - IA gen
   - ou Optimiseur: https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search
+  - Avec les coach
+  - Avec les water carrier
+
 
 ==> diffusion / communication / POC
 
+- Field map
+- Mon Planning
 - Ranking method Europe
+- Gestion des matches : creation du draw, resultats, classement
 - Candidature Arbitre
 - Candidature Referee Coach
-- Mon Planning
 - Referees: Import csv
 - Referees: export csv
 - Games: import csv
-- Field map
 - API
   - API Key pour un user
   - Swagger
-- Creation de game
 - Games: export csv
 
 ## Ideas
 
 - Allocation: Panel gauche avec la liste des arbitres classés / triés
 - Connexion referentiel Arbitre Touch France
-- Wizard creation de tournoi
 
 ## DONE
 - 2026/08/09: durcissement des règles firestore
@@ -64,6 +66,11 @@
 - 2026/08/23: Allocation : rendre visible/publier
 - 2026/08/25: Delete d'un tournament doit effacer toutes les données liées à un tournoi : Game, GameAttendee, Allocation, statistics, upgrade vote ...
 - 2026/08/25: Attendee contient les informations personnes. Il y aura un Person uniquement pour les utilisateurs enregistrés. 
+- 2026/08/26: Allocation : 
+  - Ajouter la vérification des contraintes pour les arbitres: dispo, nombre de match conséqutifs
+  - Ajouter la vérification des contraintes pour les coach: dispo, nombre de match conséqutifs
+  - Centralisation des problemes 
+  - Affichage des erreurs de manière localisée
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams

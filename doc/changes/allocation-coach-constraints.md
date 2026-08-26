@@ -94,10 +94,7 @@ type AllocationProblemKind =
   | 'coach-consecutive-time'
   | 'coach-same-timeslot';
 
-interface AllocationProblem {
-  id: string;
-  kind: AllocationProblemKind;
-  message: string;
+interface AllocationProblemLocation {
   dayId: string;
   timeslotId: string;
   fieldId?: string;
@@ -105,9 +102,18 @@ interface AllocationProblem {
   attendeeId?: string;
   attendeeRole?: 'Referee' | 'Coach';
 }
+
+interface AllocationProblem {
+  id: string;
+  kind: AllocationProblemKind;
+  message: string;
+  locations: AllocationProblemLocation[];
+}
 ```
 
-The exact TypeScript location may be chosen during implementation, but the model must be independent from the UI and stable enough to support grouping, counting, testing, and navigation. Problem IDs must be deterministic for the same allocation state so Angular rendering does not duplicate rows after refresh.
+The exact TypeScript location may be chosen during implementation, but the model must be independent from the UI and stable enough to support grouping, counting, testing, and navigation. Problem IDs must be deterministic for the same allocation state so Angular rendering does not duplicate rows after refresh. Every problem has at least one location and may have several locations.
+
+Multiple locations are required when one rule concerns several matches. For example, `referee-same-timeslot` contains the two referee cells involved in the double-booking, while a consecutive-time problem contains every assignment contributing to the excessive run. A daily-time problem similarly contains all assignments contributing to the daily total. A missing-referee problem normally contains the affected match context cell.
 
 ### Problem calculation
 
@@ -118,6 +124,8 @@ The diagnostics list must include:
 - missing referee positions, preserving the existing `missingRefereeSlots()` behavior;
 - referee assignments that violate availability, same-timeslot, consecutive-time, or daily-time rules;
 - coach assignments that violate attendee availability, the configured same-timeslot field limit, or the configured consecutive-time limit.
+
+The diagnostics evaluator must aggregate related assignments into one logical problem when they result from the same rule violation. It must not emit one duplicate problem per location. Each affected grid element receives the problem through a reverse lookup from `problem.locations`.
 
 Availability problems are computed from the persisted `Attendee.unavailabilities` values. An absent entry means available; `TOTAL` and `PARTIAL` entries are interpreted through `findDayUnavailability()` and `isSlotUnavailable()`.
 
@@ -133,9 +141,9 @@ The existing red warning triangle in the allocation header becomes the entry poi
 - the affected game and attendee when applicable;
 - an action to navigate to or focus the affected grid location.
 
-Selecting a problem in the dialog must close the dialog and activate the corresponding game/field cell using the existing selection/navigation mechanism. A missing-referee problem should continue to support the current shortcut that selects the first empty referee position; other problems select the affected game and, where possible, the affected attendee cell.
+Selecting a problem in the dialog must expose its locations and allow the user to navigate to each one. Selecting a location closes the dialog and activates the corresponding game/field cell using the existing selection/navigation mechanism. A missing-referee problem should continue to support the current shortcut that selects the first empty referee position; other problems select the affected game and, where possible, the affected attendee cell.
 
-The navigation target is the exact visual element responsible for the problem: the referee position cell, the coach chip, or the match context/header cell. The target receives keyboard focus when possible and is visually emphasized briefly after navigation. If the target is currently hidden by a display preference, the page must enable the relevant display area before focusing it, or clearly indicate the closest visible target.
+The navigation target is the exact visual element responsible for the problem: the referee position cell, the coach chip, or the match context/header cell. The target receives keyboard focus when possible and is visually emphasized briefly after navigation. If the target is currently hidden by a display preference, the page must enable the relevant display area before focusing it, or clearly indicate the closest visible target. For a multi-location problem, all locations are listed and independently navigable.
 
 The dialog is the authoritative global view. The triangle must not encode only the number of incomplete referee matches, because coach and referee constraint violations must also be reachable from it.
 
@@ -217,7 +225,7 @@ No migration is required. Existing invalid coach assignments are not deleted or 
 - The red warning triangle is shown for any missing-referee, referee-constraint, or coach-constraint problem.
 - Opening the triangle displays every current allocation problem in a dialog, including its type and location.
 - Selecting a problem from the dialog navigates to or focuses its affected game and field.
-- Selecting a problem from the dialog navigates to and focuses the exact affected referee cell, coach chip, or match context cell.
+- Selecting a problem location from the dialog navigates to and focuses the exact affected referee cell, coach chip, or match context cell.
 - Invalid coach chips and referee assignment cells are highlighted in red at their source location.
 - Missing-referee match context cells remain highlighted in red.
 - Every red-highlighted element displays a tooltip explaining all problems affecting it on hover or keyboard focus.
@@ -280,7 +288,7 @@ Coach availability and constraints apply to manual allocation and to any future 
 3. Add mandatory validation immediately before coach allocation persistence and preserve existing invalid selections.
 4. Introduce a pure centralized allocation-problem evaluator covering missing referees, referee rules, and coach rules.
 5. Expose the problem list as page state, replace the triangle tooltip with a problem dialog, and wire problem selection to exact grid navigation and focus.
-6. Derive red local styles and problem tooltips for coach chips, referee cells, and incomplete match headers from the centralized problem list.
+6. Build a reverse location lookup and derive red local styles and problem tooltips for coach chips, referee cells, and incomplete match headers from the centralized problem list.
 7. Add unit and component tests for availability defaults, `TOTAL` and `PARTIAL` entries, configuration precedence, same-timeslot limits, two-field assignments, consecutive slots, gaps, problem aggregation, exact navigation/focus, tooltips, and pre-existing invalid assignments.
 8. Reuse the eligibility and diagnostics functions from any future automatic allocator.
 
