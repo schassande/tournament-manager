@@ -151,12 +151,22 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
                     <td [attr.data-grid-cell]="partIdx + '-' + timeslotIdx + '-' + fieldIdx"
                       [ngClass]="{ 'noGameCell': !field.game,  'gameCell': field.game, 'selectable':selection() && !field.game && selection()?.cellType === 'EmptySlot' && selection()?.fieldId === field.id && selection()?.timeslotId === ts.id }" class="fieldCol {{gameCellStyle()}}" >
                       @if (field.game) {
-                        <app-game-referee-allocator [game]="field.game" [coaches]="coaches()"
-                          [showCoaches]="showCoaches()" [showReferees]="showReferees()" [showRefereeLevel]="showRefereeLevel()"
-                          [showBadgeSystem]="showBadgeSystem()" [showDivisionColor]="showDivisionColor()"
-                          [referees]="referees()" [refereeSelectorEntries]="refereeSelectorFacade.entries()" [periodGames]="periodGames()" [allocation]="allocation()!"
-                          [tournamentAllocation]="tournamentAllocation()" [selectorActivation]="selectorActivation()"
-                          [highlightedRefereeIds]="highlightedRefereeIds()" (allocationChanged)="onAllocationChanged()"
+                        <app-game-referee-allocator 
+                          [game]="field.game" 
+                          [coaches]="coaches()"
+                          [showCoaches]="showCoaches()" 
+                          [showReferees]="showReferees()" 
+                          [showRefereeLevel]="showRefereeLevel()"
+                          [showBadgeSystem]="showBadgeSystem()" 
+                          [showDivisionColor]="showDivisionColor()"
+                          [referees]="referees()" 
+                          [refereeSelectorEntries]="refereeSelectorFacade.entries()" 
+                          [periodGames]="periodGames()" 
+                          [allocation]="allocation()!"
+                          [tournamentAllocation]="tournamentAllocation()" 
+                          [selectorActivation]="selectorActivation()"
+                          [highlightedRefereeIds]="highlightedRefereeIds()" 
+                          (allocationChanged)="onAllocationChanged()"
                           (refereeCellActivated)="onRefereeCellActivated($event, partIdx, timeslotIdx, fieldIdx)">
                         </app-game-referee-allocator>
                       }
@@ -458,7 +468,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     this.route.params.subscribe(params => {
       const fragmentRefereeAllocationId = params['fragmentAllocationId'] as string;
       const tournamentRefereeAllocationId = params['tournamentAllocationId'] as string;
-      console.log('fragmentAllocationId',fragmentRefereeAllocationId, 'tournamentAllocationId', tournamentRefereeAllocationId)
+      // console.log('fragmentAllocationId',fragmentRefereeAllocationId, 'tournamentAllocationId', tournamentRefereeAllocationId)
       this.loadFragmentAllocation(fragmentRefereeAllocationId).pipe(
         mergeMap(() => this.loadTournamentAllocation(tournamentRefereeAllocationId).pipe(
           tap(() => this.loadingMessage.set('Loading referees and coaches...')),
