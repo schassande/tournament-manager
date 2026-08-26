@@ -430,11 +430,14 @@ function average(numbers: number[]): number {
 }
 
 function computeGameTimeSlotIdx(game: Game, tournament: Tournament): number {
-  const dayIdx = tournament.days.findIndex(d => d.id === game.dayId);
-  const day = tournament.days[dayIdx];
-  const partIdx = day.parts.findIndex(p => p.id === game.partDayId);
-  const part = day.parts[partIdx];
-  return part.timeslots.findIndex(ts => ts.id === game.timeslotId);
+  const day = tournament.days.find(d => d.id === game.dayId);
+  if (!day) return -1;
+  let timeSlotIdx = -1;
+  day.parts.find(part => {
+    timeSlotIdx = part.timeslots.findIndex(ts => ts.id === game.timeslotId);
+    return timeSlotIdx >= 0;
+  })
+  return timeSlotIdx;
 }
 
 /**
