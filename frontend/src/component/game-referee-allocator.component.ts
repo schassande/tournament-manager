@@ -8,6 +8,7 @@ import { GameAttendeeAllocationView, GameView } from '../allocation-data-model';
 import { GameAttendeeAllocationService } from '../service/game-attendee-allocation.service';
 import { SelectModule } from 'primeng/select';
 import { MultiSelectModule } from 'primeng/multiselect';
+import { ChipModule } from 'primeng/chip';
 import { AllocationAction, SelectionService } from '../service/selection.service';
 import { Subscription } from 'rxjs';
 import { RefereeSelectorComponent } from './referee-selector.component';
@@ -16,7 +17,7 @@ import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, MultiSelectModule, RefereeSelectorComponent, SelectModule],
+  imports: [CommonModule, FormsModule, MultiSelectModule, ChipModule, RefereeSelectorComponent, SelectModule],
   selector: 'app-game-referee-allocator',
   template: `
   <div>
@@ -26,12 +27,33 @@ import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data
         <p-multiselect [options]="coaches()" [ngModel]="_gameCoachIds" optionLabel="shortLabel" optionValue="id"
           style="text-align: center;" size="small"
           [maxSelectedLabels]="3" [selectionLimit]="3"
-          style="width: 250px" display="chip"
+          style="width: 100%" display="chip"
           class="auto-grow" [filter]="true" (onChange)="coachesSelected($event.value)">
-          <ng-template let-coach #items>
-            <span style="color: {{coach!.person!.refereeCoach!.fontColor}}; background-color: {{coach!.person!.refereeCoach!.backgroundColor}};">
+          <ng-template let-coach #item>
+            <span class="coachShortName"
+              [style.color]="coach.attendee.refereeCoach?.fontColor"
+              [style.background-color]="coach.attendee.refereeCoach?.backgroundColor">
                 {{ coach.shortLabel }}
             </span>
+          </ng-template>
+          <ng-template #selecteditems let-selectedCoaches let-removeChip="removeChip">
+            @for (coach of selectedCoaches; track coach.id) {
+              <p-chip
+                [label]="coach.shortLabel"
+                [removable]="true"
+                style="border-radius: 9999px"
+                [style.color]="coach.attendee.refereeCoach?.fontColor"
+                [style.background-color]="coach.attendee.refereeCoach?.backgroundColor"
+                (onRemove)="removeChip(coach.id, $event)">
+                <ng-template #removeicon>
+                  <i class="pi pi-times"
+                    style="font-size: 0.7rem; display: inline-flex; align-items: center; vertical-align: middle; line-height: 1; position: relative; top: -2px"
+                    [style.color]="coach.attendee.refereeCoach?.fontColor"
+                    aria-hidden="true">
+                  </i>
+                </ng-template>
+              </p-chip>
+            }
           </ng-template>
         </p-multiselect>
       </div>
@@ -63,24 +85,14 @@ import { TournamentRefereeAllocation } from '@tournament-manager/persistent-data
     }
   </div>`,
   styles: [`
-    .teamsCell { padding: 5px; }
-    .coaches { 
-      height: 40px; 
-      border-top: 1px lightgrey solid;
-    }
-    .coaches p-multiselect { 
-      height: 40px;
-    }
+    .teamsCell { padding: 5px 0; }
+    .coaches, .coaches p-multiselect {  height: 40px;  }
     .coachShortName {
        text-align: center;
-       padding: 2px 6px;
-       border-radius: 4px;
+       padding: 4px 8px;
+       border-radius: 6px;
        margin-right: 4px;
        display: inline-block;
-    }
-    .selectable.coaches   { 
-      height: 50px !important; 
-      margin-top: 10px;
     }
   `],
 })
@@ -211,9 +223,15 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
         this.clearReferee(action.inCellPosition);
         break;
       case 'DeleteRefereeCoach':
-        console.log('Action on cell','timeSlot:', this.game().timeslotStr, 'field:',this.game().field?.name, 'DeleteRefereeCoach');
-        this._gameCoachIds = [];
-        this.coachesSelected([]);
+        if (action.attendeeIds && action.attendeeIds.length > 0) {
+          console.log('Action on cell','timeSlot:', this.game().timeslotStr, 'field:',this.game().field?.name, 'DeleteRefereeCoach', action.attendeeIds);
+          this._gameCoachIds = this._gameCoachIds.filter(id => action.attendeeIds.indexOf(id) < 0);
+          this.coachesSelected(this._gameCoachIds);
+        } else {
+          console.log('Action on cell','timeSlot:', this.game().timeslotStr, 'field:',this.game().field?.name, 'DeleteRefereeCoach', 'all');
+          this._gameCoachIds = [];
+          this.coachesSelected([]);
+        }
         break;
       case 'SetReferee':
         action.attendeeIds.forEach((attendeeId, i) => {

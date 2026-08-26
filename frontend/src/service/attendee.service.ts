@@ -15,12 +15,26 @@ export class AttendeeService extends AbstractPersistentDataService<Attendee>{
   protected override getCollectionName(): string { return 'attendee'; }
 
   protected override adjustItemOnLoad(item: Attendee): Attendee {
-    if (item.refereeCoach && (!item.refereeCoach.fontColor || !item.refereeCoach.backgroundColor)) {
-      item.refereeCoach.fontColor= 'x000000';
-      item.refereeCoach.backgroundColor= 'xffffff';
-      this.save(item).subscribe()
+    if (item.refereeCoach) {
+      const fontColor = this.normalizeCoachColor(item.refereeCoach.fontColor, '#000000');
+      const backgroundColor = this.normalizeCoachColor(item.refereeCoach.backgroundColor, '#ffffff');
+      const changed = fontColor !== item.refereeCoach.fontColor
+        || backgroundColor !== item.refereeCoach.backgroundColor;
+      item.refereeCoach.fontColor = fontColor;
+      item.refereeCoach.backgroundColor = backgroundColor;
+      if (changed) {
+        this.save(item).subscribe()
+      }
     }
     return item;
+  }
+
+  /** Normalizes legacy hexadecimal coach colors to valid CSS color values. */
+  private normalizeCoachColor(color: string | undefined, fallback: string): string {
+    if (!color) return fallback;
+    return /^x?[0-9a-f]{6}$/i.test(color)
+      ? `#${color.replace(/^x/i, '')}`
+      : color;
   }
   findByPerson(tournamentId: string, personId: string): Observable<Attendee[]> {
     return this.query(

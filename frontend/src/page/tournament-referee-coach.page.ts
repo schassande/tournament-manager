@@ -173,8 +173,8 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentPage {
           badge: 0, 
           badgeSystem: defaultBadgeSystem 
         },
-        fontColor: 'x000000',
-        backgroundColor: 'xffffff'
+        fontColor: '#000000',
+        backgroundColor: '#ffffff'
       },
       person: {
         firstName: '',
