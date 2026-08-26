@@ -121,12 +121,9 @@ Intention metier :
 - si `gameId` est fourni, la route recupere les arbitres deja alloues a ce match et les ajoute a la liste de calcul
 - sinon elle calcule directement sur `refereeAttendeeIds`
 
-Attention :
+Les paramètres sont transmis comme query params (`req.query`). Le frontend les encode via `RefereeAllocationStatisticsApiService`.
 
-- le commentaire parle de query params
-- l'implementation lit `req.params`
-
-Il y a donc aujourd'hui un decalage entre la documentation inline et le code reel.
+La route accepte aussi des recalculs complets déclenchés depuis le panneau de statistiques : le frontend envoie les arbitres existants du périmètre par lots parallèles de dix requêtes maximum.
 
 ## Reponse
 

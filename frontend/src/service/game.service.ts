@@ -14,4 +14,9 @@ export class GameService extends AbstractPersistentDataService<Game>{
   byDay(tournamentId: string, dayId: string): Observable<Game[]> {
     return this.query(query(this.itemsCollection(), where('tournamentId', '==', tournamentId), where('dayId', '==', dayId)));
   }
+
+  /** Returns every game belonging to a tournament. */
+  byTournament(tournamentId: string): Observable<Game[]> {
+    return this.query(query(this.itemsCollection(), where('tournamentId', '==', tournamentId)));
+  }
 }

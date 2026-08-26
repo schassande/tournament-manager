@@ -233,8 +233,9 @@ Champs principaux :
 
 Attention :
 
-- le front et le backend requetent aussi un champ `refereeAllocationId`
-- le type partage expose `fragmentRefereeAllocationId`
+- le champ canonique utilisé par le front et le backend est `fragmentRefereeAllocationId` ;
+- les anciennes données peuvent contenir `refereeAllocationId`, qui reste accepté en lecture par le calcul des statistiques ;
+- le type partagé expose `fragmentRefereeAllocationId`.
 
 La documentation fonctionnelle doit donc considerer qu'il s'agit de la liaison entre un match et un fragment d'allocation, meme si le nom du champ n'est pas entierement aligne dans le code.
 

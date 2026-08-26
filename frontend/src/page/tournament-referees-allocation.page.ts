@@ -12,6 +12,7 @@ import { GameAttendeeAllocationService } from '../service/game-attendee-allocati
 import { GameService } from '../service/game.service';
 import { RefereeService } from '../service/referee.service';
 import { GameRefereeAllocatorComponent, SearchableReferee, SearchableCoach, toSearchableCoaches, toSearchableReferees } from '../component/game-referee-allocator.component';
+import { AllocationStatisticsDrawerComponent } from '../component/allocation-statistics-drawer.component';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
@@ -33,7 +34,7 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
 @Component({
   selector: 'app-tournament-referees-allocation',
   providers: [RefereeSelectorFacade],
-  imports: [CheckboxModule, CommonModule, ConfirmDialogModule, DatePipe, DialogModule, FormsModule, GameRefereeAllocatorComponent, InputTextModule, ProgressSpinnerModule, SelectModule, TooltipModule],
+  imports: [AllocationStatisticsDrawerComponent, CheckboxModule, CommonModule, ConfirmDialogModule, DatePipe, DialogModule, FormsModule, GameRefereeAllocatorComponent, InputTextModule, ProgressSpinnerModule, SelectModule, TooltipModule],
   template: `
   @if (loading()) {
     <div class="allocation-loading-overlay" role="dialog" aria-modal="true" aria-label="Loading allocation">
@@ -122,6 +123,10 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
           <span class="selector-preparation-status" role="status">{{ selectorPreparationMessage() }}</span>
         }
         <span class="allocation-summary-icons">
+          <i class="pi pi-chart-bar allocation-statistics-icon"
+            tabindex="0" role="button" aria-label="Open allocation statistics"
+            (click)="openStatistics()" (keydown.enter)="openStatistics()"
+            (keydown.space)="openStatistics()"></i>
           @if (allocationProblems().length > 0) {
             <i class="pi pi-exclamation-triangle allocation-referee-status-icon"
               [pTooltip]="allocationProblemSummary()" tooltipPosition="top"
@@ -185,6 +190,9 @@ const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';
         </div>
       }
     </div>
+    <app-allocation-statistics-drawer [visible]="statisticsDrawerVisible()" (visibleChange)="statisticsDrawerVisible.set($event)" (gameSelected)="onStatisticsGameSelected($event)"
+      [tournament]="tournament()!" [allocation]="allocation()!" [tournamentAllocation]="tournamentAllocation()!"
+      [referees]="referees()" [coaches]="coaches()" />
     <p-dialog header="Allocation problems" [modal]="true" [visible]="problemDialogVisible()" (visibleChange)="problemDialogVisible.set($event)" [style]="{ width: '42rem', 'max-width': '95vw' }">
       <div class="allocation-problem-summary">{{allocationProblemSummary()}}</div>
       @for (problem of displayAllocationProblems(); track problem.id) {
@@ -427,7 +435,7 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     return leftMissing - rightMissing;
   }));
   problemDialogVisible = signal(false);
-
+  statisticsDrawerVisible = signal(false);
   /** Returns a compact global summary for the warning icon and dialog. */
   allocationProblemSummary(): string {
     const count = this.allocationProblems().length;
@@ -540,6 +548,12 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
     this.allocationChangeVersion.update(version => version + 1);
   }
 
+  /** Opens the statistics drawer and loads the persisted records for both scopes. */
+  openStatistics(): void {
+    this.selectionService.setCurrentSelection(null);
+    this.statisticsDrawerVisible.set(true);
+  }
+
   /** Selects and reveals the first empty referee position in grid order. */
   selectFirstEmptyRefereeSlot(): void {
     for (let partIdx = 0; partIdx < this.day()!.partViews.length; partIdx++) {
@@ -644,6 +658,44 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
         return;
       }
     }
+  }
+
+  /** Closes the statistics drawer and selects the clicked referee game. */
+  onStatisticsGameSelected(target: {gameId:string;refereeAttendeeId:string}): void {
+    this.statisticsDrawerVisible.set(false);
+    const location = this.findCurrentGameLocation(target.gameId);
+    if (!location) return;
+    const position = location.game.referees.findIndex(referee => referee.attendeeAlloc.attendeeId === target.refereeAttendeeId);
+    if (position < 0) return;
+    const selection: SelectionDescriptor = {
+      tournamentId: this.tournament()!.id,
+      viewName: 'Appointments',
+      partId: location.part.id,
+      partIdx: location.partIdx,
+      timeslotId: location.timeslot.id,
+      timeslotIdx: location.timeslotIdx,
+      fieldId: location.field.id,
+      fieldIdx: location.fieldIdx,
+      cellType: 'Referee',
+      inCellPosition: position,
+      nbLine: 1,
+    };
+    this.showReferees.set(true);
+    this.selectionService.setCurrentSelection(selection);
+    this.scrollSelectionIntoView(selection);
+  }
+
+  /** Resolves a game to its coordinates in the currently displayed grid. */
+  private findCurrentGameLocation(gameId:string): {game:GameView;part:PartView;partIdx:number;timeslot:TimeSlotView;timeslotIdx:number;field:FieldView;fieldIdx:number}|undefined {
+    for (let partIdx=0; partIdx<(this.day()?.partViews.length??0); partIdx++) {
+      const part=this.day()!.partViews[partIdx];
+      for (let timeslotIdx=0; timeslotIdx<part.timeSlotViews.length; timeslotIdx++) {
+        const timeslot=part.timeSlotViews[timeslotIdx];
+        const fieldIdx=timeslot.fields.findIndex(field=>field.game?.game.id===gameId);
+        if (fieldIdx>=0) return {game:timeslot.fields[fieldIdx].game!,part,partIdx,timeslot,timeslotIdx,field:timeslot.fields[fieldIdx],fieldIdx};
+      }
+    }
+    return undefined;
   }
 
   /** Updates the page selection when a referee position is clicked in the grid. */

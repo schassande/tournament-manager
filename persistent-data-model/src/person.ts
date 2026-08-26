@@ -28,18 +28,18 @@ export interface Person extends PersistentObject {
   refereeCoach? : RefereeCoachInfo;
 }
 export type AttendeeRole = 'Referee' 
-  | 'Player' 
-  | 'Coach' 
-  | 'PlayerCoach' 
-  | 'PlayerReferee'
-  | 'CoachReferee' 
-  | 'PlayerCoachReferee' 
-  | 'RefereeUpgrade' 
-  | 'RefereeRanker' 
-  | 'RefereeCoachLeader'
-  | 'TournamentManager' 
-  | 'GameAllocator' 
-  | 'ResultManager';
+  | 'Player' // player in a team
+  | 'PlayerCoach' // Player and coach of a team
+  | 'PlayerReferee' // Player and Referee
+  | 'CoachReferee' // coach of referees
+  | 'Coach' // Alias for CoachReferee
+  | 'PlayerCoachReferee' // PlayerCoach and Referee
+  | 'RefereeUpgrade' // manage Referee upgrades
+  | 'RefereeRanker' // manager Referee ranking
+  | 'RefereeCoachLeader' // leader of the referee coach
+  | 'TournamentManager' // Manager of the tournament
+  | 'GameAllocator'  // Manager of the game allocation
+  | 'ResultManager'; // Manage game results
 
 export type Gender = 'M' | 'F';
 
@@ -54,12 +54,15 @@ export function isReferee(attendeeRole: AttendeeRole): boolean {
       || attendeeRole === 'PlayerCoachReferee';
 }
 /**
- * Indicate if the role is a referee coach
+ * Indicate if the role assigns an attendee as a referee coach on a game.
+ * This includes mixed roles because the allocation UI persists a regular
+ * coach assignment as `Coach`.
  * @param attendeeRole role of a game attendee
  * @returns true is the role is a referee coach
  */
 export function isRefereeCoach(attendeeRole: AttendeeRole): boolean {
-  return attendeeRole === 'CoachReferee';
+  return attendeeRole === 'Coach'
+      || attendeeRole === 'CoachReferee';
 }
 
 /**

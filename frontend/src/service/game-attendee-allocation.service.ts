@@ -25,6 +25,11 @@ export class GameAttendeeAllocationService extends AbstractPersistentDataService
       where('fragmentRefereeAllocationId', '==', refereeAllocationId)));
   }
 
+  /** Returns all referee and coach assignments belonging to a tournament. */
+  byTournament(tournamentId: string): Observable<GameAttendeeAllocation[]> {
+    return this.query(query(this.itemsCollection(), where('tournamentId', '==', tournamentId)));
+  }
+
   /** Deletes all game assignments belonging to a fragment in Firestore batches. */
   deleteByAllocation(tournamentId: string, refereeAllocationId: string): Observable<void> {
     const allocationQuery = query(this.itemsCollection(),

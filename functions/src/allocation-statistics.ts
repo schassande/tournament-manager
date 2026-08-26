@@ -97,7 +97,7 @@ async function computeRefereeStatistics(
   firestore: admin.firestore.Firestore): Promise<RefereeAllocStats[]> {
   const tournamentAllocation: TournamentRefereeAllocation = await byIdRequired(colTournamentRefereeAllocation, tournamentAllocationId, firestore);
   logger.debug('FullRefereeAllocation', JSON.stringify(tournamentAllocation));
-  const fragmentAllocation: FragmentRefereeAllocation = await byIdRequired(colFragmentRefereeAllocation, tournamentAllocationId, firestore);
+  const fragmentAllocation: FragmentRefereeAllocation = await byIdRequired(colFragmentRefereeAllocation, fragmentAllocationId, firestore);
   logger.debug('FullRefereeAllocation', JSON.stringify(fragmentAllocation));
   if (tournamentAllocation.tournamentId !== fragmentAllocation.tournamentId) {
     throw new Error('Fragment allocation identifier and Tournament allocation identifier do not correspond to the same tournament!');
@@ -294,7 +294,7 @@ async function computeRefereeStatistic(
     tournamentId: tournament.id,
     lastAttendeeAlloc: 0,
     dayId: fragmentAllocation.dayId,
-    partDayId: fragmentAllocation.partDayId,
+    ...(fragmentAllocation.partDayId ? { partDayId: fragmentAllocation.partDayId } : {}),
     fragmentRefereeAllocationId: fragmentAllocation.id,
     gameIds: [],
     nbGamesOnBadField: 0,
@@ -312,9 +312,8 @@ async function computeRefereeStatistic(
   };
 
   // Step 2: Load all referees and coach of all games and adjust statistics
-  gameIds.forEach(async gameId => {
-    completeRefereStatsWithGame(attendeeId, refStats, tournament, gameId, fragmentAllocation, cache);
-  });
+  await Promise.all(gameIds.map(gameId =>
+    completeRefereStatsWithGame(attendeeId, refStats, tournament, gameId, fragmentAllocation, cache)));
 
   // Step 3: Compute the buddies average level over all games.
   computebuddiesBadgeAvg(refStats);
@@ -432,12 +431,7 @@ function average(numbers: number[]): number {
 function computeGameTimeSlotIdx(game: Game, tournament: Tournament): number {
   const day = tournament.days.find(d => d.id === game.dayId);
   if (!day) return -1;
-  let timeSlotIdx = -1;
-  day.parts.find(part => {
-    timeSlotIdx = part.timeslots.findIndex(ts => ts.id === game.timeslotId);
-    return timeSlotIdx >= 0;
-  })
-  return timeSlotIdx;
+  return day.parts.flatMap(part => part.timeslots).findIndex(ts => ts.id === game.timeslotId);
 }
 
 /**
@@ -451,10 +445,19 @@ async function getGameAttendees(
   partAllocationId: string,
   gameId: string,
   firestore: admin.firestore.Firestore): Promise<GameAttendeeAllocation[]> {
-  const query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colGameAttendeeAllocation)
-    .where('refereeAllocationId', '==', partAllocationId)
-    .where('gameId', '==', gameId);
-  return (await query.get()).docs.filter(e => e.exists).map(e => e.data() as GameAttendeeAllocation);
+  const collection = firestore.collection(colGameAttendeeAllocation);
+  let snapshot = await collection
+    .where('fragmentRefereeAllocationId', '==', partAllocationId)
+    .where('gameId', '==', gameId)
+    .get();
+  // Read legacy documents written with the former field name.
+  if (snapshot.empty) {
+    snapshot = await collection
+      .where('refereeAllocationId', '==', partAllocationId)
+      .where('gameId', '==', gameId)
+      .get();
+  }
+  return snapshot.docs.filter(e => e.exists).map(e => e.data() as GameAttendeeAllocation);
 }
 /**
  * Fetch all Referee Attendees (full time referees, player referees ...)
@@ -482,10 +485,21 @@ async function getAttendeeGameIds(
   allocationId: string,
   attendeeId: string,
   firestore: admin.firestore.Firestore): Promise<string[]> {
-  const query:admin.firestore.Query<admin.firestore.DocumentData> = firestore.collection(colGameAttendeeAllocation)
-    .where('refereeAllocationId', '==', allocationId)
-    .where('attendeeId', '==', attendeeId);
-  return (await query.get()).docs.filter(e => e.exists).map(e => e.data() as GameAttendeeAllocation).map(ar => ar.gameId);
+  const collection = firestore.collection(colGameAttendeeAllocation);
+  let snapshot = await collection
+    .where('fragmentRefereeAllocationId', '==', allocationId)
+    .where('attendeeId', '==', attendeeId)
+    .get();
+  // Read legacy documents written with the former field name.
+  if (snapshot.empty) {
+    snapshot = await collection
+      .where('refereeAllocationId', '==', allocationId)
+      .where('attendeeId', '==', attendeeId)
+      .get();
+  }
+  return snapshot.docs.filter(e => e.exists)
+    .map(e => e.data() as GameAttendeeAllocation)
+    .map(ar => ar.gameId);
 }
 
 async function getFragementRefereeAllocationStatistics(

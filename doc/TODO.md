@@ -1,6 +1,5 @@
 # TODO list du projet Tournament Maager
 
-- statistiques d'allocation
 - Planning arbitres
 - Planning coach
 - Ranking
@@ -15,6 +14,7 @@
   - Match alloué / restant à allouer
 - Wizard de creation de tournoi
 - (Des)Activation de fonctionnalités : ranking, scorecard, upgrade, Gestion des matches
+- Menu en fonction des roles de la personne. Prévoir le guest. Visibilité d'un tournoi.
 - Allocation auto : 
   - IA gen
   - ou Optimiseur: https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search
@@ -24,6 +24,7 @@
 
 ==> diffusion / communication / POC
 
+- Numéro de version et date d'une allocation pour savoir quand elle a été modifié.
 - Field map
 - Mon Planning
 - Ranking method Europe
@@ -40,7 +41,6 @@
 
 ## Ideas
 
-- Allocation: Panel gauche avec la liste des arbitres classés / triés
 - Connexion referentiel Arbitre Touch France
 
 ## DONE
@@ -71,6 +71,7 @@
   - Ajouter la vérification des contraintes pour les coach: dispo, nombre de match conséqutifs
   - Centralisation des problemes 
   - Affichage des erreurs de manière localisée
+- 2026/08/26: statistiques d'allocation
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams
