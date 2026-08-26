@@ -2,11 +2,28 @@ import { Attendee, Referee, defaultSlotType } from '@tournament-manager/persiste
 import { GameView } from '../allocation-data-model';
 import {
   RefereeSelectorEntry,
+  RefereeSelectorFacade,
   isRefereeEligible,
   matchesSearch,
 } from './referee-selector.service';
 
 describe('referee selector calculations', () => {
+  it('keeps filter values shared between selector openings', () => {
+    const facade = new RefereeSelectorFacade();
+
+    facade.updateFilters({ level: '3', upgradeOnly: true, sortMode: 'games-asc' });
+
+    expect(facade.filters()).toEqual({
+      level: '3',
+      category: 'All',
+      gender: 'All',
+      upgradeOnly: true,
+      playerRefereesOnly: false,
+      eligibilityEnabled: true,
+      sortMode: 'games-asc',
+    });
+  });
+
   it('requires every search term, including special tokens', () => {
     const entry = selectorEntry({ level: 3, category: 'S', upgrade: true, search: 'laurent garrigues l3s*' });
 

@@ -5,6 +5,9 @@ import { GameView } from '../allocation-data-model';
 import {
   RefereeSelectorActivation,
   RefereeSelectorEntry,
+  RefereeSelectorFacade,
+  RefereeSelectorFilters,
+  RefereeSelectorSortMode,
   badgeStyle,
   effectiveAllocationConfiguration,
   isRefereeEligible,
@@ -15,8 +18,6 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { Popover, PopoverModule } from 'primeng/popover';
 import { SelectModule } from 'primeng/select';
-
-type SortMode = 'level-asc' | 'level-desc' | 'games-asc';
 
 /** Referee selection popover used by one referee position in the allocation grid. */
 @Component({
@@ -51,36 +52,36 @@ type SortMode = 'level-asc' | 'level-desc' | 'games-asc';
             [attr.aria-activedescendant]="activeRefereeOptionId()"
             placeholder="Search referee" (keydown)="onSearchKeydown($event)" />
           <p-select [options]="sortOptions" [ngModel]="sortMode()" 
-            (ngModelChange)="sortMode.set($event)" 
+            (ngModelChange)="updateFilter({ sortMode: $event })"
             optionLabel="label" optionValue="value"
             ariaLabel="Sort referees" />
         </div>
         <div class="selector-form-row">
           <p-select [options]="levelOptions" [ngModel]="level()" 
-            (ngModelChange)="level.set($event)" 
+            (ngModelChange)="updateFilter({ level: $event })"
             optionLabel="label" optionValue="value"
             ariaLabel="Referee level" />
           <p-select [options]="categoryOptions" [ngModel]="category()" 
-            (ngModelChange)="category.set($event)" 
+            (ngModelChange)="updateFilter({ category: $event })"
             optionLabel="label" optionValue="value"
             ariaLabel="Referee category" />
           <p-select [options]="genderOptions" [ngModel]="gender()" 
-            (ngModelChange)="gender.set($event)" 
+            (ngModelChange)="updateFilter({ gender: $event })"
             optionLabel="label" optionValue="value"
             ariaLabel="Referee gender" />
         </div>
         <div class="selector-form-row selector-checkbox-row">
           <label class="selector-checkbox"><p-checkbox [ngModel]="upgradeOnly()" 
-            (ngModelChange)="upgradeOnly.set($event)" [binary]="true" inputId="upgrade-only" />
+            (ngModelChange)="updateFilter({ upgradeOnly: $event })" [binary]="true" inputId="upgrade-only" />
              Upgrade Only
           </label>
           <label class="selector-checkbox"><p-checkbox [ngModel]="playerRefereesOnly()" 
-            (ngModelChange)="playerRefereesOnly.set($event)" 
+            (ngModelChange)="updateFilter({ playerRefereesOnly: $event })"
             [binary]="true" inputId="player-referees-only" />
              Player Referee
           </label>
           <label class="selector-checkbox"><p-checkbox [ngModel]="eligibilityEnabled()" 
-            (ngModelChange)="eligibilityEnabled.set($event)" 
+            (ngModelChange)="updateFilter({ eligibilityEnabled: $event })"
             [binary]="true" inputId="eligibility" />
              Eligibility constraints
           </label>
@@ -223,14 +224,15 @@ export class RefereeSelectorComponent implements AfterViewInit {
   @ViewChild('results') private results?: ElementRef<HTMLElement>;
   @ViewChild('anchor') private anchor!: ElementRef<HTMLButtonElement>;
 
+  private readonly refereeSelectorFacade = inject(RefereeSelectorFacade);
   readonly search = signal('');
-  readonly level = signal('All');
-  readonly category = signal('All');
-  readonly gender = signal('All');
-  readonly upgradeOnly = signal(false);
-  readonly playerRefereesOnly = signal(false);
-  readonly eligibilityEnabled = signal(true);
-  readonly sortMode = signal<SortMode>('level-asc');
+  readonly level = computed(() => this.refereeSelectorFacade.filters().level);
+  readonly category = computed(() => this.refereeSelectorFacade.filters().category);
+  readonly gender = computed(() => this.refereeSelectorFacade.filters().gender);
+  readonly upgradeOnly = computed(() => this.refereeSelectorFacade.filters().upgradeOnly);
+  readonly playerRefereesOnly = computed(() => this.refereeSelectorFacade.filters().playerRefereesOnly);
+  readonly eligibilityEnabled = computed(() => this.refereeSelectorFacade.filters().eligibilityEnabled);
+  readonly sortMode = computed(() => this.refereeSelectorFacade.filters().sortMode);
   readonly focusedEntryIndex = signal(0);
   private lastActivation = 0;
 
@@ -334,6 +336,11 @@ export class RefereeSelectorComponent implements AfterViewInit {
   updateSearch(value: string): void {
     this.search.set(value);
     this.focusedEntryIndex.set(0);
+  }
+
+  /** Persists a filter change in the page-scoped selector facade. */
+  updateFilter(update: Partial<RefereeSelectorFilters>): void {
+    this.refereeSelectorFacade.updateFilters(update);
   }
 
   /** Returns the stable DOM ID used by the active referee option. */

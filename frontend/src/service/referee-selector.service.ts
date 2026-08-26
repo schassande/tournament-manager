@@ -37,6 +37,20 @@ export interface RefereeSelectorActivation {
   sequence: number;
 }
 
+/** Filter values shared by every referee selector on the allocation page. */
+export interface RefereeSelectorFilters {
+  level: string;
+  category: string;
+  gender: string;
+  upgradeOnly: boolean;
+  playerRefereesOnly: boolean;
+  eligibilityEnabled: boolean;
+  sortMode: RefereeSelectorSortMode;
+}
+
+/** Supported referee-list sort orders. */
+export type RefereeSelectorSortMode = 'level-asc' | 'level-desc' | 'games-asc';
+
 /** Page-scoped in-memory facade shared by all referee selector instances. */
 @Injectable()
 export class RefereeSelectorFacade {
@@ -45,8 +59,24 @@ export class RefereeSelectorFacade {
   private readonly _entries = signal<RefereeSelectorEntry[]>([]);
   private preparationSequence = 0;
 
+  /** Current filter values reapplied when another selector popover is opened. */
+  readonly filters = signal<RefereeSelectorFilters>({
+    level: 'All',
+    category: 'All',
+    gender: 'All',
+    upgradeOnly: false,
+    playerRefereesOnly: false,
+    eligibilityEnabled: true,
+    sortMode: 'level-asc',
+  });
+
   /** Read-only normalized referee index consumed by the selector components. */
   readonly entries = this._entries.asReadonly();
+
+  /** Updates one filter while preserving the other active filter values. */
+  updateFilters(update: Partial<RefereeSelectorFilters>): void {
+    this.filters.update((filters) => ({ ...filters, ...update }));
+  }
 
   /** Replaces the page snapshot after loading a new allocation period. */
   setSnapshot(referees: (Referee | undefined)[], games: GameView[]): void {
