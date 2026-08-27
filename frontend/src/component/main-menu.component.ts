@@ -148,6 +148,10 @@ export class MainMenuComponent {
               label: 'Allocations',
               routerLink: `/tournament/${tournament.id}/allocation`,
             },
+            {
+              label: 'Planning',
+              routerLink: `/tournament/${tournament.id}/referee-planning`,
+            },
             ...(this.canAccessRefereeUpgrade() ? [{
                 label: 'Upgrades',
                 routerLink: `/tournament/${tournament.id}/referee-upgrade`,

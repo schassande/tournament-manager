@@ -111,7 +111,7 @@ L'application propose aussi quelques aides pratiques :
 
 L'utilisateur peut :
 
-- afficher tous les arbitres du tournoi
+- afficher tous les arbitres du tournoi, tries alphabetiquement par prenom puis par nom
 - ajouter un arbitre temps plein
 - modifier rapidement son identite
 - renseigner son niveau, sa categorie et son upgrade

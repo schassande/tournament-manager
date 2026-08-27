@@ -48,7 +48,11 @@ const defaultVideo = false;
                   <ng-template #output>{{ field.name }}</ng-template>
                 </p-cellEditor>
               </td>
-              <td><p-toggleswitch [(ngModel)]="field.video"/></td>
+              <td>
+                <p-toggleswitch
+                  [(ngModel)]="field.video"
+                  (onChange)="videoChanged(field.id, $event.checked)" />
+              </td>
               <td><p-rating [(ngModel)]="field.quality" [stars]="3" (onRate)="onRate(field.id, $event.value)"/></td>
               <td style="text-align: center;" (click)="removeField(field.id)">
                 <i class="pi pi-trash action action-remove" aria-label="remove field"></i>
@@ -75,6 +79,11 @@ export class TournamentFieldsEditComponent {
   protected fieldNameChanged(): void {
     console.log('fieldNameChanged', this.fields())
     this.fieldsChanged();
+  }
+
+  /** Notifies the parent after the video availability of a field changes. */
+  protected videoChanged(fieldId: string, video: boolean): void {
+    this.fields.update(fields => fields.map(field => field.id === fieldId ? { ...field, video } : field));
   }
 
   protected addField() {

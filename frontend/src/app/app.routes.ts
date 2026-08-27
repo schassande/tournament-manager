@@ -115,6 +115,14 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
   },
   {
+    path: 'tournament/:tournamentId/referee-planning',
+    loadComponent: () =>
+      import('../page/referee-planning.page').then(
+        (m) => m.RefereePlanningComponent,
+      ),
+    data: { title: 'Referee planning' },
+  },
+  {
     path: 'tournament/:tournamentId/allocation/:tournamentAllocationId/fragment/:fragmentAllocationId',
     loadComponent: () =>
       import('../page/tournament-referees-allocation.page').then(

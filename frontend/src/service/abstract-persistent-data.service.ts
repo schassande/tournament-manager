@@ -39,7 +39,7 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
         console.log(`Updating ${this.getCollectionName()}:${item.id}...`);
         return this.update(item);
       } else {
-        console.log(`Creating ${this.getCollectionName()}:${item.id}...`);
+        // console.log(`Creating ${this.getCollectionName()}:${item.id}...`);
         return this.create(item);
       }
     } else {
@@ -54,7 +54,7 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
   private create(item: T): Observable<T> {
     // Génère un ID unique
     item.id = doc(this.itemsCollection()).id;
-    console.log(`Creating new item with ID: ${item.id}`);
+    console.log(`Creating new ${this.getCollectionName()} with ID: ${item.id}`);
     item.lastChange = new Date().getTime();
     const itemDoc = doc(this.firestore, `${this.getCollectionName()}/${item.id}`);
     console.log(`Document ID: ${itemDoc.id}`);

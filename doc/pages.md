@@ -317,6 +317,20 @@ Comportements notables :
 - le champ de nom est masque lorsqu'un seul fragment existe pour la periode affichee et apparait uniquement lorsqu'il existe plusieurs fragments concurrents
 - le tableau des allocations se defile horizontalement et verticalement dans son conteneur ; la colonne des slots reste visible pendant le defilement horizontal et la ligne des noms de terrains reste visible pendant le defilement vertical
 
+## `/tournament/:tournamentId/referee-planning`
+
+Composant : `RefereePlanningComponent`
+
+Fonction :
+
+- affichage en lecture seule du planning des arbitres et coaches pour les fragments d'allocation visibles de l'allocation tournoi courante
+- selection d'un scope `Day` ou `PartDay`
+- onglets `Referees Planning`, `Referees List` et `Coaches` (l'onglet `Coaches` est visible uniquement pour l'attendee connecte dont `isRefereeCoach` vaut `true`)
+- filtres de recherche, niveau, categorie, genre, player referee et upgrade dans la liste des arbitres
+- export PDF via la boite d'impression du navigateur et export Excel du contenu affiche dans chaque onglet
+
+La page est accessible a tout utilisateur pouvant consulter le tournoi. Les onglets `Referees Planning` et `Referees List` restent visibles par tous ; l'onglet `Coaches` est reserve a l'attendee connecte dont `isRefereeCoach` vaut `true`. Si aucun fragment visible n'est disponible, seul le message d'absence d'allocation est affiche. En cas d'echec de chargement, un message et une action `Retry` sont proposes.
+
 ## Pages indirectement presentes dans l'UX
 
 Certaines entrees de menu existent sans page pleinement implemente dans ce depot :

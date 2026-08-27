@@ -1,6 +1,6 @@
 import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { forkJoin, map, Observable, of, switchMap, take } from 'rxjs';
 import { Attendee, Country, defaultSlotType, Division, Person, Tournament } from '@tournament-manager/persistent-data-model';
 import { UserService } from '../service/user.service';
 import { TournamentService } from '../service/tournament.service';
@@ -276,7 +276,7 @@ export class TournamentEditComponent  implements OnInit {
   private init(currentUser: Person) {
     const tournamentId = this.activatedRoute.snapshot.paramMap.get('tournamentId') as string;
     if (tournamentId) {
-      this.tournamentService.byId(tournamentId).subscribe(t => {
+      this.tournamentService.byId(tournamentId).pipe(take(1)).subscribe(t => {
         if (t) {
           t.id = tournamentId;
           this.tournament.set(t);
@@ -369,12 +369,12 @@ export class TournamentEditComponent  implements OnInit {
         personId: person.id,
         countryId: person.countryId,
         firstName: person.firstName,
-        lastName: person.lastName,
+        lastName: person.lastName ?? '',
         regionId: person.regionId,
-        shortName: person.shortName,
-        email: person.email,
-        gender: person.gender,
-        phone: person.phone
+        shortName: person.shortName ?? '',
+        email: person.email ?? '',
+        gender: person.gender ?? 'M',
+        phone: person.phone ?? ''
       },
       roles: [], 
       isPlayer: false, 
@@ -440,9 +440,7 @@ export class TournamentEditComponent  implements OnInit {
           return this.attendeeService.findByPerson(tournament.id, person.id).pipe(
             switchMap(attendees => attendees[0]
               ? of({ email, person, attendee: attendees[0] })
-              : this.createManagerAttendee(tournament, person).pipe(
-                map(attendee => ({ email, person, attendee }))
-              )
+              : this.createManagerAttendee(tournament, person).pipe(map(attendee => ({ email, person, attendee })))
             )
           );
         } else {

@@ -36,11 +36,12 @@ export class AttendeeService extends AbstractPersistentDataService<Attendee>{
       ? `#${color.replace(/^x/i, '')}`
       : color;
   }
+  /** Finds the attendees linked to a person within a tournament. */
   findByPerson(tournamentId: string, personId: string): Observable<Attendee[]> {
     return this.query(
       query(this.itemsCollection(),
       where('tournamentId', '==', tournamentId),
-      where('personId', '==', personId)
+      where('person.personId', '==', personId)
       )
     );
   }
