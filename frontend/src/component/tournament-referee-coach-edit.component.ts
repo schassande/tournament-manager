@@ -116,7 +116,7 @@ import { AttendeeUnavailabilityComponent } from './attendee-unavailability.compo
               style="margin-left: 5px; width: 2rem;"
               *ngIf="refereeCoachUpgrade"/>
           </div>
-          @if (coach?.attendee?.refereeCoach) {
+          @if (coach && coach.attendee && coach.attendee.refereeCoach) {
             <div class="form-field">
               <label for="background">Color</label>
               Font: <ngx-colors class="colorPicker" ngx-colors-trigger overlayClassName="referee-coach-color-picker-overlay"
