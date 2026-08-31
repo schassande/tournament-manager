@@ -31,9 +31,11 @@ import { GameService } from '../service/game.service';
 import { DateService } from '../service/date.service';
 import { RefereeAllocationStatisticsApiService } from '../service/referee-allocation-statistics-api.service';
 import { FragmentRefereeAllocationStatisticsService } from '../service/fragment-referee-allocation-statistics.service';
+import { PlanningGame } from '../service/referee-planning-model';
 import { TournamentRefereeAllocationStatisticsService } from '../service/tournament-referee-allocation-statistics.service';
 import { UserService } from '../service/user.service';
 import { RefereeService } from '../service/referee.service';
+import { RefereeTimeslotTableComponent } from './referee-timeslot-table.component';
 
 const KEY_STATISTICS_DRAWER_WIDTH = 'tournament-referee-allocation.statistics-drawer-width';
 
@@ -59,6 +61,7 @@ interface CoachStatisticsRow {
     InputIconModule,
     InputTextModule,
     RadioButtonModule,
+    RefereeTimeslotTableComponent,
     SelectModule,
     TableModule,
   ],
@@ -116,6 +119,14 @@ interface CoachStatisticsRow {
               optionValue="value"
             />
           </div>
+          <p-button
+            label="Force refresh"
+            icon="pi pi-refresh"
+            severity="warn"
+            [loading]="refreshing()"
+            [disabled]="refreshing()"
+            (onClick)="refreshAll()"
+          />
         </div>
         <div class="statistics-options-row">
           <div class="statistics-filter-field">
@@ -156,22 +167,21 @@ interface CoachStatisticsRow {
           >
         </div>
       </div>
-      <div class="statistics-refresh-row">
-        <p-button
-          label="Force refresh"
-          icon="pi pi-refresh"
-          severity="warn"
-          [loading]="refreshing()"
-          [disabled]="refreshing()"
-          (onClick)="refreshAll()"
-        />
-      </div>
       <div class="statistics-tabs">
         @for (tab of tabs; track tab) {
           <button type="button" [class.active]="activeTab() === tab" (click)="activeTab.set(tab)">{{ tab }}</button>
         }
       </div>
-      @if (activeTab() === 'General') {
+      @if (activeTab() === 'TimeSlot') {
+        <app-referee-timeslot-table
+          [referees]="timeSlotReferees()"
+          [timeslots]="timeSlotTimeslots()"
+          [games]="timeSlotGames()"
+          [scopeLabel]="scopeLabel()"
+          [showExports]="false"
+          (cellSelected)="gameSelected.emit($event)"
+        />
+      } @else if (activeTab() === 'General') {
         <p-table class="statistics-table" [value]="generalRows()" sortMode="single"
           ><ng-template #header
             ><tr>
@@ -500,7 +510,7 @@ interface CoachStatisticsRow {
       }
       .statistics-search-row {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr) auto auto;
       }
       .statistics-search-row input {
         min-width: 0;
@@ -544,12 +554,6 @@ interface CoachStatisticsRow {
         gap: 0.25rem;
         justify-content: center;
         white-space: nowrap;
-      }
-      .statistics-refresh-row {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 0.5rem;
-        width: 100%;
       }
       .statistics-tabs {
         display: flex;
@@ -709,7 +713,7 @@ export class AllocationStatisticsDrawerComponent {
     { label: 'Male', value: 'M' },
     { label: 'Female', value: 'F' },
   ];
-  readonly tabs = ['General', 'Games', 'Buddies', 'Coaches', 'Teams'];
+  readonly tabs = ['General', 'Games', 'Buddies', 'Coaches', 'Teams', 'TimeSlot'];
   readonly fragmentStatistics = signal<FragmentRefereeAllocationStatistics[]>([]);
   readonly tournamentStatistics = signal<TournamentRefereeAllocationStatistics[]>([]);
   readonly games = signal<Game[]>([]);
@@ -736,6 +740,68 @@ export class AllocationStatisticsDrawerComponent {
           refereeAttendeeId: item.refereeAttendeeId,
         })),
   );
+  /** Returns the timeslots represented by the selected statistics scope. */
+  readonly timeSlotTimeslots = computed(() => {
+    if (this.scope() === 'fragment') {
+      const day = this.tournament().days.find((item) => item.id === this.allocation().dayId);
+      const part = this.allocation().partDayId
+        ? day?.parts.find((item) => item.id === this.allocation().partDayId)
+        : undefined;
+      return part?.timeslots ?? day?.parts.flatMap((item) => item.timeslots) ?? [];
+    }
+    return this.tournament().days.flatMap((day) => day.parts.flatMap((part) => part.timeslots));
+  });
+  /** Returns the filtered referee attendees displayed by the TimeSlot tab. */
+  readonly timeSlotReferees = computed(() => {
+    const referees = [...this.referees(), ...this.tournamentReferees()];
+    const selectedIds = new Set(this.filtered().map((stat) => stat.refereeAttendeeId));
+    return referees
+      .filter((referee): referee is Referee => referee !== undefined && selectedIds.has(referee.attendee.id))
+      .map((referee) => referee.attendee)
+      .filter((referee, index, all) => all.findIndex((item) => item.id === referee.id) === index)
+      .sort((firstReferee, secondReferee) => {
+        const firstPerson = firstReferee.person;
+        const secondPerson = secondReferee.person;
+        return (
+          (firstPerson?.firstName ?? '').localeCompare(secondPerson?.firstName ?? '', 'fr', { sensitivity: 'base' }) ||
+          (firstPerson?.lastName ?? '').localeCompare(secondPerson?.lastName ?? '', 'fr', { sensitivity: 'base' })
+        );
+      });
+  });
+  /** Converts the loaded games and allocations to the planning view model used by the shared table. */
+  readonly timeSlotGames = computed<PlanningGame[]>(() => {
+    const timeslotIds = new Set(this.timeSlotTimeslots().map((timeslot) => timeslot.id));
+    const fragmentIds = new Set(
+      this.scope() === 'fragment'
+        ? [this.allocation().id]
+        : this.tournamentAllocation().fragmentRefereeAllocations.map((fragment) => fragment.id),
+    );
+    return this.games()
+      .filter((game) => timeslotIds.has(game.timeslotId))
+      .map((game): PlanningGame | undefined => {
+        const field = this.tournament().fields.find((item) => item.id === game.fieldId);
+        const timeslot = this.timeSlotTimeslots().find((item) => item.id === game.timeslotId);
+        const referees = this.allocations().filter(
+          (allocation) =>
+            allocation.gameId === game.id &&
+            fragmentIds.has(allocation.fragmentRefereeAllocationId ?? '') &&
+            isReferee(allocation.attendeeRole),
+        );
+        return field && timeslot
+          ? {
+              game,
+              field,
+              timeslot,
+              divisionName: '',
+              homeTeamName: '',
+              awayTeamName: '',
+              referees,
+              coaches: [] as GameAttendeeAllocation[],
+            }
+          : undefined;
+      })
+      .filter((game): game is PlanningGame => game !== undefined);
+  });
   readonly filtered = computed(() => {
     const search = this.search().trim().toLowerCase();
     return this.statistics().filter((stat) => {
@@ -1011,6 +1077,10 @@ export class AllocationStatisticsDrawerComponent {
     return this.allocation().partDayId
       ? (day?.parts.find((item) => item.id === this.allocation().partDayId)?.name ?? this.allocation().partDayId ?? '')
       : `Day ${this.allocation().dayId}`;
+  }
+  /** Returns the label used by the shared timeslot table export. */
+  scopeLabel(): string {
+    return this.scope() === 'fragment' ? this.fragmentLabel() : 'Tournament';
   }
   divisionName(id: string): string {
     return this.tournament().divisions.find((item) => item.id === id)?.name ?? id;

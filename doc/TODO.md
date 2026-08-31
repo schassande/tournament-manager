@@ -1,6 +1,6 @@
 # TODO list du projet Tournament Maager
 
-- Page home
+- Allocation : integrer le planning list dans le drawer des statistiques
 - Menu de l'appliation
   - S'adapte en fonction du role de l'utilisateur connecté
   - Prévoir le guest. 
@@ -87,6 +87,8 @@
 - 2026/08/27: Planning arbitres et coaches
 - 2026/08/31: Wizard de creation de tournoi
 - 2026/08/31: nom des parts lors de l'import FIT
+- 2026/08/31: Page home
+- 2026/08/31: Ajout du tableau de la liste des allocations dans le drawer des statistiques d'allocation
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams

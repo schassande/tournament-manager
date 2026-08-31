@@ -81,6 +81,7 @@ The frontend calls the computation API after the allocation save succeeds and do
 The filter area contains:
 
 - A text input for search.
+- A `Force refresh` button at the end of the first filter row.
 - When the search input is not empty, display an icon button in the input to clear the search text.
 - Select controls do not display separate text labels. Their default options are `All levels`, `All categories`, and `All genders`.
 - The level, category, and gender selects display a clear icon; clearing a selection restores its default value. The scope select has no clear icon.
@@ -96,11 +97,18 @@ The filter area contains:
 
 Each tab displays a specific part of the statistics and may use a table or a list:
 
+- TimeSlot
 - General
 - Games
 - Buddies
 - Coaches
 - Teams
+
+### TimeSlot tab
+
+Display the same referee-by-timeslot matrix as the `Referees List` planning view. The matrix uses the referees selected by the allocation-statistics filters, the timeslots of the selected scope, and the corresponding referee allocations. It keeps the existing field, video, bad-quality, sticky-header, and sticky-referee-column behavior. Export icons are hidden in the drawer; the planning view keeps its PDF and Excel exports. The matrix is implemented by a shared dedicated component used by both views.
+
+Clicking a timeslot header highlights that column, including its header and empty cells, in pale blue. This highlight has priority over the other cell colors. Clicking the highlighted header removes the highlight, and selecting another header moves the highlight to that column. Clicking a populated cell closes the drawer and selects the corresponding referee position in the allocation grid, scrolling it into view.
 
 ### General tab
 

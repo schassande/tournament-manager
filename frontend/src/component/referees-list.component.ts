@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  inject,
   input,
   signal,
 } from '@angular/core';
@@ -10,23 +9,14 @@ import { FormsModule } from '@angular/forms';
 import { AutoCompleteModule } from 'primeng/autocomplete';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
-import {
-  Attendee,
-  Field,
-  Timeslot,
-} from '@tournament-manager/persistent-data-model';
-import { attendeeName } from '../service/referee-planning-model';
-import { DateService } from '../service/date.service';
-import {
-  PlanningExportTable,
-  RefereePlanningService,
-} from '../service/referee-planning.service';
+import { Attendee, Timeslot } from '@tournament-manager/persistent-data-model';
 import { PlanningGame } from '../service/referee-planning-model';
+import { RefereeTimeslotTableComponent } from './referee-timeslot-table.component';
 
 /** Displays the referee-by-timeslot planning matrix and its filters. */
 @Component({
   selector: 'app-referees-list',
-  imports: [AutoCompleteModule, CheckboxModule, FormsModule, SelectModule],
+  imports: [AutoCompleteModule, CheckboxModule, FormsModule, RefereeTimeslotTableComponent, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="filters">
@@ -88,46 +78,12 @@ import { PlanningGame } from '../service/referee-planning-model';
         }
       </div>
     </div>
-    <div class="planning-table-wrapper">
-      <table class="planning-table">
-        <thead>
-          <tr>
-            <th>
-              <i class="pi pi-file-pdf export-icon" role="button" tabindex="0"
-                (click)="exportPdf()" aria-label="Export PDF"
-                (keydown.enter)="exportPdf()" (keydown.space)="exportPdf()">
-              </i>
-              <i class="pi pi-file-excel export-icon" role="button" tabindex="0"
-                (click)="exportExcel()" aria-label="Export Excel"
-                (keydown.enter)="exportExcel()" (keydown.space)="exportExcel()">
-              </i>
-            </th>
-            @for (slot of timeslots(); track slot.id) {
-              <th>{{ slotLabel(slot) }}</th>
-            }
-          </tr>
-        </thead>
-        <tbody>
-          @for (referee of filteredReferees(); track referee.id) {
-            <tr>
-              <th>{{ name(referee) }}</th>
-              @for (slot of timeslots(); track slot.id) {
-                @if (fieldName(referee.id, slot.id); as field) {
-                  <td [class.video-field]="field.video" [class.bad-field]="field.quality === 1">
-                    {{ field.name }}
-                    @if (field.video) {
-                      <i class="pi pi-youtube" aria-hidden="true"></i>
-                    }
-                  </td>
-                } @else { 
-                  <td></td>
-                }
-              }
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+    <app-referee-timeslot-table
+      [referees]="filteredReferees()"
+      [timeslots]="timeslots()"
+      [games]="games()"
+      [scopeLabel]="scopeLabel()"
+    />
   `,
   styles: [
     `
@@ -148,57 +104,6 @@ import { PlanningGame } from '../service/referee-planning-model';
       }
       label {
         white-space: nowrap;
-      }
-      .planning-table-wrapper {
-        overflow: auto;
-        max-height: calc(100vh - 260px);
-      }
-      .planning-table {
-        border-collapse: collapse;
-        width: max-content;
-      }
-      th,
-      td {
-        border: 1px solid #bbb;
-        padding: 0.45rem;
-        white-space: nowrap;
-      }
-      thead th {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        background: #f5f5f5;
-      }
-      tbody th {
-        text-align: left;
-      }
-      tbody td {
-        text-align: center;
-      }
-      tbody th,
-      thead th:first-child {
-        position: sticky;
-        left: 0;
-        z-index: 1;
-        background: #f5f5f5;
-      }
-      thead th:first-child {
-        z-index: 3;
-      }
-      .video-field {
-        font-weight: 700;
-      }
-      .bad-field {
-        display: block;
-        background: #f8d7da;
-      }
-      .export-icon {
-        cursor: pointer;
-        margin: 2px;
-      }
-      .export-icon:focus-visible {
-        outline: 2px solid currentColor;
-        outline-offset: 2px;
       }
     `,
   ],
@@ -259,41 +164,6 @@ export class RefereesListComponent {
         );
       }),
   );
-  private readonly dateService = inject(DateService);
-
-  constructor(private readonly exports: RefereePlanningService) {}
-  /** Formats an attendee name. */
-  name(referee: Attendee): string {
-    return attendeeName(referee);
-  }
-  /** Formats a timeslot label. */
-  slotLabel(slot: Timeslot): string {
-    return this.dateService.toTime(slot.start);
-  }
-  /** Finds the field assigned to a referee in a timeslot. */
-  fieldName(attendeeId: string, timeslotId: string): Field | undefined {
-    return this.games().find(
-      (game) =>
-        game.timeslot.id === timeslotId &&
-        game.referees.some(
-          (allocation) => allocation.attendeeId === attendeeId,
-        ),
-    )?.field;
-  }
-  /** Exports the filtered matrix as PDF. */
-  exportPdf(): void {
-    this.exports.exportPdf(
-      this.exportTable(),
-      `Referees List - ${this.scopeLabel()}`,
-    );
-  }
-  /** Exports the filtered matrix as Excel. */
-  exportExcel(): void {
-    this.exports.exportExcel(
-      this.exportTable(),
-      `referees-list-${this.scopeLabel()}`,
-    );
-  }
   /** Applies all active list filters to one referee. */
   private matches(referee: Attendee): boolean {
     const text = this.search().toLowerCase();
@@ -311,20 +181,5 @@ export class RefereesListComponent {
       (!this.playerReferees() || referee.isPlayer) &&
       (!this.upgradeOnly() || !!info?.upgrade)
     );
-  }
-  /** Builds the export rows from the filtered list. */
-  private exportTable(): PlanningExportTable {
-    return {
-      headers: [
-        'Referee',
-        ...this.timeslots().map((slot) => this.slotLabel(slot)),
-      ],
-      rows: this.filteredReferees().map((referee) => [
-        this.name(referee),
-        ...this.timeslots().map(
-          (slot) => this.fieldName(referee.id, slot.id)?.name ?? '',
-        ),
-      ]),
-    };
   }
 }
