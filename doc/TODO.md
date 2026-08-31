@@ -1,6 +1,6 @@
 # TODO list du projet Tournament Maager
 
-- nom des parts lors de l'import FIT
+- Page home
 - Menu de l'appliation
   - S'adapte en fonction du role de l'utilisateur connecté
   - Prévoir le guest. 
@@ -86,6 +86,7 @@
 - 2026/08/26: statistiques d'allocation
 - 2026/08/27: Planning arbitres et coaches
 - 2026/08/31: Wizard de creation de tournoi
+- 2026/08/31: nom des parts lors de l'import FIT
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams

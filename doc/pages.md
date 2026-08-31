@@ -42,8 +42,13 @@ Composant : `HomeComponent`
 
 Etat actuel :
 
-- page quasi vide
-- sert surtout de point d'entree et de redirection implicite
+- affiche le logo de l'application centre horizontalement, avec une hauteur de 300 px
+- describes the main tournament, game, field, referee, coach and assignment management features
+- invites the user to log in via a link to `/user/login`
+- lists public tournaments whose start date falls in the previous, current or next calendar month, with links to their tournament home pages
+- displays one tournament per row, with the date first, followed by the name, country and city; missing values are displayed as empty
+- retrieves only the matching date range from Firestore instead of loading the full tournament collection
+- sert de point d'entree et de redirection implicite
 
 ## `/user/login`
 

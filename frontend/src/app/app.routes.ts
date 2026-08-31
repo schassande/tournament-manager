@@ -6,7 +6,7 @@ export const routes: Routes = [
     path: 'home',
     loadComponent: () =>
       import('../page/home.page').then((m) => m.HomeComponent),
-    data: { title: 'Home' },
+    data: { title: 'Touch Tournament Manager' },
     pathMatch: 'full',
   },
 

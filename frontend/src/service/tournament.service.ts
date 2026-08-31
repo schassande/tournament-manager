@@ -2,7 +2,14 @@ import { Attendee, colTournament, duplicateTimeslotIds, Team, Tournament } from 
 import { Injectable, signal } from '@angular/core';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 import { map, Observable, of, tap } from 'rxjs';
-import { collection, doc, runTransaction } from '@angular/fire/firestore';
+import {
+  collection,
+  doc,
+  orderBy,
+  query as firestoreQuery,
+  runTransaction,
+  where,
+} from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root'
@@ -21,6 +28,21 @@ export class TournamentService extends AbstractPersistentDataService<Tournament>
       if (!part.name) part.name = part.id;
     }));
     return item;
+  }
+
+  /**
+   * Loads tournaments whose start date is within the requested range.
+   * @param startDateInclusive lower Unix timestamp bound, included in the result
+   * @param endDateExclusive upper Unix timestamp bound, excluded from the result
+   * @returns tournaments ordered by start date
+   */
+  public byStartDateRange(startDateInclusive: number, endDateExclusive: number): Observable<Tournament[]> {
+    return this.query(firestoreQuery(
+      this.itemsCollection(),
+      where('startDate', '>=', startDateInclusive),
+      where('startDate', '<', endDateExclusive),
+      orderBy('startDate'),
+    ));
   }
 
   /** Prevents persisting a day whose timeslot identifiers are not unique. */
