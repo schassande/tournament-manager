@@ -232,7 +232,7 @@ export class FitImportService {
             field: fieldNames.get(rawField) || rawField,
             division: divisionNames.get(rawDivision) || toCategory(rawDivision),
             gameType,
-            resultRequired: gameType !== 'Pool',
+            resultRequired: this.isGameResultRequired(gameType),
             teamHome: home,
             teamAway: away,
             status: 'New',
@@ -290,6 +290,10 @@ export class FitImportService {
       unresolvedTeams: Array.from(new Set(unresolvedTeams)),
       incompleteGames,
     };
+  }
+  private isGameResultRequired(gameType: string): boolean {
+    const str = gameType.toUpperCase();
+    return str.indexOf('POOL') < 0 && str.indexOf('TEST') < 0;
   }
 
   private dateTime(

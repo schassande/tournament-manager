@@ -25,6 +25,16 @@ service cloud.firestore {
         );
     }
 
+    // Allows the initial attendee to be created in the same atomic write as
+    // its tournament. getAfter() sees the tournament written by that request.
+    function canManageTournamentAfterWrite(tournamentId) {
+      return isPlatformAdmin()
+        || isTournamentManager(
+          getAfter(/databases/$(database)/documents/tournament/$(tournamentId)).data
+        )
+        || canManageTournament(tournamentId);
+    }
+
     function validUpgradeVote(vote) {
       return vote in ['Yes', 'Not yet', 'Possible', 'DNS', 'Voting'];
     }
@@ -90,7 +100,7 @@ service cloud.firestore {
 
     match /attendee/{documentId} {
       allow read: if signedIn();
-      allow create: if canManageTournament(request.resource.data.tournamentId);
+      allow create: if canManageTournamentAfterWrite(request.resource.data.tournamentId);
       allow update: if request.resource.data.tournamentId == resource.data.tournamentId
         && canManageTournament(resource.data.tournamentId);
       allow delete: if canManageTournament(resource.data.tournamentId);

@@ -36,6 +36,11 @@ Limites actuelles :
 
 ## Creer et configurer un tournoi
 
+La creation passe par un wizard modal en plusieurs etapes. Le mode FIT Import
+ouvre ensuite l'import FIT, le mode Draw Designer ouvre la page de substitution
+du designer, et le mode manuel ouvre l'accueil du tournoi. Le tournoi et
+l'attendee manager initial sont crees dans une transaction Firestore unique.
+
 L'utilisateur peut creer un tournoi puis en definir les principaux parametres :
 
 - nom et description

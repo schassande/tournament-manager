@@ -36,10 +36,19 @@ export const routes: Routes = [
   {
     path: 'tournament/create',
     loadComponent: () =>
-      import('../page/tournament-edit.page').then(
-        (m) => m.TournamentEditComponent,
+      import('../page/tournament-wizard.page').then(
+        (m) => m.TournamentWizardComponent,
       ),
     data: { title: 'Create tournament' },
+    canActivate: [AuthGuard],
+  },
+  {
+    path: 'tournament/:tournamentId/draw-designer',
+    loadComponent: () =>
+      import('../page/tournament-draw-designer-placeholder.page').then(
+        (m) => m.TournamentDrawDesignerPlaceholderComponent,
+      ),
+    data: { title: 'Draw Designer' },
     canActivate: [AuthGuard],
   },
   {

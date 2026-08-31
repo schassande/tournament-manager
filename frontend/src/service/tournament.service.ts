@@ -1,7 +1,8 @@
-import { colTournament, duplicateTimeslotIds, Team, Tournament } from '@tournament-manager/persistent-data-model';
+import { Attendee, colTournament, duplicateTimeslotIds, Team, Tournament } from '@tournament-manager/persistent-data-model';
 import { Injectable, signal } from '@angular/core';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 import { map, Observable, of, tap } from 'rxjs';
+import { collection, doc, runTransaction } from '@angular/fire/firestore';
 
 @Injectable({
   providedIn: 'root'
@@ -31,6 +32,39 @@ export class TournamentService extends AbstractPersistentDataService<Tournament>
     return super.save(item).pipe(
       tap(savedTournament => this.setCurrentTournament(savedTournament)),
     );
+  }
+
+  /**
+   * Atomically creates a tournament and its initial manager attendee.
+   * @param tournament tournament document with an empty identifier
+   * @param attendee attendee document linked to the tournament
+   * @returns both documents after their identifiers have been allocated
+   */
+  public createWithManager(tournament: Tournament, attendee: Attendee): Observable<{ tournament: Tournament; attendee: Attendee }> {
+    const duplicateIds = tournament.days.flatMap(day => duplicateTimeslotIds(day));
+    if (duplicateIds.length > 0) {
+      throw new Error(`Duplicate timeslot identifiers: ${duplicateIds.join(', ')}`);
+    }
+
+    const tournamentRef = doc(collection(this.firestore, this.getCollectionName()));
+    const attendeeRef = doc(collection(this.firestore, 'attendee'));
+    tournament.id = tournamentRef.id;
+    attendee.id = attendeeRef.id;
+    attendee.tournamentId = tournament.id;
+    tournament.managerAttendeeIds = [attendee.id];
+    tournament.lastChange = Date.now();
+    attendee.lastChange = Date.now();
+
+    return new Observable(subscriber => {
+      runTransaction(this.firestore, async transaction => {
+        transaction.set(tournamentRef, tournament);
+        transaction.set(attendeeRef, attendee);
+      }).then(() => {
+        this.setCurrentTournament(tournament);
+        subscriber.next({ tournament, attendee });
+        subscriber.complete();
+      }).catch(error => subscriber.error(error));
+    });
   }
 
   public loadCurrentTournamentFromLocalStorage(): Observable<Tournament|undefined> {

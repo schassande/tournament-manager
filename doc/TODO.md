@@ -1,10 +1,11 @@
 # TODO list du projet Tournament Maager
 
-- Planning arbitres
-- Planning coach
-- Ranking
-- Scorecard
-- Water carrier
+- nom des parts lors de l'import FIT
+- Menu de l'appliation
+  - S'adapte en fonction du role de l'utilisateur connecté
+  - Prévoir le guest. 
+  - Passage en Drawer
+  - (Des)Activation de fonctionnalités : ranking, scorecard, upgrade, Gestion des matches
 - Tournament home
   - Suggestion de la prochaine étape
   - chart des arbitres: pyramide par niveau homme/femme
@@ -12,23 +13,33 @@
   - Utilisation de Player referee
   - Divisions / nombre d'équipe
   - Match alloué / restant à allouer
-- Wizard de creation de tournoi
-- (Des)Activation de fonctionnalités : ranking, scorecard, upgrade, Gestion des matches
-- Menu en fonction des roles de la personne. Prévoir le guest. Visibilité d'un tournoi.
+- Ranking
+- Water carrier
+  - pour impression
+  - pour remplissage en ligne
+    - authentification ? necessite que chaque arbitre ait un compte donc son email affecté dans la liste des arbitres
+    - traçabilité des actions
+    - compatibilité avec le planning d'un arbitre
+    - statistiques
+- Scorecard papier
+  - Responsables d'une équipe (email)
+  - Les responsables d'équipe peuvent entrer les noms des joueurs et leur numéro
+    - Page de bilan du remplissage
+  - Impression des scorecards pour les matches (du jour, d'un match) avec les équipes, joueurs et arbitres
+
 - Allocation auto : 
   - IA gen
   - ou Optimiseur: https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search
   - Avec les coach
   - Avec les water carrier
-
+- Gestion des matches : creation du draw, resultats, classement
 
 ==> diffusion / communication / POC
 
+- Ranking method Europe
 - Numéro de version et date d'une allocation pour savoir quand elle a été modifié.
 - Field map
 - Mon Planning
-- Ranking method Europe
-- Gestion des matches : creation du draw, resultats, classement
 - Candidature Arbitre
 - Candidature Referee Coach
 - Referees: Import csv
@@ -38,6 +49,7 @@
   - API Key pour un user
   - Swagger
 - Games: export csv
+- Online Scorecard 
 
 ## Ideas
 
@@ -72,6 +84,8 @@
   - Centralisation des problemes 
   - Affichage des erreurs de manière localisée
 - 2026/08/26: statistiques d'allocation
+- 2026/08/27: Planning arbitres et coaches
+- 2026/08/31: Wizard de creation de tournoi
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams

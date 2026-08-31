@@ -157,6 +157,11 @@ Dans l'etat actuel du projet, une grande partie du parametage du tournoi est emb
 
 Le champ optionnel `fit` conserve la sélection FIT (`competitionSlug`, `season`), le fuseau cible IANA (`targetTimeZone`), les renommages personnalisés (`renaming.divisions`, `renaming.teams`, `renaming.fields`, avec `fitName` et `appName`), l'option `capitalizeTeamName` et la date ISO du dernier téléchargement réussi (`lastImportDate`). Les données téléchargées (`FITData`) sont persistées dans la collection `fit-data`, avec un document par téléchargement et un champ `tournamentId`; le snapshot dont `importDate` est le plus récent est restauré au chargement de la page. Les objets `Division` et `Team` peuvent conserver leurs clés FIT (`fitSlug`, `fitDivisionSlug`) pour fiabiliser les imports ultérieurs. Cette phase ne modifie pas les `Game`, `Day`, `Timeslot`, `Field`, `Division` ou `Team` du tournoi.
 
+La creation initiale par le tournament wizard ecrit le `Tournament` et
+l'`Attendee` du manager dans une transaction Firestore. Les regles autorisent
+la creation de cet attendee en consultant l'etat final du tournoi avec
+`getAfter()`.
+
 ## `Attendee`
 
 Participation d'une personne a un tournoi.

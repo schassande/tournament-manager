@@ -1,0 +1,58 @@
+<p-dialog header="Create tournament" [modal]="true" [closable]="!creating()" [closeOnEscape]="!creating()" [visible]="dialogVisible()" (onHide)="close()" [style]="{ width: '60rem', 'max-width': '96vw' }">
+  <p-stepper [value]="activeStep()" [linear]="true">
+    <p-step-list>
+      <p-step [value]="1">General information</p-step>
+      @if (!isFitImport()) { <p-step [value]="2">Characteristics</p-step> }
+      <p-step [value]="3">Modules</p-step>
+      <p-step [value]="4">Creation status</p-step>
+    </p-step-list>
+    <p-step-panels>
+      <p-step-panel [value]="1">
+        <ng-template #content>
+          <p>Welcome! Configure the tournament before creating it.</p>
+          <div class="form-grid">
+            <label for="tournament-name">Tournament name *</label>
+            <input id="tournament-name" pInputText [ngModel]="wizard().name" (ngModelChange)="updateField('name', $event)" />
+            <label for="country">Country *</label>
+            <p-select id="country" [options]="countries" optionLabel="name" optionValue="id" [filter]="true" [ngModel]="wizard().countryId" (ngModelChange)="updateField('countryId', $event)" appendTo="body" />
+            <label for="time-zone">Time zone *</label>
+            <p-select id="time-zone" [options]="timeZones" [ngModel]="wizard().timeZone" (ngModelChange)="updateField('timeZone', $event)" />
+          </div>
+          <fieldset><legend>Match definition mode *</legend>
+            <div class="radio-row"><p-radioButton inputId="fit" name="mode" value="FIT_IMPORT" [ngModel]="wizard().matchDefinitionMode" (ngModelChange)="updateMode($event)" /><label for="fit">FIT Import</label></div>
+            <div class="radio-row"><p-radioButton inputId="draw" name="mode" value="DRAW_DESIGNER" [ngModel]="wizard().matchDefinitionMode" (ngModelChange)="updateMode($event)" /><label for="draw">Draw Designer</label></div>
+            <div class="radio-row"><p-radioButton inputId="manual" name="mode" value="MANUAL_IMPORT" [ngModel]="wizard().matchDefinitionMode" (ngModelChange)="updateMode($event)" /><label for="manual">Manual / import</label></div>
+          </fieldset>
+          <fieldset><legend>Are you also a Referee Coach? *</legend>
+            <div class="radio-row"><p-radioButton inputId="coach-yes" name="coach" [value]="true" [ngModel]="wizard().isRefereeCoach" (ngModelChange)="updateField('isRefereeCoach', $event)" /><label for="coach-yes">Yes</label></div>
+            <div class="radio-row"><p-radioButton inputId="coach-no" name="coach" [value]="false" [ngModel]="wizard().isRefereeCoach" (ngModelChange)="updateField('isRefereeCoach', $event)" /><label for="coach-no">No</label></div>
+          </fieldset>
+        </ng-template>
+      </p-step-panel>
+      @if (!isFitImport()) {
+        <p-step-panel [value]="2"><ng-template #content>
+          <div class="form-grid">
+            <label for="start-date">Start date *</label><p-datepicker id="start-date" [ngModel]="wizard().startDate" (ngModelChange)="updateField('startDate', $event)" [showIcon]="true" />
+            <label for="days">Duration (days) *</label><p-inputNumber id="days" [min]="1" [max]="10" [step]="1" [ngModel]="wizard().nbDay" (ngModelChange)="updateField('nbDay', $event)" />
+            <label for="fields">Number of fields *</label><p-inputNumber id="fields" [min]="1" [max]="30" [step]="1" [ngModel]="wizard().numberOfFields" (ngModelChange)="updateField('numberOfFields', $event)" />
+          </div>
+          <fieldset><legend>Divisions</legend>
+            @for (row of divisions; track $index) { <div class="division-row">@for (division of row; track division) { <span class="check-item"><p-checkbox [inputId]="division" [binary]="true" [ngModel]="isDivisionSelected(division)" (ngModelChange)="divisionChanged(division, $event)" /><label [for]="division">{{ division }}</label></span> }</div> }
+          </fieldset>
+        </ng-template></p-step-panel>
+      }
+      <p-step-panel [value]="3"><ng-template #content>
+        <table class="feature-table"><thead><tr><th>Enabled</th><th>Feature</th><th>Description</th></tr></thead><tbody>@for (feature of features; track feature.module) { <tr><td><p-checkbox [inputId]="feature.module" [binary]="true" [disabled]="feature.module === 'FIT_IMPORT' || (isFitImport() && feature.module === 'DRAW_DESIGNER')" [ngModel]="isModuleEnabled(feature.module)" (ngModelChange)="moduleChanged(feature.module, $event)" /></td><td><label [for]="feature.module">{{ feature.name }}</label></td><td>{{ feature.description }}</td></tr> }</tbody></table>
+      </ng-template></p-step-panel>
+      <p-step-panel [value]="4"><ng-template #content>
+        @if (creating()) { <div class="status"><p-progressSpinner [style]="{ width: '2rem', height: '2rem' }" /><p>Creating the tournament...</p></div> }
+        @if (created()) { <div class="status success"><i class="pi pi-check-circle"></i><p>Tournament created successfully.</p>@if (isFitImport()) { <p>FIT data import is the next step.</p> } @else if (wizard().matchDefinitionMode === 'DRAW_DESIGNER') { <p>Define the draw in the designer next.</p> } @else { <p>The tournament home page is the next step.</p> }</div> }
+        @if (error(); as message) { <div class="status error"><i class="pi pi-times-circle"></i><p>{{ message }}</p></div> }
+      </ng-template></p-step-panel>
+    </p-step-panels>
+  </p-stepper>
+  <ng-template #footer>
+    @if (activeStep() !== 4) { <p-button label="Previous" severity="secondary" [disabled]="activeStep() === 1 || creating()" (click)="previous()" /><p-button [label]="activeStep() === 3 ? 'Create Tournament' : 'Next'" (click)="next()" /> }
+    @else if (created() || error()) { <p-button label="Close" (click)="close()" /> }
+  </ng-template>
+</p-dialog>

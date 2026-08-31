@@ -25,6 +25,7 @@ export interface Tournament extends PersistentObject {
   fit?: FitTournamentConfig;
   defaultRefereeBadgeSystem?: RefereeBadgeSystem;
   defaultRefereeCoachBadgeSystem?: RefereeCoachBadgeSystem;
+  enablesModules?: ModulesNames[];
 }
 
 /** Persistent configuration used by the FIT import preparation page. */
@@ -51,6 +52,15 @@ export interface FitRenamingConfig {
   fields: FitRenaming[];
   capitalizeTeamName: boolean;
 }
+
+export type ModulesNames = 'RANKING' 
+  | 'UPGRADE' 
+  | 'DRAW_DESIGNER' 
+  | 'AUTOMATIC_ALLOCATION' 
+  | 'FIT_IMPORT' 
+  | 'SCORECARD' 
+  | 'PRINTED_WATER_CARRIER' 
+  | 'ONLINE_WATER_CARRIER';
 
 export interface Field extends WithId {
   name: string;
