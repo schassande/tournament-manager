@@ -140,7 +140,21 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentPage {
     //find attendees having isReferee = true
     this.attendeeService.findTournamentRefereeCoaches(this.tournament()!.id).pipe(
       map((attendees) => { // convert attendees to referees
-        const refereeCoaches: RefereeCoach[] = attendees.map((attendee: Attendee) => { return { attendee }; });
+        const refereeCoaches: RefereeCoach[] = attendees.map((attendee: Attendee) => { 
+          let changed = false;
+          if (!attendee.refereeCoach) {
+            attendee.refereeCoach = { badge: 0, badgeSystem: 5, fontColor: 'black', backgroundColor: 'white'};
+            changed = true;
+          }
+          if (!attendee.refereeCoach.upgrade) {
+            attendee.refereeCoach.upgrade = { badge: 0, badgeSystem: 5};
+            changed = true;
+          }
+          if (changed) {
+            this.attendeeService.save(attendee).subscribe();
+          }
+          return { attendee }; 
+        });
         this.sortReferees(refereeCoaches);
         this.refereeCoaches.set([...refereeCoaches]);
       }),
