@@ -11,7 +11,7 @@ import { MainMenuComponent } from '../component/main-menu.component';
     ],
   template: `
     <app-main-menu></app-main-menu>
-    <div style="margin-top: 60px;">
+    <div style="margin-top: 48px;">
       <router-outlet></router-outlet>
     </div>
   `,
