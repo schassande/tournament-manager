@@ -1,6 +1,5 @@
 # TODO list du projet Tournament Maager
 
-- (Des)Activation de fonctionnalités : ranking, scorecard, upgrade, Gestion des matches
 - Tournament home
   - Suggestion de la prochaine étape
   - chart des arbitres: pyramide par niveau homme/femme
@@ -85,6 +84,7 @@
 - 2026/08/31: Page home
 - 2026/08/31: Ajout du tableau de la liste des allocations dans le drawer des statistiques d'allocation
 - 2026/09/02: Passage en Drawer du menu de l'appliation + S'adapte en fonction du role de l'utilisateur connecté
+- 2026/09/02: (Des)Activation de fonctionnalités : ranking, scorecard, upgrade, Gestion des matches
 
 
 ## Bugs non reproduis

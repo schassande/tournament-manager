@@ -16,6 +16,7 @@ import { DateService } from '../service/date.service';
 import { RegionService } from '../service/region.service';
 import { TournamentService } from '../service/tournament.service';
 import { UserService } from '../service/user.service';
+import { TOURNAMENT_FEATURES, TournamentFeatureOption } from '../config/tournament-features';
 
 type MatchDefinitionMode = 'FIT_IMPORT' | 'DRAW_DESIGNER' | 'MANUAL_IMPORT';
 
@@ -30,12 +31,6 @@ interface TournamentWizardData {
   numberOfFields: number;
   divisions: string[];
   modules: ModulesNames[];
-}
-
-interface FeatureOption {
-  module: ModulesNames;
-  name: string;
-  description: string;
 }
 
 /** Modal wizard used to create and initially configure a tournament. */
@@ -60,16 +55,7 @@ export class TournamentWizardComponent {
     ['XO', 'X30'],
     ['Open'],
   ];
-  readonly features: FeatureOption[] = [
-    { module: 'RANKING', name: 'Ranking', description: 'Ranking of the top N referees by Referee Coaches.' },
-    { module: 'UPGRADE', name: 'Upgrade', description: 'Determination of referee upgrades for referees seeking the next badge.' },
-    { module: 'SCORECARD', name: 'Scorecard', description: 'Printable pre-filled score sheets for games and referees.' },
-    { module: 'DRAW_DESIGNER', name: 'Draw Designer', description: 'Construction of the sporting formula and allocation of games.' },
-    { module: 'ONLINE_WATER_CARRIER', name: 'Online Water Carrier', description: 'Referees can self-allocate to games as Water Carriers.' },
-    { module: 'PRINTED_WATER_CARRIER', name: 'Printed Water Carrier', description: 'Print a schedule for manually assigning Water Carriers.' },
-    { module: 'AUTOMATIC_ALLOCATION', name: 'Auto allocation', description: 'Configurable allocation of referees and Referee Coaches to games.' },
-    { module: 'FIT_IMPORT', name: 'FIT Import', description: 'Import games from an international competition organized by FIT.' },
-  ];
+  readonly features: TournamentFeatureOption[] = TOURNAMENT_FEATURES;
   readonly timeZones = ['UTC', 'Europe/Paris', 'Europe/London', 'Europe/Berlin', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo', 'Australia/Sydney'];
   readonly wizard = signal<TournamentWizardData>(this.initialData());
   readonly activeStep = signal(1);

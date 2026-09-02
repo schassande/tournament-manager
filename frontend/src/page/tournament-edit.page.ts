@@ -1,7 +1,7 @@
 import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, map, Observable, of, switchMap, take } from 'rxjs';
-import { Attendee, Country, defaultSlotType, Division, Person, Tournament } from '@tournament-manager/persistent-data-model';
+import { Attendee, Country, defaultSlotType, Division, ModulesNames, Person, Tournament } from '@tournament-manager/persistent-data-model';
 import { UserService } from '../service/user.service';
 import { TournamentService } from '../service/tournament.service';
 import { AttendeeService } from '../service/attendee.service';
@@ -19,6 +19,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { InputTextModule } from 'primeng/inputtext';
 import { TabsModule } from 'primeng/tabs';
 import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
+import { TOURNAMENT_FEATURES, TournamentFeatureOption } from '../config/tournament-features';
 
 interface ManagerView {
   key: string;
@@ -32,6 +34,7 @@ interface ManagerView {
   standalone: true,
   imports: [ 
     ButtonModule,
+    CheckboxModule,
     CommonModule,
     FormsModule, 
     InputTextModule, 
@@ -59,6 +62,7 @@ interface ManagerView {
         <p-tab value="days">Days</p-tab>
         <p-tab value="divisions">Divisions and teams</p-tab>
         <p-tab value="managers">Managers</p-tab>
+        <p-tab value="features">Features</p-tab>
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="general">
@@ -120,6 +124,29 @@ interface ManagerView {
             }
           </div>
         </p-tabpanel>
+
+        <p-tabpanel value="features">
+          <table class="feature-table">
+            <thead>
+              <tr><th>Enabled</th><th>Feature</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              @for (feature of features; track feature.module) {
+                <tr>
+                  <td>
+                    <p-checkbox
+                      [inputId]="feature.module"
+                      [binary]="true"
+                      [ngModel]="isFeatureEnabled(feature.module)"
+                      (ngModelChange)="featureChanged(feature.module, $event)" />
+                  </td>
+                  <td><label [for]="feature.module">{{ feature.name }}</label></td>
+                  <td>{{ feature.description }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </p-tabpanel>
       </p-tabpanels>
     </p-tabs>
     <div style="height: 100px;"></div>
@@ -152,6 +179,9 @@ interface ManagerView {
     .manager-row { max-width: 600px; border-bottom: 1px solid #ddd; padding: 6px 0; }
     .manager-row span:first-child { flex: 1; }
     .manager-row span:nth-child(2) { flex: 1; }
+    .feature-table { width: 100%; border-collapse: collapse; }
+    .feature-table th, .feature-table td { padding: 8px; border-bottom: 1px solid #ddd; text-align: left; }
+    .feature-table th:first-child, .feature-table td:first-child { width: 90px; text-align: center; }
   `],
 })
 export class TournamentEditComponent  implements OnInit {
@@ -168,6 +198,7 @@ export class TournamentEditComponent  implements OnInit {
   activeTab = signal('general');
   country: Country|undefined;
   countries: Country[] = this.regionService.countries;
+  readonly features: TournamentFeatureOption[] = TOURNAMENT_FEATURES;
   errors = signal<string[]>([]);
   managers = signal<ManagerView[]>([]);
   managerEmail = '';
@@ -197,7 +228,26 @@ export class TournamentEditComponent  implements OnInit {
     this.router.navigate([], { relativeTo: this.activatedRoute, queryParams: { tab }, queryParamsHandling: 'merge' });
   }
 
-  private readonly tabs = ['general', 'fields', 'days', 'divisions', 'managers'];
+  private readonly tabs = ['general', 'fields', 'days', 'divisions', 'managers', 'features'];
+
+  /** Returns whether a module is enabled for the current tournament. */
+  isFeatureEnabled(module: ModulesNames): boolean {
+    return this.tournament()?.enablesModules?.includes(module) ?? false;
+  }
+
+  /** Updates and immediately persists the tournament module selection. */
+  featureChanged(module: ModulesNames, selected: boolean): void {
+    this.tournament.update(tournament => {
+      if (!tournament) return tournament;
+      let modules = (tournament.enablesModules ?? []).filter(item => item !== module);
+      if (selected) modules = [...modules, module];
+      if (selected && module === 'FIT_IMPORT') modules = modules.filter(item => item !== 'DRAW_DESIGNER');
+      if (selected && module === 'DRAW_DESIGNER') modules = modules.filter(item => item !== 'FIT_IMPORT');
+      tournament.enablesModules = modules;
+      this.save();
+      return tournament;
+    });
+  }
 
   onDivisionsChanged(divisions: Division[]) {
     this.tournament.update(tournament => {
