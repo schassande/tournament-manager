@@ -55,8 +55,6 @@ export interface FragmentRefereeAllocation extends FragmentRefereeAllocationDesc
   visible: boolean; // true if the allocation is visible
   /** Number of games allocated in this fragment; maintained by allocation workflows. */
   nbGamesAllocated?: number;
-  /** Number of games still to allocate in this fragment; maintained by allocation workflows. */
-  nbGamesToAllocate?: number;
   generalConfig?: GeneralAllocationConfiguration;
 }
 

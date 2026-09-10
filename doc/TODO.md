@@ -1,6 +1,5 @@
 # TODO list du projet Tournament Maager
 
-- Tournament home : Match alloué / restant à allouer
 - Ranking method NZ
 - Water carrier
   - pour impression
@@ -85,6 +84,7 @@
   - ratio nombre de Full time referee par équipe (gauge avec zone rouge des 2 cotés: rouge/jaune/vert/jaune/rouge)
   - Utilisation de Player referee
   - Divisions / nombre d'équipe
+  - home : Match alloué / restant à allouer
 
 
 ## Bugs non reproduis
