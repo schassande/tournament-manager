@@ -75,6 +75,22 @@ cd frontend
 npm run build
 ```
 
+## Formatage du code frontend
+
+Prettier est configure a la racine du depot dans `.prettierrc`. Il applique deux espaces,
+les quotes simples TypeScript, une largeur de ligne de 120 caracteres et conserve le `>`
+des balises HTML sur la derniere ligne de la balise.
+
+Depuis la racine :
+
+```powershell
+npm run format
+npm run format:check
+```
+
+`format` corrige les fichiers TypeScript, HTML et CSS du frontend. `format:check` verifie
+le formatage sans modifier les fichiers et doit etre execute avant une livraison.
+
 Le build Angular resolve `@tournament-manager/persistent-data-model` directement vers `../persistent-data-model/src`.
 
 Sortie generee :

@@ -53,6 +53,10 @@ export interface FragmentRefereeAllocation extends FragmentRefereeAllocationDesc
   refereeAllocatorAttendeeIds: string[]; // list of the authors identifier of the referee allocation (Attendee.id)
   refereeCoachAllocatorAttendeeIds: string[]; // list of authors identifier of the author of the referee coach allocation (Attendee.id)
   visible: boolean; // true if the allocation is visible
+  /** Number of games allocated in this fragment; maintained by allocation workflows. */
+  nbGamesAllocated?: number;
+  /** Number of games still to allocate in this fragment; maintained by allocation workflows. */
+  nbGamesToAllocate?: number;
   generalConfig?: GeneralAllocationConfiguration;
 }
 

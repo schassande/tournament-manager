@@ -1,4 +1,8 @@
 {
   "name": "tournament-manager",
-  "private": true
+  "private": true,
+  "scripts": {
+    "format": "npm --prefix frontend run format",
+    "format:check": "npm --prefix frontend run format:check"
+  }
 }

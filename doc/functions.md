@@ -6,7 +6,7 @@ Le backend Firebase actuel est tres concentre :
 
 - deux Cloud Functions exportees : `api` et `createPerson`
 - cette fonction encapsule une application Express
-- une seule route metier est branchee aujourd'hui : `/refereeAllocationStatistics/compute`
+- deux routes metier sont branchees : `/refereeAllocationStatistics/compute` et `/tournamentHome`
 
 Le reste du CRUD metier est fait directement par le frontend via Firestore.
 
@@ -45,6 +45,11 @@ Sous-routes montees :
 - `/api/fitImport/competitions`
 - `/api/fitImport/competitions/:competitionSlug/seasons`
 - `/api/fitImport/download?competitionSlug=...&season=...`
+- `/api/tournamentHome?tournamentId=...`
+
+### Agrégat public de la page d'accueil tournoi
+
+La route `/tournamentHome` est accessible sans authentification. Elle lit côté serveur les collections privées nécessaires et renvoie uniquement un agrégat anonymisé : métadonnées publiques du tournoi, statistiques d'arbitres, pyramide par niveau et genre, nombre de matchs et compteurs persistés de l'allocation courante. Les emails, disponibilités, votes et statistiques individuelles ne sont jamais renvoyés.
 
 ### Proxy FIT
 

@@ -274,6 +274,8 @@ Champs principaux :
 - `refereeAllocatorAttendeeIds[]`
 - `refereeCoachAllocatorAttendeeIds[]`
 - `visible`
+- `nbGamesAllocated` (optionnel) : nombre de matchs alloués dans le fragment, maintenu par les workflows d'allocation, défaut `0`
+- `nbGamesToAllocate` (optionnel) : nombre de matchs restant à allouer dans le fragment, maintenu par les workflows d'allocation, défaut `0`
 - `generalConfig` (optionnel) : configuration générale du fragment
 
 `generalConfig` contient :

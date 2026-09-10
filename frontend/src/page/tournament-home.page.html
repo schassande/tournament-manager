@@ -1,0 +1,116 @@
+@if (overview(); as data) {
+<main class="home-layout">
+  <section class="public-overview">
+    <header class="tournament-header">
+      <h1>{{ data.tournament.name }}</h1>
+      <p>{{ data.tournament.venue }}{{ data.tournament.city ? ', ' + data.tournament.city : '' }}</p>
+      <p>
+        {{ formatDate(data.tournament.startDate, data.tournament.timeZone) }} – {{ formatDate(data.tournament.endDate,
+        data.tournament.timeZone) }}
+      </p>
+    </header>
+
+    <section class="cards" aria-label="Tournament indicators">
+      <article>
+        <strong>{{ data.gameCount }}</strong>
+        <span>Matches</span>
+      </article>
+      <article>
+        <strong>{{ data.nbGamesAllocated }}</strong>
+        <span>Matches allocated</span>
+      </article>
+      <article>
+        <strong>{{ data.nbGamesToAllocate }}</strong>
+        <span>Matches remaining</span>
+      </article>
+      <article>
+        <strong>{{ data.fullTimeRefereeCount }}</strong>
+        <span>Full-time referees</span>
+      </article>
+      <article>
+        <strong>{{ data.playerRefereeCount }}</strong>
+        <span> Player referees ({{ data.playerRefereePercentage | number: '1.0-1' }}%) </span>
+      </article>
+      <article>
+        <strong>{{ data.tournament.fields.length }}</strong>
+        <span>Fields</span>
+      </article>
+    </section>
+
+    <section class="content-section">
+      <h2>Daily schedule</h2>
+      <div class="day-list">
+        @for (day of data.tournament.days; track day.id) {
+        <div>
+          <strong>{{ formatDayDate(day.date, data.tournament.timeZone) }}</strong>
+          <span>
+            {{ formatTime(dayStart(day), data.tournament.timeZone) }} – {{ formatTime(dayEnd(day),
+            data.tournament.timeZone) }}
+          </span>
+        </div>
+        }
+      </div>
+    </section>
+
+    <section class="content-section">
+      <h2>Divisions and teams</h2>
+        <div class="division-list">
+          @for (division of sortedDivisions(); track division.id) {
+            <div>
+              <strong
+                class="division-name"
+                [style.color]="division.fontColor"
+                [style.background-color]="division.backgroundColor"
+              >{{ division.name }} ({{ division.teams.length }})</strong>
+              <span>{{ teamNames(division) }}</span>
+            </div>
+        }
+      </div>
+    </section>
+
+    <section class="content-section">
+      <h2>Referees</h2>
+      <div class="pyramid" aria-label="Referee pyramid by gender and level">
+        @for (row of data.pyramid; track row.level) {
+        <div class="pyramid-row">
+          <div class="pyramid-side male-side">
+            <span class="count-label"> {{ countLabel(row.male.total, row.male.upgrade) }} </span>
+            <div
+              class="bar male"
+              [style.width]="barWidth(row.male.total)"
+              [attr.aria-label]="countLabel(row.male.total, row.male.upgrade)"
+              aria-hidden="true"></div>
+          </div>
+          <span class="level">{{ data.pyramid.length - row.level }}</span>
+          <div class="pyramid-side female-side">
+            <div
+              class="bar female"
+              [style.width]="barWidth(row.female.total)"
+              [attr.aria-label]="countLabel(row.female.total, row.female.upgrade)"
+              aria-hidden="true"></div>
+            <span class="count-label"> {{ countLabel(row.female.total, row.female.upgrade) }} </span>
+          </div>
+        </div>
+        }
+      </div>
+    </section>
+  </section>
+
+  @if (actions().length) {
+  <aside class="actions">
+    <h2>Actions</h2>
+    <ul>
+      @for (action of actions(); track action.path) {
+      <li>
+        <a [routerLink]="action.path">{{ action.label }}</a>
+      </li>
+      }
+    </ul>
+  </aside>
+  }
+</main>
+} @else if (loading()) {
+<main class="home-state">Loading tournament overview…</main>
+} @else {
+<main class="home-state">Unable to load this tournament.</main>
+}

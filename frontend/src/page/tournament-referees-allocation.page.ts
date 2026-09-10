@@ -768,7 +768,9 @@ export class TournamentRefereesAllocationComponent extends AbstractTournamentPag
       dayId,
       refereeAllocatorAttendeeIds: [],
       refereeCoachAllocatorAttendeeIds: [],
-      visible: false
+      visible: false,
+      nbGamesAllocated: 0,
+      nbGamesToAllocate: 0,
     };
     this.fragmentRefereeAllocationService.save(fragmentAllocation).pipe(
       mergeMap(savedAllocation => {

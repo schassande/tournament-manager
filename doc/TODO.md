@@ -1,13 +1,7 @@
 # TODO list du projet Tournament Maager
 
-- Tournament home
-  - Suggestion de la prochaine étape
-  - chart des arbitres: pyramide par niveau homme/femme
-  - ratio nombre de Full time referee par équipe (gauge avec zone rouge des 2 cotés: rouge/jaune/vert/jaune/rouge)
-  - Utilisation de Player referee
-  - Divisions / nombre d'équipe
-  - Match alloué / restant à allouer
-- Ranking
+- Tournament home : Match alloué / restant à allouer
+- Ranking method NZ
 - Water carrier
   - pour impression
   - pour remplissage en ligne
@@ -85,6 +79,12 @@
 - 2026/08/31: Ajout du tableau de la liste des allocations dans le drawer des statistiques d'allocation
 - 2026/09/02: Passage en Drawer du menu de l'appliation + S'adapte en fonction du role de l'utilisateur connecté
 - 2026/09/02: (Des)Activation de fonctionnalités : ranking, scorecard, upgrade, Gestion des matches
+- 2026/09/10: Tournament home
+  - Suggestion de la prochaine étape
+  - chart des arbitres: pyramide par niveau homme/femme
+  - ratio nombre de Full time referee par équipe (gauge avec zone rouge des 2 cotés: rouge/jaune/vert/jaune/rouge)
+  - Utilisation de Player referee
+  - Divisions / nombre d'équipe
 
 
 ## Bugs non reproduis

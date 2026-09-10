@@ -6,6 +6,7 @@ import * as express from 'express';
 import { allocationStatisticsRouter } from './allocation-statistics';
 import { createPerson } from './person/create-person';
 import { fitImportRouter } from './fit-import';
+import { tournamentHomeRouter } from './tournament-home';
 
 /**
  * Import function triggers from their respective submodules:
@@ -23,6 +24,7 @@ app.disable('x-powered-by');
 app.use(corsTrue);
 app.use('/refereeAllocationStatistics', allocationStatisticsRouter);
 app.use('/fitImport', fitImportRouter);
+app.use('/tournamentHome', tournamentHomeRouter);
 
 export const api = onRequest({ secrets }, app);
 export { createPerson };

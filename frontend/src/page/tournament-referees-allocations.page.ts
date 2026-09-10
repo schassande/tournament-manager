@@ -465,7 +465,9 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
       dayId,
       refereeAllocatorAttendeeIds: [],
       refereeCoachAllocatorAttendeeIds: [],
-      visible: false
+      visible: false,
+      nbGamesAllocated: 0,
+      nbGamesToAllocate: 0,
     };
     if (partDayId) allocation.partDayId = partDayId;
     
@@ -684,6 +686,8 @@ export class TournamentRefereesAllocationsComponent extends AbstractTournamentPa
       refereeAllocatorAttendeeIds: [],
       refereeCoachAllocatorAttendeeIds: [],
       visible: false,
+      nbGamesAllocated: 0,
+      nbGamesToAllocate: 0,
     };
     // create the FragmentRefereeAllocationView
     const pr:PartAllocationRow|undefined = partDayId ? dayAlloc.partRows.find(pr => pr.partDay.id === partDayId) : undefined;

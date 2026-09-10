@@ -263,6 +263,7 @@ export class TournamentListComponent implements OnInit {
   onTournamentSelected() {
     if (this.selectedTournament) {
       // console.debug('Selected tournament: ', this.selectedTournament);
+      this.tournamentService.setCurrentTournament(this.selectedTournament);
       this.router.navigate([`/tournament/${this.selectedTournament.id}/home`]);
     }
   }
