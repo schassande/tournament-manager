@@ -222,6 +222,7 @@ import { RefereeService } from '../service/referee.service';
       right: 0;
       bottom: 0;
       left: 0;
+      height: auto;
       box-sizing: border-box;
       overflow: hidden;
     }
