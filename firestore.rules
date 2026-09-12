@@ -144,11 +144,28 @@ service cloud.firestore {
           || (selectionChanged && next.panelResultState == (old.panelResultState == 'NOT_COMPUTED' ? 'NOT_COMPUTED' : 'STALE')));
     }
 
+    // Panel membership never authorizes the actor and never modifies an individual vote.
+    function validRankingCoachChange() {
+      let old = resource.data;
+      let next = request.resource.data;
+      let changed = next.selectedCoachAttendeeIds.toSet() != old.selectedCoachAttendeeIds.toSet()
+        || next.voteMajority != old.voteMajority;
+      return old.status in ['CONFIGURE', 'INDIVIDUAL_RANKING', 'PANEL_RANKING']
+        && next.diff(old).affectedKeys().hasOnly(['selectedCoachAttendeeIds', 'voteMajority',
+          'panelResultState', 'updatedByCoachAttendeeId', 'lastChange'])
+        && next.lastChange is number
+        && isRankingCoach(next.updatedByCoachAttendeeId, old.tournamentId) && rankingEnabled(old.tournamentId)
+        && next.selectedCoachAttendeeIds is list
+        && next.selectedCoachAttendeeIds.toSet().size() == next.selectedCoachAttendeeIds.size()
+        && next.voteMajority is int && next.voteMajority > 0 && next.voteMajority <= 9007199254740991
+        && next.panelResultState == (changed && old.panelResultState != 'NOT_COMPUTED' ? 'STALE' : old.panelResultState);
+    }
+
     match /tournament-referee-ranking/{documentId} {
       // Deliberately temporary: every authenticated user can read both ranking collections.
       allow read: if signedIn();
       allow create: if signedIn() && validNewRefereeRanking(documentId);
-      allow update: if signedIn() && (validRankingStatusChange() || validRankingRefereeChange());
+      allow update: if signedIn() && (validRankingStatusChange() || validRankingRefereeChange() || validRankingCoachChange());
       // Supports complete tournament deletion, including after attendees have been removed.
       allow delete: if canManageTournament(resource.data.tournamentId);
     }

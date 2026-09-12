@@ -54,7 +54,13 @@
           (changes)="saveReferees($event)"
           (remove)="requestRemoval($event)"
       /></p-tabpanel>
-      <p-tabpanel value="coaches"><app-ranking-coaches [ranking]="ranking" [coaches]="coaches()" /></p-tabpanel>
+      <p-tabpanel value="coaches">
+        <app-ranking-coaches
+          [ranking]="ranking"
+          [coaches]="coaches()"
+          [busy]="saving() || loadingCoaches() || !!coachError() || !!pendingCoachChanges()"
+          (changes)="saveCoaches($event)" />
+      </p-tabpanel>
       <p-tabpanel value="me"><app-ranking-me [ranking]="ranking" /></p-tabpanel>
       <p-tabpanel value="panel"><app-ranking-panel [ranking]="ranking" [coachRankings]="coachRankings()" /></p-tabpanel>
     </p-tabpanels>
@@ -79,6 +85,20 @@
     <input pInputText id="ranking-name" formControlName="name" autocomplete="off" />
     <p-button type="submit" label="Create" [loading]="saving()" [disabled]="newName.invalid || saving()" />
   </form>
+</p-dialog>
+
+<p-dialog
+  header="Remove coach from panel"
+  [visible]="!!pendingCoachChanges()"
+  (visibleChange)="pendingCoachChanges.set(null)"
+  [modal]="true"
+  [style]="{ width: '30rem', maxWidth: '95vw' }">
+  <p>
+    Remove this coach from the panel? Their individual ranking, lock and timestamps will be preserved as a practice
+    ranking. An existing panel result will require recomputation. The majority stays unchanged.
+  </p>
+  <p-button label="Cancel" [text]="true" (onClick)="pendingCoachChanges.set(null)" />
+  <p-button label="Remove" severity="danger" (onClick)="confirmCoachRemoval()" />
 </p-dialog>
 
 <p-dialog

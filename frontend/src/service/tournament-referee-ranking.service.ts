@@ -11,6 +11,7 @@ import {
   StoredTournamentRefereeRanking,
   TournamentRefereeRanking,
   RankingRefereeChanges,
+  RankingCoachChanges,
   RankingMaintenanceRequest,
   RankingMaintenanceResponse,
   RemoveRankingRefereesRequest,
@@ -21,6 +22,42 @@ import { AbstractPersistentDataService } from './abstract-persistent-data.servic
 @Injectable({ providedIn: 'root' })
 export class TournamentRefereeRankingService extends AbstractPersistentDataService<StoredTournamentRefereeRanking> {
   private readonly functions = inject(Functions);
+
+  /** Saves panel configuration only; individual votes, locks and timestamps remain untouched. */
+  saveCoaches(
+    ranking: TournamentRefereeRanking,
+    patch: RankingCoachChanges,
+    coachId: string,
+  ): Observable<TournamentRefereeRanking> {
+    return defer(() => {
+      const majority = patch.voteMajority ?? ranking.voteMajority;
+      const ids = patch.selectedCoachAttendeeIds ?? ranking.selectedCoachAttendeeIds;
+      if (
+        ranking.status === 'CLOSED' ||
+        !Number.isSafeInteger(majority) ||
+        majority < 1 ||
+        ids.some((id) => typeof id !== 'string' || !id.trim()) ||
+        new Set(ids).size !== ids.length
+      ) {
+        throw new Error('An open ranking, unique coach IDs and a positive safe integer majority are required.');
+      }
+      const changed =
+        majority !== ranking.voteMajority ||
+        ids.length !== ranking.selectedCoachAttendeeIds.length ||
+        ids.some((id) => !ranking.selectedCoachAttendeeIds.includes(id));
+      const changes = {
+        ...patch,
+        updatedByCoachAttendeeId: coachId,
+        lastChange: Date.now(),
+        panelResultState:
+          changed && ranking.panelResultState !== 'NOT_COMPUTED' ? ('STALE' as const) : ranking.panelResultState,
+      };
+      return updateDoc(doc(this.firestore, colTournamentRefereeRanking, ranking.id), changes).then(() => ({
+        ...ranking,
+        ...changes,
+      }));
+    });
+  }
 
   /** Saves valid metadata or selection additions; cross-owner removals use the backend. */
   saveReferees(

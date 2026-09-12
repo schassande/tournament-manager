@@ -18,9 +18,10 @@ import {
   TournamentRefereeRanking,
   isRankingReferee,
   RankingRefereeChanges,
+  RankingCoachChanges,
   RankingMaintenanceResponse,
 } from '@tournament-manager/persistent-data-model';
-import { RankingCoachesComponent } from '../../component/ranking-coaches.component';
+import { RankingCoachesComponent } from '../../component/ranking-coaches/ranking-coaches.component';
 import { RankingMeComponent } from '../../component/ranking-me.component';
 import { RankingPanelComponent } from '../../component/ranking-panel.component';
 import { RankingRefereesComponent } from '../../component/ranking-referees/ranking-referees.component';
@@ -86,6 +87,7 @@ export class TournamentRefereeRankingComponent {
   readonly allowed = signal(false);
   readonly createDialog = signal(false);
   readonly pendingRemoval = signal<string[]>([]);
+  readonly pendingCoachChanges = signal<RankingCoachChanges | null>(null);
 
   readonly attendeesById = computed(
     () => new Map([...this.referees(), ...this.coaches()].map((attendee) => [attendee.id, attendee])),
@@ -110,6 +112,59 @@ export class TournamentRefereeRankingComponent {
       .subscribe();
   }
 
+  /** Validates panel edits against the shared coach cache and confirms removals after CONFIGURE. */
+  saveCoaches(changes: RankingCoachChanges): void {
+    const ranking = this.selectedRanking();
+    const coach = this.currentCoach();
+    if (
+      !this.allowed() ||
+      !ranking ||
+      !coach ||
+      this.saving() ||
+      this.loadingCoaches() ||
+      this.coachError() ||
+      ranking.status === 'CLOSED' ||
+      this.pendingCoachChanges()
+    )
+      return;
+    const ids = changes.selectedCoachAttendeeIds;
+    if (
+      ids?.some(
+        (id) =>
+          !ranking.selectedCoachAttendeeIds.includes(id) &&
+          !this.coaches().some(
+            (item) => item.id === id && item.isRefereeCoach && item.tournamentId === ranking.tournamentId,
+          ),
+      )
+    )
+      return;
+    if (ids && ranking.status !== 'CONFIGURE' && ranking.selectedCoachAttendeeIds.some((id) => !ids.includes(id))) {
+      this.pendingCoachChanges.set(changes);
+      return;
+    }
+    this.persistConfiguration(this.rankingService.saveCoaches(ranking, changes, coach.id), 'Coach');
+  }
+
+  /** Confirms only panel membership changes; the coach's entire individual record is retained. */
+  confirmCoachRemoval(): void {
+    const changes = this.pendingCoachChanges();
+    const ranking = this.selectedRanking();
+    const coach = this.currentCoach();
+    if (
+      !changes ||
+      !ranking ||
+      !coach ||
+      !this.allowed() ||
+      this.saving() ||
+      this.loadingCoaches() ||
+      this.coachError() ||
+      ranking.status === 'CLOSED'
+    )
+      return;
+    this.pendingCoachChanges.set(null);
+    this.persistConfiguration(this.rankingService.saveCoaches(ranking, changes, coach.id), 'Coach');
+  }
+
   /** Saves one valid Referees-tab edit and updates the cache only on success. */
   saveReferees(changes: RankingRefereeChanges): void {
     const ranking = this.selectedRanking();
@@ -124,7 +179,7 @@ export class TournamentRefereeRankingComponent {
       ranking.status === 'CLOSED'
     )
       return;
-    this.persistReferees(this.rankingService.saveReferees(ranking, changes, coach.id));
+    this.persistConfiguration(this.rankingService.saveReferees(ranking, changes, coach.id));
   }
 
   /** Requires confirmation only once individual ranking has started. */
@@ -148,7 +203,7 @@ export class TournamentRefereeRankingComponent {
     if (!ranking || !coach || !this.allowed() || !this.pendingRemoval().length || this.saving()) return;
     const refereeAttendeeIds = this.pendingRemoval();
     this.pendingRemoval.set([]);
-    this.persistReferees(
+    this.persistConfiguration(
       this.rankingService
         .removeReferees({
           tournamentId: ranking.tournamentId,
@@ -215,7 +270,7 @@ export class TournamentRefereeRankingComponent {
   }
 
   /** Runs a save with rollback-by-retention and a visible retryable error. */
-  private persistReferees(operation: Observable<TournamentRefereeRanking>): void {
+  private persistConfiguration(operation: Observable<TournamentRefereeRanking>, subject = 'Referee'): void {
     this.saving.set(true);
     this.error.set('');
     operation
@@ -225,8 +280,12 @@ export class TournamentRefereeRankingComponent {
       )
       .subscribe({
         next: (saved) => this.rankings.update((items) => items.map((item) => (item.id === saved.id ? saved : item))),
-        error: () =>
-          this.error.set('Referee changes could not be saved. The previous selection is unchanged. Please try again.'),
+        error: (error: unknown) => {
+          console.error(`[Referee ranking] ${subject} configuration save failed`, error);
+          this.error.set(
+            `${subject} changes could not be saved. The previous configuration is unchanged. Please try again.`,
+          );
+        },
       });
   }
 
@@ -325,6 +384,7 @@ export class TournamentRefereeRankingComponent {
   /** Replaces the selection and immediately removes the previous coach data. */
   private selectRanking(id: string | null): void {
     this.pendingRemoval.set([]);
+    this.pendingCoachChanges.set(null);
     this.selectedId.set(id);
     this.rankingSelection.setValue(id, { emitEvent: false });
     this.selectedRankingRequests.next(id);

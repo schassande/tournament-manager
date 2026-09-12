@@ -122,7 +122,7 @@ test('Referees edits validate name and N, preserve unrelated data, and deny clie
   await status(await put('tournament-referee-ranking/referees', edited, 'coach@example.com'), 200);
   for (const changes of [{ name: '  ' }, { nbRefereesToRank: 0 }, { nbRefereesToRank: 1.5 },
     { nbRefereesToRank: 9007199254740992 }, { selectedRefereeAttendeeIds: ['b'] },
-    { selectedRefereeAttendeeIds: ['a', 'b', 'b'] }, { voteMajority: 2 }, { selectedCoachAttendeeIds: ['coach'] }]) {
+    { selectedRefereeAttendeeIds: ['a', 'b', 'b'] }]) {
     await status(await put('tournament-referee-ranking/referees', { ...edited, ...changes }, 'coach@example.com'), 403);
   }
   await status(await put('tournament-referee-ranking/referees', { ...edited, name: 'Forged' }, 'outsider@example.com'), 403);
@@ -152,6 +152,48 @@ test('stale results cannot close; current computed empty results can close and n
       await status(await put(`tournament-referee-ranking/${state}`, data, 'coach@example.com'), 403);
     }
   }
+});
+
+test('coach membership and majority edits preserve individual votes and stale computed output in every open phase', async () => {
+  const vote = { tournamentId: 't', tournamentRefereeRankingId: 'coaches', coachAttendeeId: 'coach',
+    locked: true, rankedRefereeAttendeeIds: ['a'], rankingLastChange: 'original', lastChange: 1 };
+  await status(await put('coach-referees-ranking/coaches-vote', vote), 200);
+  const before = await (await request('coach-referees-ranking/coaches-vote', 'coach@example.com')).json();
+  for (const phase of ['CONFIGURE', 'INDIVIDUAL_RANKING', 'PANEL_RANKING']) {
+    const initial = ranking('coaches', { status: phase, selectedCoachAttendeeIds: ['coach'], voteMajority: 5,
+      panelResultState: 'CURRENT', panelRefereesRanking: { rankingLastChange: 'computed', rankedRefereeAttendeeIds: ['a'], stats: [{ ranks: [1] }] } });
+    await status(await put('tournament-referee-ranking/coaches', initial), 200);
+    const removed = { ...initial, selectedCoachAttendeeIds: [] };
+    await status(await put('tournament-referee-ranking/coaches', removed, 'coach@example.com'), 403);
+    const stale = { ...removed, panelResultState: 'STALE' };
+    await status(await put('tournament-referee-ranking/coaches', stale, 'coach@example.com'), 200);
+    await status(await put('tournament-referee-ranking/coaches', { ...stale, voteMajority: 51 }, 'coach@example.com'), 200);
+    await status(await put('tournament-referee-ranking/coaches', { ...stale, selectedCoachAttendeeIds: ['coach'] }, 'coach@example.com'), 200);
+  }
+  assert.deepEqual(await (await request('coach-referees-ranking/coaches-vote', 'coach@example.com')).json(), before);
+});
+
+test('coach edits enforce positive safe majority, unique membership, access, CLOSED and exact freshness', async () => {
+  const initial = ranking('coach-validation');
+  await status(await put('tournament-referee-ranking/coach-validation', initial), 200);
+  for (const changes of [{ voteMajority: 0 }, { voteMajority: -1 }, { voteMajority: 1.5 },
+    { voteMajority: '2' }, { voteMajority: null }, { voteMajority: 9007199254740992 },
+    { selectedCoachAttendeeIds: ['coach', 'coach'] }, { selectedCoachAttendeeIds: 'coach' },
+    { voteMajority: 2, panelResultState: 'CURRENT' }]) {
+    await status(await put('tournament-referee-ranking/coach-validation', { ...initial, ...changes }, 'coach@example.com'), 403);
+  }
+  const edited = { ...initial, selectedCoachAttendeeIds: ['coach'], voteMajority: 9007199254740991 };
+  for (const actor of [null, 'outsider@example.com', 'manager@example.com']) {
+    await status(await put('tournament-referee-ranking/coach-validation', edited, actor), 403);
+  }
+  await status(await put('tournament-referee-ranking/coach-validation', edited, 'coach@example.com'), 200);
+  const computed = { ...edited, panelResultState: 'CURRENT' };
+  await status(await put('tournament-referee-ranking/coach-validation', computed), 200);
+  await status(await put('tournament-referee-ranking/coach-validation', { ...computed, voteMajority: 3 }, 'coach@example.com'), 403);
+  await status(await put('tournament-referee-ranking/coach-validation', { ...computed, voteMajority: 3, panelResultState: 'STALE' }, 'coach@example.com'), 200);
+  const closed = { ...edited, status: 'CLOSED' };
+  await status(await put('tournament-referee-ranking/coach-validation', closed), 200);
+  await status(await put('tournament-referee-ranking/coach-validation', { ...closed, voteMajority: 2 }, 'coach@example.com'), 403);
 });
 
 test('individual writes stay closed until the Me stage', async () => {

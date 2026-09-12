@@ -40,6 +40,7 @@ describe('tournament ranking page shell', () => {
       'createRanking',
       'changeStatus',
       'saveReferees',
+      'saveCoaches',
       'removeReferees',
       'repairRanking',
     ]);
@@ -173,7 +174,7 @@ describe('tournament ranking page shell', () => {
     page.confirmRemoval();
     expect(rankings.removeReferees).toHaveBeenCalledTimes(1);
     expect(page.selectedRanking()?.selectedRefereeAttendeeIds).toEqual(['full']);
-    expect(page.error()).toContain('previous selection is unchanged');
+    expect(page.error()).toContain('previous configuration is unchanged');
   });
 
   it('removes without confirmation in CONFIGURE and replaces committed individual records', () => {
@@ -186,6 +187,60 @@ describe('tournament ranking page shell', () => {
     expect(page.pendingRemoval()).toEqual([]);
     expect(page.selectedRanking()?.selectedRefereeAttendeeIds).toEqual([]);
     expect(page.coachRankings()).toEqual(cleaned);
+  });
+
+  it('saves coach additions from a non-panel actor without changing individual records or majority', () => {
+    const page = TestBed.createComponent(TournamentRefereeRankingComponent).componentInstance;
+    const records = [
+      {
+        id: 'practice',
+        locked: true,
+        rankingLastChange: 'old',
+        rankedRefereeAttendeeIds: ['full'],
+      } as CoachRefereesRanking,
+    ];
+    page.coachRankings.set(records);
+    rankings.saveCoaches.and.callFake((value, changes) => of({ ...value, ...changes }));
+    page.saveCoaches({ selectedCoachAttendeeIds: ['coach'] });
+    expect(rankings.saveCoaches).toHaveBeenCalledOnceWith(parent, { selectedCoachAttendeeIds: ['coach'] }, 'coach');
+    expect(page.selectedRanking()?.voteMajority).toBe(1);
+    expect(page.coachRankings()).toBe(records);
+    page.saveCoaches({ selectedCoachAttendeeIds: [] });
+    expect(rankings.saveCoaches).toHaveBeenCalledTimes(2);
+    expect(page.pendingCoachChanges()).toBeNull();
+  });
+
+  it('confirms coach removal in both active phases, supports cancellation and preserves data on failure', () => {
+    const diagnostic = spyOn(console, 'error');
+    const page = TestBed.createComponent(TournamentRefereeRankingComponent).componentInstance;
+    for (const status of ['INDIVIDUAL_RANKING', 'PANEL_RANKING'] as const) {
+      page.rankings.set([{ ...parent, status, selectedCoachAttendeeIds: ['coach'], voteMajority: 5 }]);
+      rankings.saveCoaches.calls.reset();
+      page.saveCoaches({ selectedCoachAttendeeIds: [] });
+      expect(rankings.saveCoaches).not.toHaveBeenCalled();
+      page.pendingCoachChanges.set(null);
+      expect(page.selectedRanking()?.selectedCoachAttendeeIds).toEqual(['coach']);
+      page.saveCoaches({ selectedCoachAttendeeIds: [] });
+      rankings.saveCoaches.and.returnValue(throwError(() => new Error('offline')));
+      page.confirmCoachRemoval();
+      expect(page.selectedRanking()?.selectedCoachAttendeeIds).toEqual(['coach']);
+      expect(page.selectedRanking()?.voteMajority).toBe(5);
+      expect(page.error()).toContain('Coach changes could not be saved');
+      expect(diagnostic).toHaveBeenCalledWith('[Referee ranking] Coach configuration save failed', jasmine.any(Error));
+    }
+  });
+
+  it('rejects coach edits while CLOSED or loading and clears pending confirmation on ranking switch', () => {
+    const page = TestBed.createComponent(TournamentRefereeRankingComponent).componentInstance;
+    page.rankings.set([{ ...parent, status: 'CLOSED' }]);
+    page.saveCoaches({ voteMajority: 2 });
+    page.rankings.set([parent]);
+    page.loadingCoaches.set(true);
+    page.saveCoaches({ voteMajority: 2 });
+    expect(rankings.saveCoaches).not.toHaveBeenCalled();
+    page.pendingCoachChanges.set({ selectedCoachAttendeeIds: [] });
+    page.rankingSelection.setValue(null);
+    expect(page.pendingCoachChanges()).toBeNull();
   });
 
   it('repairs missing references on load but never repairs a CLOSED snapshot', () => {

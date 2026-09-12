@@ -352,9 +352,9 @@ L'application se structure autour de 4 familles de pages :
 3. exploitation competition : matchs
 4. arbitrage : arbitres, coaches d'arbitres, allocations globales, allocation detaillee
 
-## Referee ranking — étapes 1 et 2
+## Referee ranking — étapes 1 à 3
 
-La route `/tournament/:tournamentId/basic-ranking` propose la sélection et la création de rankings nommés, leurs transitions de statut et les quatre onglets `Referees`, `Coaches`, `Me` et `Panel`. L'onglet Referees est opérationnel ; la sélection des coaches, les votes, le calcul, l'export et la suppression isolée restent prévus aux étapes suivantes.
+La route `/tournament/:tournamentId/basic-ranking` propose la sélection et la création de rankings nommés, leurs transitions de statut et les quatre onglets `Referees`, `Coaches`, `Me` et `Panel`. Les onglets Referees et Coaches sont opérationnels ; les votes, le calcul, l'export et la suppression isolée restent prévus aux étapes suivantes.
 
 Le menu et l'ouverture directe exigent un Referee Coach du tournoi et le module `RANKING`. Les deux listes d'attendees et les rankings sont chargés par requêtes groupées au niveau de la page. Les classements individuels sont chargés ensemble à la sélection d'un ranking. Avant CLOSED, les références invalides détectées déclenchent une réparation atomique ; son échec affiche Retry et bloque les modifications jusqu'à résolution.
 
@@ -370,4 +370,8 @@ Le titre présent dans le bandeau du site n'est pas répété dans le contenu de
 
 Les ajouts sont enregistrés immédiatement. Les retraits ne demandent aucune confirmation en CONFIGURE et en demandent une dans les deux phases suivantes. Le serveur retire les références de tous les classements, y compris verrouillés et hors panel, sans modifier leurs verrous. La sélection affichée ne change qu'après succès ; un échec conserve les données précédentes. Une modification de sélection rend STALE un résultat déjà calculé ; le nom et N ne changent pas sa fraîcheur. En CLOSED, les paramètres sont en lecture seule et les arbitres manquants affichent `Deleted referee` sans réparation.
 
-Firestore autorise temporairement la lecture des deux collections à tout utilisateur authentifié. Les écritures ordinaires de configuration restent réservées aux coaches du tournoi ; les retraits directs sont refusés et passent par les deux nouvelles callables. Les écritures individuelles restent fermées jusqu'à l'étape Me.
+Firestore autorise temporairement la lecture des deux collections à tout utilisateur authentifié. Les écritures ordinaires de configuration restent réservées aux coaches du tournoi ; les retraits directs d'arbitres sont refusés et passent par les deux nouvelles callables. Les écritures individuelles restent fermées jusqu'à l'étape Me.
+
+Dans Coaches, tous les coaches du tournoi sont affichés avec une case PrimeNG dans une grille à deux colonnes (une sur petit écran). Chaque colonne prend uniquement la largeur nécessaire à ses noms, avec un espacement fixe entre les colonnes et un alignement à gauche. Chaque changement de sélection est enregistré immédiatement par la page. Un retrait demande confirmation en INDIVIDUAL_RANKING et PANEL_RANKING ; CONFIGURE ne la demande pas. Le classement individuel du coach retiré, son verrou et ses dates restent inchangés et disponibles comme classement de pratique. Annuler ou échouer conserve la sélection enregistrée.
+
+Le champ `Vote majority: valeur / nombre sélectionné` est enregistré à la sortie du champ. Il exige un entier positif sûr ; les valeurs vides, fractionnaires ou non positives sont refusées. La majorité peut dépasser la taille du panel et ne change jamais automatiquement lors des ajouts/retraits, même si le panel devient vide. Une modification de majorité ou de composition conserve le résultat existant mais le marque STALE s'il avait été calculé. CLOSED rend ces contrôles non modifiables. Aucune requête supplémentaire ni écriture individuelle n'est effectuée par cet onglet.

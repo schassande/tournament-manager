@@ -1,6 +1,12 @@
 import { PersistentObject } from './persistence';
 import { Attendee } from './tournament';
 
+/** Editable panel membership and threshold; omissions preserve their stored values. */
+export interface RankingCoachChanges {
+  selectedCoachAttendeeIds?: string[];
+  voteMajority?: number;
+}
+
 /** Editable Referees-tab fields; omissions leave persisted values untouched. */
 export interface RankingRefereeChanges {
   name?: string;

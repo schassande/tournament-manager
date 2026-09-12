@@ -1,0 +1,33 @@
+<div class="coach-grid" role="group" aria-label="Panel coaches">
+  @for (coach of sortedCoaches(); track coach.id) {
+    <div class="coach-option">
+      <p-checkbox
+        [inputId]="'ranking-coach-' + coach.id"
+        [binary]="true"
+        [formControl]="selectionControls().get(coach.id)!"
+        (onChange)="toggleCoach(coach, $event.checked, $event.originalEvent)" />
+      <label [for]="'ranking-coach-' + coach.id">{{ label(coach) }}</label>
+    </div>
+  } @empty {
+    <p>No referee coaches available.</p>
+  }
+</div>
+<div class="majority-row">
+  <label for="ranking-majority">Vote majority:</label>
+  <input
+    pInputText
+    id="ranking-majority"
+    type="number"
+    min="1"
+    step="1"
+    [formControl]="majority"
+    (blur)="saveMajority()"
+    [attr.aria-invalid]="majority.invalid"
+    aria-describedby="ranking-majority-help" />
+  <span>/ {{ ranking().selectedCoachAttendeeIds.length }}</span>
+</div>
+<p id="ranking-majority-help" [class.error]="majority.invalid">
+  @if (majority.invalid) {
+    Enter a positive whole number no greater than the number of coach.
+  }
+</p>

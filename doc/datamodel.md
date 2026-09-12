@@ -493,6 +493,8 @@ Le coeur persistant actuel du projet repose sur 4 axes :
 
 Les contrats sont dans `persistent-data-model/src/referee-ranking.ts` :
 
+À l'étape 3, `RankingCoachChanges` expose uniquement `selectedCoachAttendeeIds` et `voteMajority`. Le service met à jour ces champs sur le parent avec l'acteur, `lastChange` et la fraîcheur, sans toucher aux documents individuels. Une majorité positive entière sûre n'est pas plafonnée par la taille du panel et n'est jamais recalculée après un changement de sélection. Une composition ou majorité modifiée conserve NOT_COMPUTED ou marque STALE un résultat existant, dont les IDs, statistiques et date de calcul sont conservés. Les règles autorisent ces écritures aux coaches du tournoi dans les trois phases ouvertes, y compris hors panel, et refusent CLOSED, les sélections dupliquées et les changements de champs étrangers à ce contrat. Aucun nouveau champ stocké ni contrat callable n'est nécessaire ; les contrats de maintenance dans `doc/functions.md` restent exacts.
+
 - `TournamentRefereeRanking`, collection `tournament-referee-ranking` : identifiant du tournoi, nom, listes `selectedRefereeAttendeeIds` et `selectedCoachAttendeeIds`, cible `nbRefereesToRank`, majorité `voteMajority`, statut et résultat du panel.
 - `CoachRefereesRanking`, collection `coach-referees-ranking` : `tournamentRefereeRankingId`, `tournamentId`, `coachAttendeeId`, liste ordonnée des arbitres, verrouillage et date du classement. Son identifiant utilise les deux composants encodés `rankingId|coachAttendeeId` ; les caractères séparateurs contenus dans les composants sont encodés.
 - `panelResultState` distingue `NOT_COMPUTED`, `CURRENT` et `STALE`, sans compteur de version ni contrôle de concurrence.
