@@ -57,6 +57,8 @@ describe('referee ranking contracts', () => {
   });
 
   it('does not collide when either identity component contains a separator or slash', () => {
+    expect(coachRefereesRankingId('é%|ranking', 'é%|coach')).toBe('é%25%7Cranking|é%25%7Ccoach');
+    expect(coachRefereesRankingId('a%7C', 'b')).not.toBe(coachRefereesRankingId('a|', 'b'));
     expect(coachRefereesRankingId('a|b', 'c')).not.toBe(coachRefereesRankingId('a', 'b|c'));
     expect(coachRefereesRankingId('a/b', 'c')).not.toContain('/');
     expect(coachRefereesRankingId('a', 'b')).toBe(coachRefereesRankingId('a', 'b'));

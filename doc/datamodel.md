@@ -502,7 +502,7 @@ Les contrats sont dans `persistent-data-model/src/referee-ranking.ts` :
 - `rankingLastChange` est une date ISO ; le résultat du panel non calculé utilise une chaîne vide. Le champ hérité `lastChange` reste numérique.
 - Les statistiques du panel sont `number[][]` en mémoire et `{ ranks: number[] }[]` dans Firestore. Les conversions préservent l'alignement avec les identifiants d'arbitres et refusent des longueurs différentes.
 
-Valeurs initiales du parent : `CONFIGURE`, nom nettoyé, sélections vides, cible 15, majorité 1, résultat vide et `NOT_COMPUTED`. La création/saisie des votes reste réservée aux étapes suivantes.
+Valeurs initiales du parent : `CONFIGURE`, nom nettoyé, sélections vides, cible 15, majorité 1, résultat vide et `NOT_COMPUTED`. La création/saisie des votes est disponible à partir de l'étape 4.
 
 Les lectures sont temporairement ouvertes à tout utilisateur authentifié ; les lectures anonymes sont interdites. Les droits de suppression Firestore des managers existent pour la suppression globale d'un tournoi et ne dépendent pas de la présence des attendees. L'ajout effectif des collections au parcours de suppression globale est prévu dans l'étape 5 ; cette étape 1 n'ajoute pas d'action de suppression isolée aux managers.
 
@@ -513,3 +513,11 @@ Les lectures sont temporairement ouvertes à tout utilisateur authentifié ; les
 Le retrait direct d'un ID est refusé par les règles. Les callables de maintenance mettent à jour atomiquement le parent et les individus affectés, dont les classements verrouillés et hors panel. Elles retirent également les lignes de statistiques correspondantes, sans modifier l'ordre restant. Le verrou est conservé ; `rankingLastChange` et `lastChange` d'un individu ne changent que si sa liste est nettoyée. La date du panel change si son ordre est nettoyé. CLOSED bloque toutes ces écritures.
 
 L'éligibilité commune `isRankingReferee` exige `isReferee === true`, aucune équipe dans `player.teamId`, et aucun rôle PlayerReferee. La réparation serveur dérive les références autorisées de cette éligibilité et de la sélection persistée. Aucun nouveau champ de stockage n'est ajouté à l'étape 2.
+
+### Mutations individuelles disponibles à l'étape 4
+
+IndividualRankingChanges décrit une action sur l'ordre dense ou sur le verrou. prepareIndividualRanking valide le statut, l'identité, les références sélectionnées, l'absence de doublons et le verrou précédent. Un déverrouillage ne permet pas de changer la liste dans la même écriture. La création et les changements d'ordre mettent rankingLastChange à jour en ISO ; une action portant seulement sur le verrou conserve cette date et actualise lastChange.
+
+RefereesRankingService.saveIndividual utilise un batch pour le document individuel et, si nécessaire, uniquement panelResultState, updatedByCoachAttendeeId et lastChange sur le parent. Un changement de verrou d'un coach sélectionné rend STALE un résultat déjà calculé ; les éditions de listes non contributrices et les votes hors panel ne le font pas. Les règles vérifient le propriétaire, les identités immuables, la phase, les références uniques sélectionnées et l'état du verrou. getAfter impose la fraîcheur après le batch ; une écriture isolée du marqueur sans changement de vote valide est refusée. Le résultat du panel et ses statistiques ne sont jamais remplacés par une action individuelle.
+
+Décision validée par le développeur : chaque composant de l'identifiant rankingId|coachAttendeeId échappe %, / et | en %25, %2F et %7C, dans cet ordre, tout en conservant les caractères Unicode. Le helper et les règles utilisent exactement le même encodage sans collision. Les identifiants alphanumériques générés par le projet restent inchangés ; aucun vote créé par le client avant l'étape 4 ne nécessite de migration, leurs écritures étant jusque-là interdites. Les contrats de maintenance backend restent inchangés et doc/functions.md demeure exact.

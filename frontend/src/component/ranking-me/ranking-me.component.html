@@ -1,0 +1,89 @@
+@if (ranking().selectedRefereeAttendeeIds.length === 0) {
+  <p>Configure referees first</p>
+} @else if (ranking().status === 'CONFIGURE') {
+  <p role="status">
+    Move to step Individual ranking using the button at the top of the page to enable Add and drag-and-drop.
+  </p>
+} @else {
+  @if (ranking().status === 'CLOSED') {
+    <p role="status">This ranking is closed and cannot be edited.</p>
+  } @else if (individual()?.locked) {
+    <p role="status">Unlock My ranking using the padlock toggle to enable Add and drag-and-drop.</p>
+  }
+  <div class="ranking-lists">
+    <section aria-label="Unranked referees">
+      <h3>Unranked referees ({{ available().length }})</h3>
+      <div class="scroll-list">
+        @for (referee of available(); track referee.id) {
+          <div class="referee-row" [draggable]="canReorder()" (dragstart)="startDrag($event, referee.id)">
+            <span class="identity">{{ label(referee) }}</span>
+            <p-button
+              [style]="{ '--p-button-padding-y': '0' }"
+              [ariaLabel]="'Add ' + label(referee)"
+              icon="pi pi-arrow-right"
+              [text]="true"
+              [disabled]="!canReorder()"
+              (onClick)="move(referee.id, order().length)" />
+          </div>
+        } @empty {
+          <p>All selected referees are ranked.</p>
+        }
+      </div>
+    </section>
+    <section aria-label="My ranked referees">
+      <div class="ranking-header">
+        <h3>My ranking ({{ order().length }} / {{ ranking().nbRefereesToRank }})</h3>
+        <div class="lock-row">
+          <p-toggleswitch
+            inputId="own-ranking-lock"
+            ariaLabel="Lock my ranking"
+            [formControl]="lockControl"
+            (onChange)="toggleLock($event.checked, $event.originalEvent)" />
+          <label for="own-ranking-lock" [title]="individual()?.locked ? 'Ranking locked' : 'Ranking unlocked'">
+            <i
+              class="pi"
+              [class.pi-lock]="individual()?.locked"
+              [class.pi-lock-open]="!individual()?.locked"
+              aria-hidden="true"></i>
+          </label>
+        </div>
+      </div>
+      <div class="scroll-list ranked-list" (drop)="dropRanked($event, dropIndex() ?? order().length)">
+        @for (index of slots(); track index) {
+          @if (index === ranking().nbRefereesToRank) {
+            <div class="target-separator" role="separator" aria-label="Ranking target">
+            </div>
+          }
+          <div
+            class="referee-row"
+            [class.drop-gap]="dropIndex() === index"
+            [class.empty]="!order()[index]"
+            [draggable]="canReorder() && !!order()[index]"
+            (dragstart)="startDrag($event, order()[index])"
+            (dragover)="previewDrop($event, index)"
+            (drop)="dropRanked($event, index)">
+            <span class="position">{{ index + 1 }}</span>
+            @if (order()[index]; as id) {
+              <span class="identity">{{ label(referee(id)) }}</span>
+              <span
+                class="drag-handle"
+                role="button"
+                [attr.tabindex]="canReorder() ? 0 : -1"
+                [attr.aria-disabled]="!canReorder()"
+                [attr.aria-label]="'Move ' + label(referee(id)) + '. Use arrow keys to reorder or Delete to remove.'"
+                aria-keyshortcuts="ArrowUp ArrowDown Delete"
+                title="Drag to move. Keyboard: Up / Down / Delete."
+                (keydown.arrowup)="move(id, index - 1); $event.preventDefault()"
+                (keydown.arrowdown)="move(id, index + 1); $event.preventDefault()"
+                (keydown.delete)="move(id, null); $event.preventDefault()">
+                <i class="pi pi-equals" aria-hidden="true"></i>
+              </span>
+            } @else {
+              <span>-</span>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}

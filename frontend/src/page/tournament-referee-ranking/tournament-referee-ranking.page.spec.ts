@@ -7,6 +7,7 @@ import {
   Attendee,
   CoachRefereesRanking,
   createTournamentRefereeRanking,
+  prepareIndividualRanking,
   Person,
   Tournament,
 } from '@tournament-manager/persistent-data-model';
@@ -45,7 +46,7 @@ describe('tournament ranking page shell', () => {
       'repairRanking',
     ]);
     rankings.findByTournament.and.returnValue(of([structuredClone(parent)]));
-    individual = jasmine.createSpyObj('RefereesRankingService', ['findByRanking']);
+    individual = jasmine.createSpyObj('RefereesRankingService', ['findByRanking', 'saveIndividual']);
     individual.findByRanking.and.returnValue(of([]));
     TestBed.configureTestingModule({
       imports: [TournamentRefereeRankingComponent],
@@ -241,6 +242,72 @@ describe('tournament ranking page shell', () => {
     page.pendingCoachChanges.set({ selectedCoachAttendeeIds: [] });
     page.rankingSelection.setValue(null);
     expect(page.pendingCoachChanges()).toBeNull();
+  });
+
+  it('adds through the real Me tab button and displays the committed vote in My ranking', () => {
+    const current = { ...parent, status: 'INDIVIDUAL_RANKING' as const, selectedRefereeAttendeeIds: ['full'] };
+    rankings.findByTournament.and.returnValue(of([current]));
+    individual.saveIndividual.and.callFake((ranking, previous, coachId, changes) =>
+      of(prepareIndividualRanking(ranking, previous, coachId, changes)),
+    );
+    const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
+    fixture.detectChanges();
+    const tabs = Array.from(fixture.nativeElement.querySelectorAll('[role="tab"]')) as HTMLElement[];
+    tabs.find((tab) => tab.textContent?.trim() === 'Me')!.click();
+    fixture.detectChanges();
+    const add = fixture.nativeElement.querySelector('app-ranking-me button[aria-label^="Add "]') as HTMLButtonElement;
+    expect(add.disabled).toBeFalse();
+    add.click();
+    fixture.detectChanges();
+    expect(individual.saveIndividual).toHaveBeenCalledOnceWith(current, null, 'coach', {
+      rankedRefereeAttendeeIds: ['full'],
+    });
+    expect(fixture.componentInstance.ownRanking()?.rankedRefereeAttendeeIds).toEqual(['full']);
+    expect(
+      fixture.nativeElement.querySelector('app-ranking-me [aria-label="My ranked referees"]').textContent,
+    ).toContain('My ranking (1 / 15)');
+    expect(fixture.nativeElement.querySelector('app-ranking-me button[aria-label^="Add "]')).toBeNull();
+  });
+
+  it('saves the current owner lazily and updates shared vote/freshness only after the batch succeeds', () => {
+    const current = {
+      ...parent,
+      status: 'PANEL_RANKING' as const,
+      selectedRefereeAttendeeIds: ['full'],
+      selectedCoachAttendeeIds: ['coach'],
+      panelResultState: 'CURRENT' as const,
+    };
+    rankings.findByTournament.and.returnValue(of([current]));
+    const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(individual.saveIndividual).not.toHaveBeenCalled();
+    const response = new Subject<ReturnType<typeof prepareIndividualRanking>>();
+    individual.saveIndividual.and.returnValue(response);
+    page.saveIndividual({ locked: true });
+    expect(individual.saveIndividual).toHaveBeenCalledOnceWith(current, null, 'coach', { locked: true });
+    expect(page.ownRanking()).toBeNull();
+    expect(page.selectedRanking()?.panelResultState).toBe('CURRENT');
+    response.next(prepareIndividualRanking(current, null, 'coach', { locked: true }));
+    response.complete();
+    expect(page.ownRanking()?.locked).toBeTrue();
+    expect(page.selectedRanking()?.panelResultState).toBe('STALE');
+    expect(page.saving()).toBeFalse();
+  });
+
+  it('retains individual data on failure and never saves in CONFIGURE or CLOSED', () => {
+    spyOn(console, 'error');
+    const page = TestBed.createComponent(TournamentRefereeRankingComponent).componentInstance;
+    page.saveIndividual({ locked: true });
+    page.rankings.set([{ ...parent, status: 'CLOSED', selectedRefereeAttendeeIds: ['full'] }]);
+    page.saveIndividual({ locked: true });
+    expect(individual.saveIndividual).not.toHaveBeenCalled();
+    page.rankings.set([{ ...parent, status: 'INDIVIDUAL_RANKING', selectedRefereeAttendeeIds: ['full'] }]);
+    individual.saveIndividual.and.returnValue(throwError(() => new Error('denied')));
+    page.saveIndividual({ rankedRefereeAttendeeIds: ['full'] });
+    expect(page.ownRanking()).toBeNull();
+    expect(page.error()).toContain('previous order and lock are unchanged');
+    expect(page.saving()).toBeFalse();
   });
 
   it('repairs missing references on load but never repairs a CLOSED snapshot', () => {

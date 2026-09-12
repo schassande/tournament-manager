@@ -161,19 +161,78 @@ service cloud.firestore {
         && next.panelResultState == (changed && old.panelResultState != 'NOT_COMPUTED' ? 'STALE' : old.panelResultState);
     }
 
+    // Matches the shared helper, preserving Unicode and escaping percent before delimiters.
+    function rankingIdComponent(value) {
+      return value.replace('%', '%25').replace('/', '%2F').replace('[|]', '%7C');
+    }
+
+    function rankingVoteId(parentId, coachId) {
+      return rankingIdComponent(parentId) + '|' + rankingIdComponent(coachId);
+    }
+
+    function individualVoteChanged(old, next) {
+      return old == null
+        ? next.locked
+        : old.locked != next.locked || ((old.locked || next.locked) && old.rankedRefereeAttendeeIds != next.rankedRefereeAttendeeIds);
+    }
+
+    function validIndividualRecord(documentId, next, old, parent) {
+      return next.keys().hasOnly(['id', 'lastChange', 'tournamentId', 'tournamentRefereeRankingId',
+          'coachAttendeeId', 'locked', 'rankingLastChange', 'rankedRefereeAttendeeIds'])
+        && next.id == documentId
+        && documentId == rankingVoteId(next.tournamentRefereeRankingId, next.coachAttendeeId)
+        && next.tournamentId == parent.tournamentId
+        && next.tournamentRefereeRankingId == parent.id
+        && parent.status in ['INDIVIDUAL_RANKING', 'PANEL_RANKING']
+        && isRankingCoach(next.coachAttendeeId, parent.tournamentId) && rankingEnabled(parent.tournamentId)
+        && next.lastChange is number && next.locked is bool
+        && next.rankingLastChange is string && next.rankingLastChange.size() > 0
+        && next.rankedRefereeAttendeeIds is list
+        && next.rankedRefereeAttendeeIds.toSet().size() == next.rankedRefereeAttendeeIds.size()
+        && next.rankedRefereeAttendeeIds.hasOnly(parent.selectedRefereeAttendeeIds)
+        && (old == null || (next.tournamentId == old.tournamentId
+          && next.tournamentRefereeRankingId == old.tournamentRefereeRankingId && next.coachAttendeeId == old.coachAttendeeId
+          && (!old.locked || next.rankedRefereeAttendeeIds == old.rankedRefereeAttendeeIds)
+          && (next.rankedRefereeAttendeeIds != old.rankedRefereeAttendeeIds || next.rankingLastChange == old.rankingLastChange)));
+    }
+
+    function validIndividualWrite(documentId, old) {
+      let next = request.resource.data;
+      let parentPath = /databases/$(database)/documents/tournament-referee-ranking/$(next.tournamentRefereeRankingId);
+      let parent = get(parentPath).data;
+      let relevant = next.coachAttendeeId in parent.selectedCoachAttendeeIds && individualVoteChanged(old, next);
+      return validIndividualRecord(documentId, next, old, parent)
+        && (!relevant || parent.panelResultState == 'NOT_COMPUTED' || getAfter(parentPath).data.panelResultState == 'STALE');
+    }
+
+    // A valid contributing owner action may dirty only freshness and actor metadata in the same batch.
+    function validIndividualFreshnessChange() {
+      let old = resource.data;
+      let next = request.resource.data;
+      let id = rankingVoteId(old.id, next.updatedByCoachAttendeeId);
+      let path = /databases/$(database)/documents/coach-referees-ranking/$(id);
+      let before = exists(path) ? get(path).data : null;
+      let after = getAfter(path).data;
+      return next.diff(old).affectedKeys().hasOnly(['panelResultState', 'updatedByCoachAttendeeId', 'lastChange'])
+        && old.panelResultState != 'NOT_COMPUTED' && next.panelResultState == 'STALE' && next.lastChange is number
+        && next.updatedByCoachAttendeeId in old.selectedCoachAttendeeIds
+        && validIndividualRecord(id, after, before, old)
+        && individualVoteChanged(before, after);
+    }
+
     match /tournament-referee-ranking/{documentId} {
       // Deliberately temporary: every authenticated user can read both ranking collections.
       allow read: if signedIn();
       allow create: if signedIn() && validNewRefereeRanking(documentId);
-      allow update: if signedIn() && (validRankingStatusChange() || validRankingRefereeChange() || validRankingCoachChange());
+      allow update: if signedIn() && (validRankingStatusChange() || validRankingRefereeChange() || validRankingCoachChange() || validIndividualFreshnessChange());
       // Supports complete tournament deletion, including after attendees have been removed.
       allow delete: if canManageTournament(resource.data.tournamentId);
     }
 
     match /coach-referees-ranking/{documentId} {
       allow read: if signedIn();
-      // Individual edits are introduced with the Me stage, not opened prematurely.
-      allow create, update: if false;
+      allow create: if signedIn() && validIndividualWrite(documentId, null);
+      allow update: if signedIn() && validIndividualWrite(documentId, resource.data);
       allow delete: if canManageTournament(resource.data.tournamentId);
     }
 

@@ -1,6 +1,66 @@
 import { PersistentObject } from './persistence';
 import { Attendee } from './tournament';
 
+/** One individual action: edit the dense order or change the owner's lock. */
+export type IndividualRankingChanges =
+  { rankedRefereeAttendeeIds: string[]; locked?: never } | { locked: boolean; rankedRefereeAttendeeIds?: never };
+
+/** Committed individual record and resulting parent freshness. */
+export interface IndividualRankingSave {
+  individual: CoachRefereesRanking;
+  panelResultState: PanelResultState;
+}
+
+/** Builds an owner-only action without altering inputs, preserving the ranking time on lock-only changes. */
+export function prepareIndividualRanking(
+  parent: TournamentRefereeRanking,
+  previous: CoachRefereesRanking | null,
+  coachId: string,
+  changes: IndividualRankingChanges,
+  now = Date.now(),
+): IndividualRankingSave {
+  const id = coachRefereesRankingId(parent.id, coachId);
+  if (!['INDIVIDUAL_RANKING', 'PANEL_RANKING'].includes(parent.status))
+    throw new Error('Individual ranking is not editable in this phase.');
+  if (
+    previous &&
+    (previous.id !== id ||
+      previous.coachAttendeeId !== coachId ||
+      previous.tournamentId !== parent.tournamentId ||
+      previous.tournamentRefereeRankingId !== parent.id)
+  ) {
+    throw new Error('Individual identity does not match the current coach and ranking.');
+  }
+  const ids = changes.rankedRefereeAttendeeIds ?? previous?.rankedRefereeAttendeeIds ?? [];
+  const locked = changes.locked ?? previous?.locked ?? false;
+  const listChanged = JSON.stringify(ids) !== JSON.stringify(previous?.rankedRefereeAttendeeIds ?? []);
+  if (
+    (previous?.locked && listChanged) ||
+    typeof locked !== 'boolean' ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => !parent.selectedRefereeAttendeeIds.includes(id))
+  ) {
+    throw new Error('An unlocked, unique ranking of selected referees is required.');
+  }
+  const individual: CoachRefereesRanking = {
+    id,
+    tournamentId: parent.tournamentId,
+    tournamentRefereeRankingId: parent.id,
+    coachAttendeeId: coachId,
+    rankedRefereeAttendeeIds: [...ids],
+    locked,
+    lastChange: now,
+    rankingLastChange: !previous || listChanged ? new Date(now).toISOString() : previous.rankingLastChange,
+  };
+  const relevant =
+    parent.selectedCoachAttendeeIds.includes(coachId) &&
+    (locked !== (previous?.locked ?? false) || (listChanged && (locked || previous?.locked)));
+  return {
+    individual,
+    panelResultState: relevant && parent.panelResultState !== 'NOT_COMPUTED' ? 'STALE' : parent.panelResultState,
+  };
+}
+
 /** Editable panel membership and threshold; omissions preserve their stored values. */
 export interface RankingCoachChanges {
   selectedCoachAttendeeIds?: string[];
@@ -94,7 +154,12 @@ export interface StoredTournamentRefereeRanking extends Omit<TournamentRefereeRa
 /** Builds a collision-free document ID; encoded components never contain the separator. */
 export function coachRefereesRankingId(rankingId: string, coachAttendeeId: string): string {
   if (!rankingId || !coachAttendeeId) throw new Error('Ranking and coach identifiers are required.');
-  return `${encodeURIComponent(rankingId)}|${encodeURIComponent(coachAttendeeId)}`;
+  return `${encodeRankingIdComponent(rankingId)}|${encodeRankingIdComponent(coachAttendeeId)}`;
+}
+
+/** Escapes only percent, path delimiter and pair separator; mirrored exactly by Firestore rules. */
+function encodeRankingIdComponent(value: string): string {
+  return value.replace(/%/g, '%25').replace(/\//g, '%2F').replace(/\|/g, '%7C');
 }
 
 /** Creates the unsaved initial configuration using the agreed empty-panel defaults. */

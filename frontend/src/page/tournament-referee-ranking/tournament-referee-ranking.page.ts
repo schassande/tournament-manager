@@ -19,10 +19,11 @@ import {
   isRankingReferee,
   RankingRefereeChanges,
   RankingCoachChanges,
+  IndividualRankingChanges,
   RankingMaintenanceResponse,
 } from '@tournament-manager/persistent-data-model';
 import { RankingCoachesComponent } from '../../component/ranking-coaches/ranking-coaches.component';
-import { RankingMeComponent } from '../../component/ranking-me.component';
+import { RankingMeComponent } from '../../component/ranking-me/ranking-me.component';
 import { RankingPanelComponent } from '../../component/ranking-panel.component';
 import { RankingRefereesComponent } from '../../component/ranking-referees/ranking-referees.component';
 import { AttendeeService } from '../../service/attendee.service';
@@ -99,6 +100,9 @@ export class TournamentRefereeRankingComponent {
     const ranking = this.selectedRanking();
     return ranking ? refereeRankingTransitions(ranking) : [];
   });
+  readonly ownRanking = computed(
+    () => this.coachRankings().find((item) => item.coachAttendeeId === this.currentCoach()?.id) ?? null,
+  );
 
   /** Installs page-level loaders; switching context cancels obsolete reads. */
   constructor() {
@@ -110,6 +114,51 @@ export class TournamentRefereeRankingComponent {
         takeUntilDestroyed(),
       )
       .subscribe();
+  }
+
+  /** Saves only the current coach's action, accepting the vote and freshness together after commit. */
+  saveIndividual(changes: IndividualRankingChanges): void {
+    const ranking = this.selectedRanking();
+    const coach = this.currentCoach();
+    if (
+      !this.allowed() ||
+      !ranking ||
+      !coach ||
+      this.saving() ||
+      this.loadingCoaches() ||
+      this.coachError() ||
+      !ranking.selectedRefereeAttendeeIds.length ||
+      !['INDIVIDUAL_RANKING', 'PANEL_RANKING'].includes(ranking.status)
+    )
+      return;
+    this.saving.set(true);
+    this.error.set('');
+    this.coachRankingService
+      .saveIndividual(ranking, this.ownRanking(), coach.id, changes)
+      .pipe(
+        finalize(() => this.saving.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (saved) => {
+          this.rankings.update((items) =>
+            items.map((item) =>
+              item.id === ranking.id ? { ...item, panelResultState: saved.panelResultState } : item,
+            ),
+          );
+          if (this.selectedId() === ranking.id)
+            this.coachRankings.update((items) => [
+              ...items.filter((item) => item.id !== saved.individual.id),
+              saved.individual,
+            ]);
+        },
+        error: (error: unknown) => {
+          console.error('[Referee ranking] Individual save failed', error);
+          this.error.set(
+            'Your ranking could not be saved. The previous order and lock are unchanged. Please try again.',
+          );
+        },
+      });
   }
 
   /** Validates panel edits against the shared coach cache and confirms removals after CONFIGURE. */

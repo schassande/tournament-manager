@@ -141,12 +141,14 @@ Example: at majority 3, `[1, 3, 5]` precedes `[1, 4, 5]`. The original reference
 
 - Available to all tournament referee coaches, including unselected coaches for practice.
 - If selected referees are empty, display only `Configure referees first`.
+- When Me cannot be edited, explain the relevant phase/lock restriction: CONFIGURE shows only the Move to step Individual ranking message and hides the lists and lock control, CLOSED is read-only, and a locked vote points to the lock toggle. Add and drag/drop follow the existing lifecycle without silently advancing the phase.
+- Both lists size to their content with a minimum width of 200px each, aligned left with a gap; stack them on narrow screens.
 - Left side: unranked eligible referees, sorted by descending level. Use first name, last name, then ID for stable ordering within a level.
 - Right side: ordered referees with one-based positions displayed at the left of each row. Show at least N+1 filled or empty slots, and a separator between N and N+1. Empty slots are presentation only; persisted ID arrays are dense.
 - Both sides use level/category/upgrade, first name and uppercase last name, e.g. `L2S* Jean DUPONT`. Omit category O. Reuse existing badge and identity conventions.
-- Toggle above the lists binds to `locked`. Lock/unlock is available to the owner only in the two editable individual phases. Unlocking permits editing again; no reordering is permitted while locked.
+- The toggle binds to `locked` and sits at the far right of the My ranking heading, on the same line. An open/closed padlock icon replaces the visible Ranking unlocked/Ranking locked text; retain an accessible control label and state tooltip. Lock/unlock is available to the owner only in the two editable individual phases. Unlocking permits editing again; no reordering is permitted while locked.
 - Drag left to right inserts at the chosen position; drag inside the right list reorders; dropping outside the right list returns the referee to the sorted left list. Dropping on empty trailing slots appends without persisting gaps; cancelling a drag makes no change.
-- After every drag, the two lists partition the eligible selection exactly: no missing referee, no duplicates. Provide keyboard-accessible add/remove/reorder actions with equivalent semantics.
+- After every drag, the two lists partition the eligible selection exactly: no missing referee, no duplicates. On the left, use an icon-only right-arrow button for Add, retaining its accessible referee-specific label. On ranked rows, a horizontal-bars drag icon replaces the Up, Down and Remove buttons; the focusable icon supports ArrowUp/ArrowDown to reorder and Delete to remove.
 - Create the owner's empty, unlocked individual record lazily on the first permitted edit or lock action, using its deterministic ID. Viewing CONFIGURE or CLOSED must not create records. An absent record is displayed as empty.
 - On load/refresh, perform the agreed cleanup before CLOSED; in CLOSED render missing-referee placeholders without writes.
 
@@ -331,7 +333,15 @@ Selected-coach individual edits/lock changes update the parent marker in the sam
 
 ### Implementation stages and validation gates
 
-Current stage: **Stages 1 and 2 validated by the developer; Stage 3 (Coaches) implemented and awaiting developer validation before Stage 4.**
+Current stage: **Stages 1–3 validated by the developer; Stage 4 (Me) implemented and awaiting developer validation before Stage 5.**
+
+Stage 4 delivery (2026-09-12): Me now displays the owner's ranking using the page's grouped records, without extra reads or creation on view. Dense insert/reorder/remove transformations are shared by native drag/drop and accessible Add/Up/Down/Remove buttons; cancellation saves nothing. Unranked identities are sorted by descending level, first name, surname and stable ID. The right list displays N+1 or more numbered slots with the N separator. Only the two active phases allow editing, and a locked record must first be unlocked. Empty and incomplete votes may be locked; CLOSED uses missing-referee placeholders without writes. Each action commits immediately and the page accepts the record only on success. Contributing vote changes and parent freshness use one batch; practice/unlocked non-contributing edits preserve freshness and panel output.
+
+Stage 4 identity decision: after explanation, the developer explicitly approved escaping %, / and | in each pair component as %25, %2F and %7C, in that order, preserving Unicode. The shared helper replaces encodeURIComponent so the Firestore rules can reproduce the exact collision-free identity, including accented IDs; generated alphanumeric IDs keep their existing representation. This decision supersedes the previous helper's generic URL encoding.
+
+Stage 4 deployment: the tested firestore.rules was compiled and published successfully to tournament-manager-90045 on 2026-09-12 using firebase.ranking-test.json. No Hosting or Functions deployment was performed. The local frontend can use the new owner writes immediately; publishing the hosted frontend follows the existing Hosting workflow.
+
+Stage 4 validation: 38 targeted Angular tests and 22 Firestore emulator tests passed. Coverage includes actual checkbox rollback, native drag/drop events, keyboard action buttons, lazy creation, failed saves, owner/other-coach restrictions, immutable identities, locked-list restrictions, empty locks, practice votes, narrow freshness batches, failed atomic commits, CLOSED immunity and Unicode/separator ID verification. Production Angular, shared model and Functions builds passed. doc/pages.md and doc/datamodel.md were updated; maintenance callable contracts and doc/functions.md remain accurate. The existing upgrade-vote deletion mismatch remains outside this stage; no complete cascade claim is made. Stage 5 has not started.
 
 Stage 3 deployment correction (2026-09-12): after the developer reported failed coach saves, a read of the active Firebase rules confirmed that the 08:55:24 UTC release lacked validRankingCoachChange. Published the tested local rules to tournament-manager-90045 at 12:01:05 UTC, resolving this missing deployment dependency. Configuration save failures now log the original error in the local frontend; 14 page tests and the production build passed. No Hosting or Functions deployment was performed for this correction.
 

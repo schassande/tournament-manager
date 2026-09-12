@@ -15,6 +15,7 @@
       placeholder="Select a ranking"
       [readonly]="saving()" />
     <p-button label="Create new Ranking" icon="pi pi-plus" [disabled]="saving()" (onClick)="openCreate()" />
+    <span class="saving-message" role="status">{{ saving() ? 'Saving ranking…' : '' }}</span>
     @if (selectedRanking(); as ranking) {
     <div class="status-actions">
       Step: <span class="status">{{ statusLabels[ranking.status] }}</span>
@@ -28,9 +29,7 @@
     </div>
     }
   </div>
-  @if (selectedRanking(); as ranking) { @if (saving()) {
-  <p role="status">Saving ranking…</p>
-  } @if (loadingCoaches()) {
+  @if (selectedRanking(); as ranking) { @if (loadingCoaches()) {
   <p role="status">Loading coach rankings…</p>
   } @if (coachError()) {
   <div role="alert" class="error">
@@ -61,7 +60,14 @@
           [busy]="saving() || loadingCoaches() || !!coachError() || !!pendingCoachChanges()"
           (changes)="saveCoaches($event)" />
       </p-tabpanel>
-      <p-tabpanel value="me"><app-ranking-me [ranking]="ranking" /></p-tabpanel>
+      <p-tabpanel value="me">
+        <app-ranking-me
+          [ranking]="ranking"
+          [referees]="referees()"
+          [individual]="ownRanking()"
+          [busy]="saving() || loadingCoaches() || !!coachError()"
+          (changes)="saveIndividual($event)" />
+      </p-tabpanel>
       <p-tabpanel value="panel"><app-ranking-panel [ranking]="ranking" [coachRankings]="coachRankings()" /></p-tabpanel>
     </p-tabpanels>
   </p-tabs>

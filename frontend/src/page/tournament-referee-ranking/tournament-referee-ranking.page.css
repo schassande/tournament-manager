@@ -56,6 +56,12 @@
   margin-left: auto;
 }
 
+.saving-message {
+  flex: 0 0 9rem;
+  min-height: 1.25rem;
+  white-space: nowrap;
+}
+
 .status {
   font-weight: 600;
 }

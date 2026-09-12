@@ -38,7 +38,9 @@ function token(email) {
 async function request(path, identity, method = 'GET', body) {
   const headers = { 'Content-Type': 'application/json' };
   if (identity) headers.Authorization = `Bearer ${identity === 'owner' ? identity : token(identity)}`;
-  return fetch(`${base}/${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  return fetch(`${base}/${path.split('/').map(encodeURIComponent).join('/')}`, {
+    method, headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000),
+  });
 }
 
 /** Persists a complete fixture or attempted client write. */
@@ -196,8 +198,111 @@ test('coach edits enforce positive safe majority, unique membership, access, CLO
   await status(await put('tournament-referee-ranking/coach-validation', { ...closed, voteMajority: 2 }, 'coach@example.com'), 403);
 });
 
-test('individual writes stay closed until the Me stage', async () => {
+test('malformed individual writes are rejected', async () => {
   await status(await put('coach-referees-ranking/unavailable', { tournamentId: 't' }, 'coach@example.com'), 403);
+});
+
+/** Builds a dense owner fixture independently of the shared implementation. */
+function individualVote(parentId, coach = 'coach', overrides = {}) {
+  return { id: `${parentId}|${coach}`, tournamentId: 't', tournamentRefereeRankingId: parentId, coachAttendeeId: coach,
+    rankedRefereeAttendeeIds: ['a'], locked: false, lastChange: 1, rankingLastChange: '2026-09-12T12:00:00Z', ...overrides };
+}
+
+/** Commits a vote and narrow parent update through client rules, never through Admin SDK. */
+async function voteBatch(vote, parentPatch, actor = 'coach@example.com') {
+  const parentId = vote.tournamentRefereeRankingId;
+  const prefix = `projects/${project}/databases/(default)/documents/`;
+  const writes = [{ update: { name: `${prefix}coach-referees-ranking/${vote.id}`, fields: fields(vote) } }];
+  if (parentPatch) writes.push({ update: { name: `${prefix}tournament-referee-ranking/${parentId}`, fields: fields(parentPatch) },
+    updateMask: { fieldPaths: Object.keys(parentPatch) } });
+  return fetch(`${base}:commit`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token(actor)}` }, body: JSON.stringify({ writes }) });
+}
+
+test('owners create and reorder dense votes in both active phases, including non-panel practice', async () => {
+  await status(await put('person/other-owner', { email: 'other-coach@example.com' }), 200);
+  await status(await put('attendee/other-owner', { tournamentId: 't', isRefereeCoach: true, person: { personId: 'other-owner' } }), 200);
+  for (const phase of ['INDIVIDUAL_RANKING', 'PANEL_RANKING']) {
+    const id = `me-${phase}`;
+    await status(await put(`tournament-referee-ranking/${id}`, ranking(id, { status: phase, selectedRefereeAttendeeIds: ['a', 'b'] })), 200);
+    const vote = individualVote(id);
+    await status(await voteBatch(vote), 200);
+    const reordered = { ...vote, rankedRefereeAttendeeIds: ['b', 'a'], rankingLastChange: '2026-09-12T12:01:00Z', lastChange: 2 };
+    await status(await voteBatch(reordered), 200);
+    for (const changes of [{ rankedRefereeAttendeeIds: ['a', 'a'] }, { rankedRefereeAttendeeIds: ['missing'] },
+      { id: 'wrong-id' }, { tournamentId: 'other' }, { coachAttendeeId: 'other' }]) {
+      await status(await voteBatch({ ...reordered, ...changes }), 403);
+    }
+    await status(await voteBatch({ ...reordered, locked: true }, null, 'outsider@example.com'), 403);
+    await status(await voteBatch({ ...reordered, locked: true }, null, 'other-coach@example.com'), 403);
+    await status(await voteBatch({ ...reordered, locked: true }), 200);
+    await status(await voteBatch({ ...reordered, locked: true, rankedRefereeAttendeeIds: [] }), 403);
+    await status(await voteBatch({ ...reordered, locked: false, rankedRefereeAttendeeIds: [] }), 403);
+    await status(await voteBatch({ ...reordered, locked: false }), 200);
+  }
+});
+
+test('selected coach locks require atomic staleness; failed batches change neither document', async () => {
+  const parent = ranking('me-atomic', { status: 'PANEL_RANKING', selectedCoachAttendeeIds: ['coach'],
+    selectedRefereeAttendeeIds: ['a'], panelResultState: 'CURRENT',
+    panelRefereesRanking: { rankedRefereeAttendeeIds: ['a'], stats: [{ ranks: [1] }], rankingLastChange: 'computed' } });
+  await status(await put('tournament-referee-ranking/me-atomic', parent), 200);
+  const vote = individualVote(parent.id);
+  await status(await voteBatch(vote), 200);
+  const before = await (await request(`coach-referees-ranking/${vote.id}`, 'coach@example.com')).json();
+  await status(await voteBatch({ ...vote, locked: true }), 403);
+  assert.deepEqual(await (await request(`coach-referees-ranking/${vote.id}`, 'coach@example.com')).json(), before);
+  const stale = { panelResultState: 'STALE', updatedByCoachAttendeeId: 'coach', lastChange: 2 };
+  await status(await voteBatch({ ...vote, locked: true }, { ...stale, name: 'forged' }), 403);
+  assert.deepEqual(await (await request(`coach-referees-ranking/${vote.id}`, 'coach@example.com')).json(), before);
+  await status(await voteBatch({ ...vote, locked: true }, stale), 200);
+  const saved = await (await request('tournament-referee-ranking/me-atomic', 'coach@example.com')).json();
+  assert.deepEqual(saved.fields.panelRefereesRanking, value(parent.panelRefereesRanking));
+  assert.equal(saved.fields.panelResultState.stringValue, 'STALE');
+  await status(await voteBatch({ ...vote, locked: false }), 200);
+});
+
+test('empty lock creation can dirty a result but practice and standalone freshness writes cannot', async () => {
+  for (const selected of [true, false]) {
+    const id = `me-empty-${selected}`;
+    const parent = ranking(id, { status: 'PANEL_RANKING', selectedCoachAttendeeIds: selected ? ['coach'] : [],
+      selectedRefereeAttendeeIds: ['a'], panelResultState: 'CURRENT' });
+    await status(await put(`tournament-referee-ranking/${id}`, parent), 200);
+    const stale = { panelResultState: 'STALE', updatedByCoachAttendeeId: 'coach', lastChange: 2 };
+    await status(await put(`tournament-referee-ranking/${id}`, { ...parent, ...stale }, 'coach@example.com'), 403);
+    const vote = individualVote(id, 'coach', { locked: true, rankedRefereeAttendeeIds: [] });
+    if (!selected) await status(await voteBatch(vote, stale), 403);
+    await status(await voteBatch(vote, selected ? stale : null), 200);
+  }
+});
+
+test('individual writes require an existing open parent, active module and immutable ranking time on lock-only writes', async () => {
+  for (const phase of ['CONFIGURE', 'CLOSED']) {
+    const id = `me-closed-${phase}`;
+    await status(await put(`tournament-referee-ranking/${id}`, ranking(id, { status: phase, selectedRefereeAttendeeIds: ['a'] })), 200);
+    await status(await voteBatch(individualVote(id)), 403);
+  }
+  await status(await voteBatch(individualVote('no-parent')), 403);
+  const id = 'me-time';
+  await status(await put(`tournament-referee-ranking/${id}`, ranking(id, { status: 'INDIVIDUAL_RANKING', selectedRefereeAttendeeIds: ['a'] })), 200);
+  const vote = individualVote(id);
+  await status(await voteBatch(vote), 200);
+  await status(await voteBatch({ ...vote, locked: true, rankingLastChange: 'changed' }), 403);
+  await status(await put('tournament/t', { managerEmails: ['manager@example.com'], enablesModules: [] }), 200);
+  await status(await voteBatch({ ...vote, locked: true }), 403);
+  await status(await put('tournament/t', { managerEmails: ['manager@example.com'], enablesModules: ['RANKING'] }), 200);
+});
+
+test('encoded pair identities preserve Unicode and reject colliding percent/separator aliases', async () => {
+  const parentId = 'é%|ranking';
+  const coachId = 'é%|coach';
+  await status(await put(`attendee/${coachId}`, { tournamentId: 't', isRefereeCoach: true, person: { personId: 'p' } }), 200);
+  await status(await put(`tournament-referee-ranking/${parentId}`, ranking(parentId, {
+    status: 'INDIVIDUAL_RANKING', selectedRefereeAttendeeIds: ['a'], selectedCoachAttendeeIds: [coachId], panelResultState: 'CURRENT',
+  })), 200);
+  const vote = individualVote(parentId, coachId, { id: 'é%25%7Cranking|é%25%7Ccoach', locked: true });
+  await status(await voteBatch(vote, { panelResultState: 'STALE', updatedByCoachAttendeeId: coachId, lastChange: 2 }), 200);
+  await status(await voteBatch({ ...vote, id: `${parentId}|${coachId}` }), 403);
+  await status(await voteBatch({ ...vote, id: 'é%7Cranking|é%7Ccoach' }), 403);
 });
 
 test('manager cascade deletes use tournament identity even without attendees; other users cannot delete', async () => {
