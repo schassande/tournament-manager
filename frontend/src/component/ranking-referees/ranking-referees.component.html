@@ -1,0 +1,76 @@
+<div class="referees-toolbar">
+  <div class="filters">
+    <p-select
+      ariaLabel="Level"
+      placeholder="Level"
+      [options]="levels()"
+      [showClear]="true"
+      [ngModel]="filters().level"
+      (onChange)="setFilter('level', $event.value)" />
+    <p-select
+      ariaLabel="Category"
+      placeholder="Category"
+      [options]="categories"
+      [showClear]="true"
+      [ngModel]="filters().category"
+      (onChange)="setFilter('category', $event.value)" />
+    <p-select
+      ariaLabel="Upgrade"
+      placeholder="Upgrade"
+      [options]="upgrades"
+      optionLabel="label"
+      optionValue="value"
+      [showClear]="true"
+      [ngModel]="filters().upgrade"
+      (onChange)="setFilter('upgrade', $event.value)" />
+    <p-select
+      ariaLabel="Gender"
+      placeholder="Gender"
+      [options]="genders"
+      [showClear]="true"
+      [ngModel]="filters().gender"
+      (onChange)="setFilter('gender', $event.value)" />
+  </div>
+  <form [formGroup]="form" class="configuration" (ngSubmit)="saveField('name'); saveField('nbRefereesToRank')">
+    <label
+      >Name
+      <input pInputText formControlName="name" (blur)="saveField('name')" />
+    </label>
+    <label
+      >Ranked referees
+      <input
+        pInputText
+        type="number"
+        min="1"
+        step="1"
+        formControlName="nbRefereesToRank"
+        (blur)="saveField('nbRefereesToRank')" />
+    </label>
+    @if (form.invalid && form.dirty) {
+      <p role="alert">Enter a nonempty name and a positive whole number.</p>
+    }
+  </form>
+</div>
+<p-picklist
+  scrollHeight="100%"
+  [source]="source"
+  [target]="target"
+  [disabled]="disabled()"
+  [showSourceControls]="false"
+  [showTargetControls]="false"
+  [dragdrop]="false"
+  [metaKeySelection]="false"
+  sourceHeader="Available referees"
+  [targetHeader]="ranking().selectedRefereeAttendeeIds.length + ' Selected referees'"
+  rightButtonAriaLabel="Add selected referees"
+  leftButtonAriaLabel="Remove selected referees"
+  allRightButtonAriaLabel="Add all filtered referees"
+  allLeftButtonAriaLabel="Remove all selected referees"
+  (onMoveToTarget)="addItems($event.items)"
+  (onMoveAllToTarget)="addItems($event.items)"
+  (onMoveToSource)="removeItems($event.items)"
+  (onMoveAllToSource)="removeItems($event.items)">
+  <ng-template #item let-referee>
+    <span>{{ refereePrefix(referee) }} {{ label(referee) }}</span>
+  </ng-template>
+</p-picklist>

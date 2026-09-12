@@ -118,7 +118,8 @@ async function readAllocationCounters(
   const allocation = snapshot.docs[0].data() as TournamentRefereeAllocation;
   const fragments = await Promise.all(allocation.fragmentRefereeAllocations.map(async descriptor => {
     const fragmentSnapshot = await firestore.collection('fragment-referee-allocation').doc(descriptor.id).get();
-    return fragmentSnapshot.data() as FragmentRefereeAllocation | undefined;
+    // Older documents may retain this counter although current allocation writers no longer maintain it.
+    return fragmentSnapshot.data() as (FragmentRefereeAllocation & { nbGamesToAllocate?: number }) | undefined;
   }));
   return fragments.reduce((total, fragment) => ({
     nbGamesAllocated: total.nbGamesAllocated + (fragment?.nbGamesAllocated ?? 0),

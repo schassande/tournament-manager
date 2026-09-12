@@ -351,3 +351,23 @@ L'application se structure autour de 4 familles de pages :
 2. administration tournoi : liste, creation, edition, home
 3. exploitation competition : matchs
 4. arbitrage : arbitres, coaches d'arbitres, allocations globales, allocation detaillee
+
+## Referee ranking — étapes 1 et 2
+
+La route `/tournament/:tournamentId/basic-ranking` propose la sélection et la création de rankings nommés, leurs transitions de statut et les quatre onglets `Referees`, `Coaches`, `Me` et `Panel`. L'onglet Referees est opérationnel ; la sélection des coaches, les votes, le calcul, l'export et la suppression isolée restent prévus aux étapes suivantes.
+
+Le menu et l'ouverture directe exigent un Referee Coach du tournoi et le module `RANKING`. Les deux listes d'attendees et les rankings sont chargés par requêtes groupées au niveau de la page. Les classements individuels sont chargés ensemble à la sélection d'un ranking. Avant CLOSED, les références invalides détectées déclenchent une réparation atomique ; son échec affiche Retry et bloque les modifications jusqu'à résolution.
+
+La création demande un nom non vide, initialise CONFIGURE, N=15, majorité=1, sélections vides et résultat NOT_COMPUTED. Les transitions suivent CONFIGURE → INDIVIDUAL_RANKING → PANEL_RANKING, avec retour possible vers INDIVIDUAL_RANKING. CLOSED exige un résultat CURRENT calculé ; le calcul arrivera à l'étape Panel.
+
+Dans Referees, le nom et N sont enregistrés à la sortie du champ, avec leurs labels à gauche des inputs. N doit être un entier positif sûr, sans limite liée au nombre d'arbitres sélectionnés. Le PickList présente les arbitres à temps plein disponibles à gauche et les sélectionnés à droite ; le titre `x Selected referees` intègre leur nombre sans répéter la cible N. Les filtres Level, Category, Upgrade et Gender sont regroupés au-dessus et à l'extérieur du PickList, dans une ligne compacte avec padding réduit. Ils filtrent uniquement la gauche, en mémoire. Upgrade distingue ceux qui demandent un niveau supérieur (badge demandé > 0) des autres.
+
+Les filtres sont à gauche et le formulaire Name / Ranked referees tout à droite sur une même ligne compacte, avec retour à la ligne si la fenêtre est trop étroite. Le label Ranked referees désigne la cible N.
+
+Les titres des deux listes sont centrés. Chaque arbitre utilise le format de l'onglet Me, par exemple `L2S* Jean DUPONT` : niveau, catégorie (O omise), étoile si un upgrade est demandé, prénom et nom en majuscules.
+
+Le titre présent dans le bandeau du site n'est pas répété dans le contenu de la page Ranking. Dans la barre d'actions, la sélection et la création restent à gauche ; le statut et les boutons de transition sont regroupés tout à droite. Quand Referees est actif, la page remplit la fenêtre sous la barre de navigation de 48 px. Le PickList occupe toute la hauteur restante sous les contrôles et les filtres ; les deux listes défilent intérieurement, sans défilement de la page.
+
+Les ajouts sont enregistrés immédiatement. Les retraits ne demandent aucune confirmation en CONFIGURE et en demandent une dans les deux phases suivantes. Le serveur retire les références de tous les classements, y compris verrouillés et hors panel, sans modifier leurs verrous. La sélection affichée ne change qu'après succès ; un échec conserve les données précédentes. Une modification de sélection rend STALE un résultat déjà calculé ; le nom et N ne changent pas sa fraîcheur. En CLOSED, les paramètres sont en lecture seule et les arbitres manquants affichent `Deleted referee` sans réparation.
+
+Firestore autorise temporairement la lecture des deux collections à tout utilisateur authentifié. Les écritures ordinaires de configuration restent réservées aux coaches du tournoi ; les retraits directs sont refusés et passent par les deux nouvelles callables. Les écritures individuelles restent fermées jusqu'à l'étape Me.

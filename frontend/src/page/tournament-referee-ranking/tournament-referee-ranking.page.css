@@ -1,0 +1,75 @@
+:host {
+  display: block;
+}
+
+/* The application toolbar occupies the first 48px; only Referees fills the remaining viewport. */
+:host:has(.referees-panel[data-p-active='true']) {
+  position: fixed;
+  inset: 48px 0 0;
+  overflow: hidden;
+}
+
+:host:has(.referees-panel[data-p-active='true']) .ranking-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+:host:has(.referees-panel[data-p-active='true']) p-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+:host:has(.referees-panel[data-p-active='true']) p-tabpanels {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.referees-panel[data-p-active='true'] {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.ranking-page {
+  padding: 1rem;
+}
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.status-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.status {
+  font-weight: 600;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.error {
+  color: var(--p-red-700, #b91c1c);
+}
+
+.empty-state {
+  padding: 1rem 0;
+}

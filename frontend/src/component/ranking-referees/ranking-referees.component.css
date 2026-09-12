@@ -1,0 +1,83 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+p-picklist {
+  flex: 1;
+  min-height: 0;
+}
+
+/* PrimeNG owns these nested containers; constrain them so only list contents scroll. */
+:host ::ng-deep .p-picklist {
+  height: 100%;
+  min-height: 0;
+}
+
+:host ::ng-deep .p-picklist-list-container {
+  min-height: 0;
+  min-width: 0;
+}
+
+:host ::ng-deep .p-listbox {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+:host ::ng-deep .p-listbox-header {
+  flex-shrink: 0;
+  justify-content: center;
+  text-align: center;
+}
+
+:host ::ng-deep .p-listbox-list-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.referees-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.configuration,
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 0.75rem;
+}
+.configuration {
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+.configuration input[formControlName='name'] {
+  width: 10rem;
+}
+.configuration label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+.configuration input {
+  min-width: 0;
+  padding: 0.375rem 0.5rem;
+}
+.configuration input[type='number'] {
+  width: 5rem;
+}
+.filters {
+  gap: 0.375rem;
+  --p-select-padding-x: 0.5rem;
+  --p-select-padding-y: 0.25rem;
+}

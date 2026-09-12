@@ -1,5 +1,4 @@
 # TODO list du projet Tournament Maager
-
 - Ranking method NZ
 - Water carrier
   - pour impression
@@ -85,9 +84,12 @@
   - Utilisation de Player referee
   - Divisions / nombre d'équipe
   - home : Match alloué / restant à allouer
+- 2026/09/11: Page Referees : bug graphique/scroll : on ne voit pas la fin du tableau
 
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams
+- Page Referees : bug 
+  - Pb d'édition dans la popup edit
 
 

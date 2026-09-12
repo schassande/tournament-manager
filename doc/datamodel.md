@@ -488,3 +488,26 @@ Le coeur persistant actuel du projet repose sur 4 axes :
 3. configuration de tournoi : `Tournament`
 4. exploitation : `Attendee`, `Game`, `GameAttendeeAllocation`
 5. arbitrage : `TournamentRefereeAllocation`, `FragmentRefereeAllocation` et leurs statistiques
+
+## Referee ranking — modèle introduit à l'étape 1
+
+Les contrats sont dans `persistent-data-model/src/referee-ranking.ts` :
+
+- `TournamentRefereeRanking`, collection `tournament-referee-ranking` : identifiant du tournoi, nom, listes `selectedRefereeAttendeeIds` et `selectedCoachAttendeeIds`, cible `nbRefereesToRank`, majorité `voteMajority`, statut et résultat du panel.
+- `CoachRefereesRanking`, collection `coach-referees-ranking` : `tournamentRefereeRankingId`, `tournamentId`, `coachAttendeeId`, liste ordonnée des arbitres, verrouillage et date du classement. Son identifiant utilise les deux composants encodés `rankingId|coachAttendeeId` ; les caractères séparateurs contenus dans les composants sont encodés.
+- `panelResultState` distingue `NOT_COMPUTED`, `CURRENT` et `STALE`, sans compteur de version ni contrôle de concurrence.
+- `updatedByCoachAttendeeId` permet de vérifier l'auteur des écritures ordinaires du document partagé. L'identité suit la référence réelle `Attendee.person.personId` vers `Person.email`.
+- `rankingLastChange` est une date ISO ; le résultat du panel non calculé utilise une chaîne vide. Le champ hérité `lastChange` reste numérique.
+- Les statistiques du panel sont `number[][]` en mémoire et `{ ranks: number[] }[]` dans Firestore. Les conversions préservent l'alignement avec les identifiants d'arbitres et refusent des longueurs différentes.
+
+Valeurs initiales du parent : `CONFIGURE`, nom nettoyé, sélections vides, cible 15, majorité 1, résultat vide et `NOT_COMPUTED`. La création/saisie des votes reste réservée aux étapes suivantes.
+
+Les lectures sont temporairement ouvertes à tout utilisateur authentifié ; les lectures anonymes sont interdites. Les droits de suppression Firestore des managers existent pour la suppression globale d'un tournoi et ne dépendent pas de la présence des attendees. L'ajout effectif des collections au parcours de suppression globale est prévu dans l'étape 5 ; cette étape 1 n'ajoute pas d'action de suppression isolée aux managers.
+
+### Mutations Referees disponibles à l'étape 2
+
+`RankingRefereeChanges` limite les modifications ordinaires au nom, à N et aux ajouts dans `selectedRefereeAttendeeIds`. Le nom est nettoyé et non vide ; N est un entier positif sûr. Toute modification de sélection conserve NOT_COMPUTED ou rend STALE le résultat existant ; le nom et N préservent sa fraîcheur.
+
+Le retrait direct d'un ID est refusé par les règles. Les callables de maintenance mettent à jour atomiquement le parent et les individus affectés, dont les classements verrouillés et hors panel. Elles retirent également les lignes de statistiques correspondantes, sans modifier l'ordre restant. Le verrou est conservé ; `rankingLastChange` et `lastChange` d'un individu ne changent que si sa liste est nettoyée. La date du panel change si son ordre est nettoyé. CLOSED bloque toutes ces écritures.
+
+L'éligibilité commune `isRankingReferee` exige `isReferee === true`, aucune équipe dans `player.teamId`, et aucun rôle PlayerReferee. La réparation serveur dérive les références autorisées de cette éligibilité et de la sélection persistée. Aucun nouveau champ de stockage n'est ajouté à l'étape 2.

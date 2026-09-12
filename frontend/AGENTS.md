@@ -39,6 +39,7 @@ These instructions apply to everything under `/frontend`.
 - Use `output()` instead of decorator-based outputs when appropriate.
 - Prefer inline templates only for very small components.
 - For non-trivial components, keep the logic in the `.ts` file, the template in the `.html` file, and the styles in the `.css` file.
+- When a component or page uses multiple files (TypeScript/JavaScript, HTML, CSS, tests), group those files in a dedicated subdirectory named after the component or page. Update imports when moving existing files touched by the current task.
 - If a component grows in complexity, move reusable logic to a service.
 - For shared or reusable UI patterns, prefer composition over duplication.
 - In a class, keep a consistent ordering such as fields, constructor, public methods, then private methods.

@@ -317,6 +317,9 @@ export class MainMenuComponent {
     if (this.moduleEnabled(tournament, 'UPGRADE') && this.hasRefereeCoachRightOrManager()) {
       refereeEntries.push(this.entry('Upgrades', 'pi pi-arrow-up', `/tournament/${tournament.id}/referee-upgrade`));
     }
+    if (this.moduleEnabled(tournament, 'RANKING') && this.hasRefereeCoachRight()) {
+      refereeEntries.push(this.entry('Ranking', 'pi pi-sort-amount-down', `/tournament/${tournament.id}/basic-ranking`));
+    }
     return [
       { label: 'Game', entries: gameEntries },
       { label: 'Referee', entries: refereeEntries },

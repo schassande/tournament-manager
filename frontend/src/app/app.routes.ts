@@ -97,6 +97,13 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
   },
   {
+    path: 'tournament/:tournamentId/basic-ranking',
+    loadComponent: () =>
+      import('../page/tournament-referee-ranking/tournament-referee-ranking.page').then((m) => m.TournamentRefereeRankingComponent),
+    data: { title: 'Referee ranking' },
+    canActivate: [AuthGuard],
+  },
+  {
     path: 'tournament/:tournamentId/game',
     loadComponent: () =>
       import('../page/tournament-games.page').then(

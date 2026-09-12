@@ -4,9 +4,9 @@
 
 Le backend Firebase actuel est tres concentre :
 
-- deux Cloud Functions exportees : `api` et `createPerson`
-- cette fonction encapsule une application Express
-- deux routes metier sont branchees : `/refereeAllocationStatistics/compute` et `/tournamentHome`
+- quatre Cloud Functions exportees : `api`, `createPerson`, `removeRankingReferees` et `repairRefereeRanking`
+- `api` encapsule une application Express
+- trois routers metier sont branches : `/refereeAllocationStatistics`, `/fitImport` et `/tournamentHome`
 
 Le reste du CRUD metier est fait directement par le frontend via Firestore.
 
@@ -303,3 +303,20 @@ En consequence, l'architecture actuelle est hybride :
 - frontend -> Firestore pour la majorite des operations metier
 - frontend -> Cloud Function callable pour la creation de `Person`
 - frontend -> Cloud Function HTTP pour les calculs de statistiques complexes
+
+## Maintenance des referee rankings (étape 2)
+
+Les callables v2 `removeRankingReferees` et `repairRefereeRanking` sont exportées séparément depuis `functions/src/referee-ranking/`. Elles exigent une authentification avec email, un attendee coach du tournoi relié par `person.personId` au `Person.email` connecté, et le module RANKING actif. Aucun rôle de leader du panel n'est requis. Aucun secret supplémentaire n'est nécessaire.
+
+Contrat partagé dans `persistent-data-model/src/referee-ranking.ts` :
+
+- Contexte commun : `{ tournamentId, tournamentRefereeRankingId, actorCoachAttendeeId }`.
+- Retrait : ajoute `refereeAttendeeIds: string[]`, non vide ; chaque ID doit être actuellement sélectionné. CLOSED est refusé.
+- Réparation : déduit les références invalides des attendees persistés et de la sélection. CLOSED retourne les données inchangées.
+- Réponse commune : `{ ranking, coachRankings, changed: boolean }`, avec les statistiques sous forme `number[][]` en mémoire.
+
+Une transaction lit et valide les données avant toute écriture. Elle nettoie la sélection et tous les classements associés, conserve les verrous et l'ordre restant, aligne les statistiques du panel et marque STALE un résultat existant. Les dates individuelles ne changent que si la liste change. Les références qui ne sont plus sélectionnées sont également nettoyées. Un échec, y compris lors du commit ou du dépassement des limites Firestore, ne laisse aucune écriture partielle. Une réparation sans changement n'écrit rien.
+
+Les chargements normaux, le nom, N et les ajouts de sélection restent des opérations Firestore directes. Le frontend ne demande une réparation qu'après avoir détecté des références invalides dans ses lectures groupées. Le calcul du panel et la suppression complète du ranking ne font pas partie de cette étape.
+
+Compilation : la lecture du compteur historique optionnel `nbGamesToAllocate` dans `tournament-home.ts` utilise maintenant un type local explicite. Cette correction de typage préserve le comportement existant et n'ajoute pas ce champ au modèle partagé.

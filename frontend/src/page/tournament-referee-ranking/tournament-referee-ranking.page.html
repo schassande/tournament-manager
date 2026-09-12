@@ -1,0 +1,97 @@
+<section class="ranking-page" aria-label="Referee ranking">
+  @if (loading()) {
+  <p role="status">Loading tournament rankings…</p>
+  } @if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+  } @if (allowed() && !loading()) {
+  <div class="action-bar">
+    <label for="ranking-select">Ranking</label>
+    <p-select
+      inputId="ranking-select"
+      [options]="rankings()"
+      optionLabel="name"
+      optionValue="id"
+      [formControl]="rankingSelection"
+      placeholder="Select a ranking"
+      [readonly]="saving()" />
+    <p-button label="Create new Ranking" icon="pi pi-plus" [disabled]="saving()" (onClick)="openCreate()" />
+    @if (selectedRanking(); as ranking) {
+    <div class="status-actions">
+      Step: <span class="status">{{ statusLabels[ranking.status] }}</span>
+      @for (status of transitions(); track status) {
+      <p-button
+        [label]="'Move to step ' + statusLabels[status]"
+        [outlined]="true"
+        [disabled]="saving() || loadingCoaches() || !!coachError()"
+        (onClick)="changeStatus(status)" />
+      }
+    </div>
+    }
+  </div>
+  @if (selectedRanking(); as ranking) { @if (saving()) {
+  <p role="status">Saving ranking…</p>
+  } @if (loadingCoaches()) {
+  <p role="status">Loading coach rankings…</p>
+  } @if (coachError()) {
+  <div role="alert" class="error">
+    {{ coachError() }}
+    <p-button label="Retry" [text]="true" (onClick)="retryCoachRankings()" />
+  </div>
+  }
+  <p-tabs value="referees">
+    <p-tablist>
+      <p-tab value="referees">Referees</p-tab>
+      <p-tab value="coaches">Coaches</p-tab>
+      <p-tab value="me">Me</p-tab>
+      <p-tab value="panel">Panel</p-tab>
+    </p-tablist>
+    <p-tabpanels>
+      <p-tabpanel value="referees" class="referees-panel"
+        ><app-ranking-referees
+          [ranking]="ranking"
+          [referees]="referees()"
+          [busy]="saving() || loadingCoaches() || !!coachError() || pendingRemoval().length > 0"
+          (changes)="saveReferees($event)"
+          (remove)="requestRemoval($event)"
+      /></p-tabpanel>
+      <p-tabpanel value="coaches"><app-ranking-coaches [ranking]="ranking" [coaches]="coaches()" /></p-tabpanel>
+      <p-tabpanel value="me"><app-ranking-me [ranking]="ranking" /></p-tabpanel>
+      <p-tabpanel value="panel"><app-ranking-panel [ranking]="ranking" [coachRankings]="coachRankings()" /></p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
+  } @else {
+  <p class="empty-state">Create a ranking for this tournament using “Create new Ranking”.</p>
+  } }
+</section>
+
+<p-dialog
+  header="New Ranking"
+  [visible]="createDialog()"
+  (visibleChange)="createDialog.set($event)"
+  [modal]="true"
+  [closable]="!saving()"
+  [style]="{ width: '28rem', maxWidth: '95vw' }">
+  <form [formGroup]="createForm" (ngSubmit)="createRanking()" class="create-form">
+    @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+    }
+    <label for="ranking-name">Name</label>
+    <input pInputText id="ranking-name" formControlName="name" autocomplete="off" />
+    <p-button type="submit" label="Create" [loading]="saving()" [disabled]="newName.invalid || saving()" />
+  </form>
+</p-dialog>
+
+<p-dialog
+  header="Remove referees"
+  [visible]="pendingRemoval().length > 0"
+  (visibleChange)="pendingRemoval.set([])"
+  [modal]="true"
+  [style]="{ width: '30rem', maxWidth: '95vw' }">
+  <p>
+    Remove {{ pendingRemoval().length }} referee(s)? Their entries will also be removed from every coach ranking,
+    including locked and practice rankings, and from the panel result. An existing panel result will require
+    recomputation.
+  </p>
+  <p-button label="Cancel" [text]="true" (onClick)="pendingRemoval.set([])" />
+  <p-button label="Remove" severity="danger" (onClick)="confirmRemoval()" />
+</p-dialog>

@@ -153,3 +153,7 @@ The existing `DRAW_DESIGNER` module and `/tournament/:tournamentId/draw-designer
 ### Visibility implementation note
 
 The current code does not yet provide a complete reusable permission predicate for all menu entries: most current tournament entries are displayed whenever a tournament is selected, while `Upgrades` is conditionally displayed when the connected attendee has `isRefereeCoach`. The role mapping above is the validated target behavior, not a statement of current behavior. Where the table refers to a specialized management right that is not yet represented by a dedicated role, the implementation must use the closest existing role without introducing a new permission model; this is especially relevant for referee management, referee-coach management, and FIT import.
+
+### Referee ranking route — implementation stage 1
+
+Add `Ranking` (`pi pi-sort-amount-down`) in the Referee group, linking to `/tournament/:tournamentId/basic-ranking`. Visibility requires `RANKING` in the selected tournament's enabled modules and `isRefereeCoach === true` for the connected attendee. A manager-only role does not expose the entry. The page checks the same access conditions on direct navigation before loading ranking data.

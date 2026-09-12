@@ -197,9 +197,57 @@ npm run deploy
 - Les variables Firebase du front sont configurees dans `frontend/src/environments/environment.ts` et `environment.prod.ts`.
 - Les appels HTTP vers les Firebase Functions utilisent directement `functionsApiUrl` dans ces fichiers d'environnement ; aucun proxy local Angular n'est requis.
 - Le front accede directement a Firestore avec AngularFire.
-- Le backend ne fournit actuellement qu'une API HTTP de calcul de statistiques d'allocation ; le reste du CRUD passe par Firestore depuis le frontend.
+- Le backend fournit les routers et callables décrits dans doc/functions.md ; le CRUD ordinaire reste principalement direct via Firestore.
 - Decision technique : le datamodel partage n'est plus distribue comme package workspace. Le frontend le consomme via le mapping TypeScript et le backend l'embarque directement pendant sa compilation.
 
 ## Analyse des specs de changement
 
 Une skill Codex locale est disponible dans `.codex/skills/analyze-change-spec/`. Elle analyse le fichier spec indiqué dans `doc/changes/`, vérifie s'il est prêt pour l'implémentation, pose les questions manquantes une par une avec un compteur et des solutions numérotées, puis met à jour la spec en anglais dans une structure standard avec sa date de mise à jour. Lorsque la spec est prête, elle le signale simplement et propose de passer à l'implémentation, sans afficher de résumé dans le chat. Elle ne modifie pas le code par défaut.
+
+## Vérification du socle referee ranking
+
+Depuis `frontend`, lancer les tests ciblés et la compilation :
+
+```powershell
+node node_modules/@angular/cli/bin/ng.js test --watch=false --include=src/page/tournament-referee-ranking/tournament-referee-ranking.page.spec.ts --include=src/service/referee-ranking-model.spec.ts
+node node_modules/@angular/cli/bin/ng.js build --configuration development
+```
+
+Le `baseUrl` de `frontend/tsconfig.spec.json` pointe vers la racine du dépôt pour que le bundler Karma résolve aussi l'alias du modèle partagé.
+
+Depuis la racine, vérifier les règles dans un émulateur Firestore local (Firebase CLI et Java requis) :
+
+```powershell
+firebase emulators:exec --only firestore --project demo-ranking-stage1 --config firebase.ranking-test.json "node --test tests/firestore/referee-ranking.test.cjs"
+```
+
+Cette configuration de test est distincte de `firebase.json`. Les tests REST utilisent uniquement un hôte local et un projet de démonstration ; ils n'accèdent pas au projet Firebase de production. Ils vérifient les lectures authentifiées, l'identité du coach, la création, les transitions, la clôture et les droits de suppression nécessaires aux managers. Les règles n'ouvrent pas les écritures des onglets avant leur implémentation.
+
+## Organisation des fichiers des composants
+
+Un composant ou une page réparti sur plusieurs fichiers utilise un sous-dossier dédié portant son nom. Le TypeScript/JavaScript, le HTML, le CSS et les tests associés y sont regroupés. Les imports sont adaptés lors d'un déplacement ; les références `templateUrl` et `styleUrl` restent locales au composant.
+
+La page de ranking suit cette convention dans `frontend/src/page/tournament-referee-ranking/`.
+
+### Validation et déploiement de l'étape Referees
+
+Depuis la racine, installer si nécessaire les dépendances backend avec `npm ci --prefix functions`, puis compiler avec `npm --prefix functions run build`.
+
+Les tests de règles et de transactions utilisent exclusivement l'émulateur local et les Functions compilées :
+
+```powershell
+firebase emulators:exec --only firestore --project demo-ranking-stage1 --config firebase.ranking-test.json "node --test tests/firestore/referee-ranking.test.cjs tests/firestore/referee-ranking-maintenance.test.cjs"
+```
+
+Les tests Angular de la fonctionnalité sont dans `src/page/tournament-referee-ranking/`, `src/component/ranking-referees/` et `src/service/referee-ranking-model.spec.ts` (commande ng test depuis frontend avec --watch=false et les --include correspondants).
+
+Pour activer les retraits et la réparation dans l'environnement Firebase, déployer les deux callables en plus des règles. La configuration racine contient les Functions ; la configuration de test référence les règles Firestore et permet aussi leur déploiement explicite :
+
+```powershell
+firebase deploy --only firestore:rules --project tournament-manager-90045 --config firebase.ranking-test.json
+firebase deploy --only "functions:removeRankingReferees,functions:repairRefereeRanking" --project tournament-manager-90045
+```
+
+Le frontend utilise AngularFire Functions, comme createPerson. Aucun secret supplémentaire ni changement de functionsApiUrl n'est requis. Le déploiement du frontend reste le workflow hosting existant. Aucun déploiement n'a été exécuté par l'agent pour cette étape.
+
+Si l'ajout d'un arbitre affiche « Referee changes could not be saved » alors que la création fonctionne, vérifier que les règles de l'étape 2 ont été déployées : la règle update du parent doit autoriser `validRankingRefereeChange()` en plus de `validRankingStatusChange()`. Les règles de l'étape 1 refusent les ajouts. Le déploiement du frontend seul ne publie pas les règles. Diagnostic confirmé sur le projet tournament-manager-90045 le 2026-09-12 : la version active à 07:40:43 UTC ne contenait pas cette autorisation. La commande firestore:rules ci-dessus publie le fichier local nécessaire ; l'ajout n'utilise aucune callable.
