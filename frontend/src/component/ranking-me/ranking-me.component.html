@@ -15,7 +15,11 @@
       <h3>Unranked referees ({{ available().length }})</h3>
       <div class="scroll-list">
         @for (referee of available(); track referee.id) {
-          <div class="referee-row" [draggable]="canReorder()" (dragstart)="startDrag($event, referee.id)">
+          <div
+            class="referee-row"
+            [class.drag-source]="dragging() === referee.id"
+            [draggable]="canReorder()"
+            (dragstart)="startDrag($event, referee.id)">
             <span class="identity">{{ label(referee) }}</span>
             <p-button
               [style]="{ '--p-button-padding-y': '0' }"
@@ -56,6 +60,7 @@
           }
           <div
             class="referee-row"
+            [class.drag-source]="dragging() === order()[index]"
             [class.drop-gap]="dropIndex() === index"
             [class.empty]="!order()[index]"
             [draggable]="canReorder() && !!order()[index]"

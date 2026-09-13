@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 import {
   Attendee,
@@ -25,8 +25,13 @@ describe('tournament ranking page shell', () => {
   let attendees: jasmine.SpyObj<AttendeeService>;
   let rankings: jasmine.SpyObj<TournamentRefereeRankingService>;
   let individual: jasmine.SpyObj<RefereesRankingService>;
+  let queryParams: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  let router: jasmine.SpyObj<Router>;
 
   beforeEach(() => {
+    queryParams = new BehaviorSubject(convertToParamMap({}));
+    router = jasmine.createSpyObj('Router', ['navigate']);
+    router.navigate.and.returnValue(Promise.resolve(true));
     tournament = { id: 't', name: 'Tournament', enablesModules: ['RANKING'] } as Tournament;
     attendees = jasmine.createSpyObj('AttendeeService', ['findTournamentReferees', 'findTournamentRefereeCoaches']);
     attendees.findTournamentReferees.and.returnValue(
@@ -52,7 +57,11 @@ describe('tournament ranking page shell', () => {
       imports: [TournamentRefereeRankingComponent],
       providers: [
         provideNoopAnimations(),
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ tournamentId: 't' })) } },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap({ tournamentId: 't' })), queryParamMap: queryParams },
+        },
+        { provide: Router, useValue: router },
         { provide: UserService, useValue: { currentUser$: signal({ id: 'person' } as Person) } },
         { provide: AttendeeService, useValue: attendees },
         { provide: TournamentRefereeRankingService, useValue: rankings },
@@ -66,6 +75,37 @@ describe('tournament ranking page shell', () => {
         },
       ],
     });
+  });
+
+  it('restores each tab from the URL and follows URL changes without reloading ranking data', () => {
+    queryParams.next(convertToParamMap({ tab: 'me' }));
+    const page = TestBed.createComponent(TournamentRefereeRankingComponent).componentInstance;
+    expect(page.activeTab()).toBe('me');
+    for (const tab of ['referees', 'coaches', 'panel', 'me']) {
+      queryParams.next(convertToParamMap({ tab }));
+      expect(page.activeTab()).toBe(tab);
+    }
+    queryParams.next(convertToParamMap({ tab: 'invalid' }));
+    expect(page.activeTab()).toBe('referees');
+    queryParams.next(convertToParamMap({ tab: 'panel' }));
+    queryParams.next(convertToParamMap({}));
+    expect(page.activeTab()).toBe('referees');
+    expect(rankings.findByTournament).toHaveBeenCalledTimes(1);
+    expect(individual.findByRanking).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes tab selections to the URL and ignores invalid or unchanged selections', () => {
+    const page = TestBed.createComponent(TournamentRefereeRankingComponent).componentInstance;
+    page.tabSelected('me');
+    expect(router.navigate).toHaveBeenCalledOnceWith([], {
+      relativeTo: TestBed.inject(ActivatedRoute),
+      queryParams: { tab: 'me' },
+      queryParamsHandling: 'merge',
+      preserveFragment: true,
+    });
+    router.navigate.calls.reset();
+    for (const tab of ['referees', 'invalid', 1, undefined]) page.tabSelected(tab);
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('finishes even for a live tournament stream and loads shared data exactly once', () => {

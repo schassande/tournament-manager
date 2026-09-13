@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
@@ -66,6 +66,7 @@ export class TournamentRefereeRankingComponent {
     CLOSED: 'Closed',
   };
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly userService = inject(UserService);
   private readonly tournamentService = inject(TournamentService);
@@ -73,6 +74,8 @@ export class TournamentRefereeRankingComponent {
   private readonly rankingService = inject(TournamentRefereeRankingService);
   private readonly coachRankingService = inject(RefereesRankingService);
   private readonly selectedRankingRequests = new Subject<string | null>();
+  private readonly tabs = ['referees', 'coaches', 'me', 'panel'];
+  readonly activeTab = signal('referees');
   readonly tournament = signal<Tournament | null>(null);
   readonly currentCoach = signal<Attendee | null>(null);
   readonly referees = signal<Attendee[]>([]);
@@ -106,6 +109,10 @@ export class TournamentRefereeRankingComponent {
 
   /** Installs page-level loaders; switching context cancels obsolete reads. */
   constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const tab = params.get('tab');
+      this.activeTab.set(tab && this.tabs.includes(tab) ? tab : 'referees');
+    });
     this.watchRankingSelection();
     this.rankingSelection.valueChanges.pipe(takeUntilDestroyed()).subscribe((id) => this.selectRanking(id));
     this.route.paramMap
@@ -114,6 +121,17 @@ export class TournamentRefereeRankingComponent {
         takeUntilDestroyed(),
       )
       .subscribe();
+  }
+
+  /** Persists the selected tab in the URL while preserving other query parameters. */
+  tabSelected(tab: string | number | undefined): void {
+    if (typeof tab !== 'string' || !this.tabs.includes(tab) || tab === this.activeTab()) return;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      preserveFragment: true,
+    });
   }
 
   /** Saves only the current coach's action, accepting the vote and freshness together after commit. */

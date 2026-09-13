@@ -21,10 +21,13 @@
   margin-top: 1.5rem;
 }
 .majority-row input {
-  width: 7rem;
+  width: 4rem;
 }
 .error {
   color: var(--p-red-700, #b91c1c);
+}
+.warning {
+  color: var(--p-orange-700, #c2410c);
 }
 @media (max-width: 480px) {
   .coach-grid {

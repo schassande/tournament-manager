@@ -45,6 +45,21 @@
 .referee-row[draggable='true'] {
   cursor: grab;
 }
+/* Keep the source slot available as a drop target while hiding its visual content. */
+.referee-row.drag-source {
+  opacity: 0;
+}
+.referee-drag-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 1px solid #222222;
+  background-color: white;
+  opacity: 1;
+}
 .referee-row.drop-gap {
   margin-top: 30px;
 }

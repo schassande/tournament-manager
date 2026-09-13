@@ -2,8 +2,10 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   HostListener,
+  inject,
   input,
   output,
   signal,
@@ -52,16 +54,18 @@ export class RankingMeComponent {
     Array.from({ length: Math.max(this.ranking().nbRefereesToRank + 1, this.order().length) }, (_, index) => index),
   );
   readonly label = rankingRefereeLabel;
+  private dragPreview: HTMLElement | null = null;
+  private dragOffset = { x: 0, y: 0 };
 
   /** Restores committed lock state and cancels obsolete drags when the page context changes. */
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.cancelDrag());
     effect(() => {
       this.lockControl.setValue(this.individual()?.locked ?? false, { emitEvent: false });
       if (this.editable()) this.lockControl.enable({ emitEvent: false });
       else this.lockControl.disable({ emitEvent: false });
       this.ranking();
-      this.dragging.set(null);
-      this.dropIndex.set(null);
+      this.cancelDrag();
     });
   }
 
@@ -85,29 +89,30 @@ export class RankingMeComponent {
     if (JSON.stringify(next) !== JSON.stringify(this.order())) this.changes.emit({ rankedRefereeAttendeeIds: next });
   }
 
-  /** Starts an unlocked internal drag using the complete row as its preview. */
+  /** Starts an unlocked drag with an opaque cell overlay instead of the translucent native image. */
   startDrag(event: DragEvent, id: string): void {
     if (!this.canReorder()) {
       event.preventDefault();
       return;
     }
+    this.cancelDrag();
     this.dragging.set(id);
     event.dataTransfer?.setData('text/plain', id);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
     if (event.dataTransfer && event.currentTarget instanceof HTMLElement) {
       const row = event.currentTarget;
-      const bounds = row.getBoundingClientRect();
-      event.dataTransfer.setDragImage(
-        row,
-        Math.max(0, Math.min(bounds.width, event.clientX - bounds.left)),
-        Math.max(0, Math.min(bounds.height, event.clientY - bounds.top)),
-      );
+      this.createDragPreview(row, event);
+      // A transparent canvas suppresses the browser's translucent drag feedback.
+      const emptyImage = row.ownerDocument.createElement('canvas');
+      emptyImage.width = emptyImage.height = 1;
+      event.dataTransfer.setDragImage(emptyImage, 0, 0);
     }
   }
 
   /** Allows an actual drop anywhere in the document while dragging one of this tab's referees. */
   @HostListener('document:dragover', ['$event'])
   allowDrop(event: DragEvent): void {
+    this.positionDragPreview(event);
     if (this.dragging() && this.canReorder()) event.preventDefault();
     if (!(event.target instanceof Element) || !event.target.closest('.ranked-list')) this.dropIndex.set(null);
   }
@@ -124,8 +129,7 @@ export class RankingMeComponent {
     event.preventDefault();
     event.stopPropagation();
     const id = this.dragging();
-    this.dragging.set(null);
-    this.dropIndex.set(null);
+    this.cancelDrag();
     if (id) this.move(id, index);
   }
 
@@ -135,15 +139,52 @@ export class RankingMeComponent {
     const id = this.dragging();
     if (!id) return;
     event.preventDefault();
-    this.dragging.set(null);
-    this.dropIndex.set(null);
+    this.cancelDrag();
     this.move(id, null);
   }
 
   /** Escape/native drag cancellation clears transient state without saving. */
   @HostListener('document:dragend')
   cancelDrag(): void {
+    this.dragPreview?.remove();
+    this.dragPreview = null;
     this.dragging.set(null);
     this.dropIndex.set(null);
+  }
+
+  /** Hides the in-page preview when the pointer leaves the browser document. */
+  @HostListener('document:dragleave', ['$event'])
+  hideDragPreview(event: DragEvent): void {
+    if (!event.relatedTarget && this.dragPreview) this.dragPreview.style.visibility = 'hidden';
+  }
+
+  /** Copies the full cell outside the scroll container, retaining the pointer's grab position. */
+  private createDragPreview(row: HTMLElement, event: DragEvent): void {
+    const bounds = row.getBoundingClientRect();
+    this.dragOffset = {
+      x: Math.max(0, Math.min(bounds.width, event.clientX - bounds.left)),
+      y: Math.max(0, Math.min(bounds.height, event.clientY - bounds.top)),
+    };
+
+    // Preserve Angular style attributes while making the visual copy non-interactive.
+    const preview = row.cloneNode(true) as HTMLElement;
+    preview.classList.remove('drop-gap', 'drag-source');
+    preview.classList.add('referee-drag-preview');
+    preview.style.width = `${bounds.width}px`;
+    preview.setAttribute('aria-hidden', 'true');
+    preview.inert = true;
+    preview.removeAttribute('id');
+    preview.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+    row.ownerDocument.body.appendChild(preview);
+    this.dragPreview = preview;
+    this.positionDragPreview(event);
+  }
+
+  /** Positions the opaque overlay without intercepting the underlying drop targets. */
+  private positionDragPreview(event: DragEvent): void {
+    if (!this.dragPreview) return;
+    this.dragPreview.style.visibility = 'visible';
+    this.dragPreview.style.transform =
+      `translate(${event.clientX - this.dragOffset.x}px, ${event.clientY - this.dragOffset.y}px)`;
   }
 }

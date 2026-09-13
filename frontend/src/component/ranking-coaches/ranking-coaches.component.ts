@@ -2,12 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, effect, input, output } f
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
+import { TooltipModule } from 'primeng/tooltip';
 import { Attendee, RankingCoachChanges, TournamentRefereeRanking } from '@tournament-manager/persistent-data-model';
 
 /** Panel configuration using page-owned attendees and persistence, without individual-record writes. */
 @Component({
   selector: 'app-ranking-coaches',
-  imports: [ReactiveFormsModule, CheckboxModule, InputTextModule],
+  imports: [ReactiveFormsModule, CheckboxModule, InputTextModule, TooltipModule],
   templateUrl: './ranking-coaches.component.html',
   styleUrl: './ranking-coaches.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -57,6 +58,13 @@ export class RankingCoachesComponent {
   /** Displays each coach's full name with an ID fallback for incomplete attendee data. */
   label(coach: Attendee): string {
     return `${coach.person?.firstName ?? ''} ${coach.person?.lastName?.toUpperCase() ?? ''}`.trim() || coach.id;
+  }
+
+  /** Explains missing account data using the email recorded on the attendee. */
+  coachWarning(coach: Attendee): string {
+    if (coach.person?.personId?.trim()) return 'Missing person link or email';
+    const email = coach.person?.email?.trim();
+    return email ? `No account for the email ${email}` : 'Configure the coach to set a person with an account';
   }
 
   /** Emits proposed membership; the page handles confirmation and commits the displayed selection. */

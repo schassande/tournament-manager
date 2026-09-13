@@ -7,6 +7,25 @@
         [formControl]="selectionControls().get(coach.id)!"
         (onChange)="toggleCoach(coach, $event.checked, $event.originalEvent)" />
       <label [for]="'ranking-coach-' + coach.id">{{ label(coach) }}</label>
+      @if (coach.person?.personId?.trim() && coach.person?.email?.trim()) {
+        <i
+          class="pi pi-check"
+          [pTooltip]="coach.person?.email?.trim()"
+          tooltipEvent="both"
+          role="img"
+          aria-label="Person linked with email"
+          tabindex="0"></i>
+      } @else {
+        <i
+          class="pi pi-exclamation-triangle"
+          [class.warning]="coach.person?.email?.trim() && !coach.person?.personId?.trim()"
+          [class.error]="!coach.person?.email?.trim() || coach.person?.personId?.trim()"
+          [pTooltip]="coachWarning(coach)"
+          tooltipEvent="both"
+          [attr.aria-label]="coachWarning(coach)"
+          role="img"
+          tabindex="0"></i>
+      }
     </div>
   } @empty {
     <p>No referee coaches available.</p>

@@ -164,28 +164,83 @@ describe('Me ranking interactions', () => {
     ) as NodeListOf<HTMLElement>;
     const transfer = new DataTransfer();
     const preview = spyOn(transfer, 'setDragImage');
-    source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
-    expect(preview).toHaveBeenCalledOnceWith(source, jasmine.any(Number), jasmine.any(Number));
-    rankedRows[1].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+    const bounds = source.getBoundingClientRect();
+    source.dispatchEvent(new DragEvent('dragstart', {
+      bubbles: true,
+      dataTransfer: transfer,
+      clientX: bounds.left + 10,
+      clientY: bounds.top + 10,
+    }));
+    expect(preview.calls.mostRecent().args[0] instanceof HTMLCanvasElement).toBeTrue();
+    const dragImage = document.querySelector('.referee-drag-preview') as HTMLElement;
+    expect(dragImage).not.toBe(source);
+    expect(dragImage.parentElement).toBe(document.body);
+    expect(dragImage.textContent).toBe(source.textContent);
+    expect(dragImage.getBoundingClientRect().width).toBeCloseTo(source.getBoundingClientRect().width, 0);
+    expect(getComputedStyle(dragImage).position).toBe('fixed');
+    expect(getComputedStyle(dragImage).backgroundColor).toBe('rgb(255, 255, 255)');
+    expect(getComputedStyle(dragImage).opacity).toBe('1');
+    expect(getComputedStyle(dragImage).pointerEvents).toBe('none');
+    expect(dragImage.inert).toBeTrue();
+    rankedRows[1].dispatchEvent(new DragEvent('dragover', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 300,
+      clientY: 200,
+    }));
+    expect(dragImage.style.transform).toBe('translate(290px, 190px)');
     fixture.detectChanges();
-    expect(getComputedStyle(rankedRows[1]).marginTop).toBe('20px');
+    expect(getComputedStyle(rankedRows[1]).marginTop).toBe('30px');
+    expect(getComputedStyle(source).opacity).toBe('0');
+    expect(source.getBoundingClientRect().height).toBe(bounds.height);
+    expect(getComputedStyle(dragImage).opacity).toBe('1');
     rankedRows[1].dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true }));
     fixture.detectChanges();
+    expect(dragImage.isConnected).toBeFalse();
+    expect(getComputedStyle(source).opacity).toBe('1');
     expect(rankedRows[1].classList.contains('drop-gap')).toBeFalse();
     expect(emit).toHaveBeenCalledOnceWith({ rankedRefereeAttendeeIds: ['a', 'c', 'b'] });
     emit.calls.reset();
     rankedRows[0].dispatchEvent(new DragEvent('dragstart', { bubbles: true }));
+    fixture.detectChanges();
+    expect(getComputedStyle(rankedRows[0]).opacity).toBe('0');
     rankedRows[0].dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+    fixture.detectChanges();
+    expect(getComputedStyle(rankedRows[0]).opacity).toBe('1');
     expect(emit).not.toHaveBeenCalled();
     const handles = fixture.nativeElement.querySelectorAll('.drag-handle') as NodeListOf<HTMLElement>;
     expect(handles.length).toBe(2);
     expect(fixture.nativeElement.querySelector('[aria-label="My ranked referees"] button')).toBeNull();
-    expect(handles[0].querySelector('.pi-bars')).not.toBeNull();
+    expect(handles[0].querySelector('.pi-equals')).not.toBeNull();
     handles[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     expect(emit).toHaveBeenCalledWith({ rankedRefereeAttendeeIds: ['b', 'a'] });
     handles[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
     expect(emit).toHaveBeenCalledWith({ rankedRefereeAttendeeIds: ['a'] });
   });
+
+  for (const ending of ['cancel', 'outside', 'context', 'destroy']) {
+    it(`cleans up the opaque drag preview on ${ending}`, () => {
+      const fixture = setup();
+      const source = fixture.nativeElement.querySelector('.referee-row') as HTMLElement;
+      source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() }));
+      const preview = document.querySelector('.referee-drag-preview') as HTMLElement;
+      expect(preview).not.toBeNull();
+      document.dispatchEvent(new DragEvent('dragleave'));
+      expect(preview.style.visibility).toBe('hidden');
+      document.dispatchEvent(new DragEvent('dragover'));
+      expect(preview.style.visibility).toBe('visible');
+
+      if (ending === 'cancel') source.dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+      if (ending === 'outside') document.dispatchEvent(new DragEvent('drop', { cancelable: true }));
+      if (ending === 'context') {
+        fixture.componentRef.setInput('busy', true);
+        fixture.detectChanges();
+      }
+      if (ending === 'destroy') fixture.destroy();
+      expect(preview.isConnected).toBeFalse();
+      expect(fixture.componentInstance.dragging()).toBeNull();
+    });
+  }
 
   it('renders CLOSED placeholders without editing or creating records and prioritizes the empty selection', () => {
     const fixture = setup();

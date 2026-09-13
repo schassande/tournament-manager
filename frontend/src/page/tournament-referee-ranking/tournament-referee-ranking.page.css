@@ -36,7 +36,7 @@
 }
 
 .ranking-page {
-  padding: 1rem;
+  padding: 0.5rem;
 }
 
 .action-bar {
@@ -44,7 +44,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .status-actions {

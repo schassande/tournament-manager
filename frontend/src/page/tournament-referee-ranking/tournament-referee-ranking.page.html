@@ -37,7 +37,7 @@
     <p-button label="Retry" [text]="true" (onClick)="retryCoachRankings()" />
   </div>
   }
-  <p-tabs value="referees">
+  <p-tabs [value]="activeTab()" (valueChange)="tabSelected($event)">
     <p-tablist>
       <p-tab value="referees">Referees</p-tab>
       <p-tab value="coaches">Coaches</p-tab>
