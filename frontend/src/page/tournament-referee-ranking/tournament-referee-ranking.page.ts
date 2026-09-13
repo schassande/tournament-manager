@@ -6,7 +6,9 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
+import { StepperModule } from 'primeng/stepper';
 import { TabsModule } from 'primeng/tabs';
+import { TooltipModule } from 'primeng/tooltip';
 import { catchError, EMPTY, finalize, forkJoin, map, Observable, of, Subject, switchMap, take, tap } from 'rxjs';
 import {
   Attendee,
@@ -25,7 +27,9 @@ import {
 } from '@tournament-manager/persistent-data-model';
 import { RankingCoachesComponent } from '../../component/ranking-coaches/ranking-coaches.component';
 import { RankingMeComponent } from '../../component/ranking-me/ranking-me.component';
-import { RankingPanelComponent } from '../../component/ranking-panel.component';
+import { RankingPanelComponent } from '../../component/ranking-panel/ranking-panel.component';
+import { buildPanelTable } from '../../component/ranking-panel/panel-table';
+import { PanelRankingExportService } from '../../service/panel-ranking-export.service';
 import { RankingRefereesComponent } from '../../component/ranking-referees/ranking-referees.component';
 import { AttendeeService } from '../../service/attendee.service';
 import { RefereesRankingService } from '../../service/referees-ranking.service';
@@ -48,7 +52,9 @@ interface RankingCoachOption {
     DialogModule,
     InputTextModule,
     SelectModule,
+    StepperModule,
     TabsModule,
+    TooltipModule,
     RankingRefereesComponent,
     RankingCoachesComponent,
     RankingMeComponent,
@@ -67,12 +73,17 @@ export class TournamentRefereeRankingComponent {
   });
   /** Connects native form submission to Angular's ngSubmit event and validation. */
   readonly createForm = new FormGroup({ name: this.newName });
-  readonly statusLabels: Record<RefereeRankingStatus, string> = {
-    CONFIGURE: 'Configure',
-    INDIVIDUAL_RANKING: 'Individual ranking',
-    PANEL_RANKING: 'Panel ranking',
-    CLOSED: 'Closed',
-  };
+  /** Ordered icon steps mapping persisted statuses to PrimeNG numeric values. */
+  readonly statusSteps: { status: RefereeRankingStatus; label: string; icon: string }[] = [
+    { status: 'CONFIGURE', label: 'Configure', icon: 'pi-cog' },
+    { status: 'INDIVIDUAL_RANKING', label: 'Individual vote', icon: 'pi-user' },
+    { status: 'PANEL_RANKING', label: 'Panel vote', icon: 'pi-users' },
+    { status: 'CLOSED', label: 'Closed', icon: 'pi-lock' },
+  ];
+  /** Reflects the saved status, including when a transition fails. */
+  readonly statusStep = computed(
+    () => this.statusSteps.findIndex((step) => step.status === this.selectedRanking()?.status) + 1,
+  );
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -80,6 +91,7 @@ export class TournamentRefereeRankingComponent {
   private readonly tournamentService = inject(TournamentService);
   private readonly attendeeService = inject(AttendeeService);
   private readonly rankingService = inject(TournamentRefereeRankingService);
+  private readonly panelExport = inject(PanelRankingExportService);
   private readonly coachRankingService = inject(RefereesRankingService);
   private readonly selectedRankingRequests = new Subject<string | null>();
   private readonly tabs = ['referees', 'coaches', 'me', 'panel'];
@@ -98,6 +110,7 @@ export class TournamentRefereeRankingComponent {
   readonly coachError = signal('');
   readonly allowed = signal(false);
   readonly createDialog = signal(false);
+  readonly pendingDeletion = signal<string | null>(null);
   readonly pendingRemoval = signal<string[]>([]);
   readonly pendingCoachChanges = signal<RankingCoachChanges | null>(null);
   private readonly requestedCoach = signal<{ rankingId: string | null; coachId: string | null } | null>(null);
@@ -144,6 +157,30 @@ export class TournamentRefereeRankingComponent {
   });
   readonly coachSelectionDisabled = computed(() => this.saving() || this.loadingCoaches() || !!this.coachError());
 
+  /** Explains the first unmet Compute prerequisite; empty means the action is available. */
+  readonly computeDisabledReason = computed(() => {
+    const ranking = this.selectedRanking();
+    if (!this.allowed() || !ranking) return 'Select a ranking first.';
+    if (this.saving()) return 'Wait for the current save to finish.';
+    if (this.loadingCoaches()) return 'Wait for coach rankings to load.';
+    if (this.coachError()) return 'Click Retry to load coach rankings.';
+    if (!ranking.selectedRefereeAttendeeIds.length) return 'Select referees in the Referees tab first.';
+    if (ranking.status === 'CLOSED') return 'This ranking is closed and cannot be computed again.';
+    if (ranking.status !== 'PANEL_RANKING') return 'Select the Panel vote step to compute.';
+    // Only selected, locked votes containing eligible referees can help reach the majority.
+    const ready = this.coachRankings().filter(
+      (vote) =>
+        vote.locked &&
+        vote.tournamentId === ranking.tournamentId &&
+        vote.tournamentRefereeRankingId === ranking.id &&
+        ranking.selectedCoachAttendeeIds.includes(vote.coachAttendeeId) &&
+        vote.rankedRefereeAttendeeIds.some((id) => ranking.selectedRefereeAttendeeIds.includes(id)),
+    ).length;
+    return ready < ranking.voteMajority
+      ? `Fill and lock at least ${ranking.voteMajority} selected coach rankings in Coach Ranking (${ready}/${ranking.voteMajority} ready). Check panel selection and vote majority in Coaches.`
+      : '';
+  });
+
   /** Installs page-level loaders; switching context cancels obsolete reads. */
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -181,6 +218,63 @@ export class TournamentRefereeRankingComponent {
       queryParamsHandling: 'merge',
       preserveFragment: true,
     });
+  }
+
+  /** Computes for any tournament coach, retaining the saved result on errors. */
+  computePanel(): void {
+    const ranking = this.selectedRanking();
+    const coach = this.currentCoach();
+    if (this.computeDisabledReason() || !ranking || !coach) return;
+    this.persistConfiguration(
+      this.rankingService.compute(ranking, this.coachRankings(), this.attendeesById(), coach.id),
+      'Panel computation',
+    );
+  }
+
+  /** Downloads precisely the visible panel and practice columns without modifying freshness. */
+  exportPanel(): void {
+    const ranking = this.selectedRanking();
+    if (!this.panelActionAllowed() || !ranking) return;
+    this.error.set('');
+    try {
+      this.panelExport.download(
+        this.tournament()?.name ?? '',
+        ranking,
+        buildPanelTable(ranking, this.coachRankings(), this.attendeesById()),
+      );
+    } catch (error: unknown) {
+      console.error('[Referee ranking] Export failed', error);
+      this.error.set('The panel could not be exported. Please try again.');
+    }
+  }
+
+  /** Deletes only the explicitly confirmed parent, including CLOSED and practice data. */
+  confirmDeletion(): void {
+    const ranking = this.selectedRanking();
+    const coach = this.currentCoach();
+    if (!this.allowed() || !ranking || !coach || this.saving() || this.pendingDeletion() !== ranking.id) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.rankingService
+      .deleteRanking({
+        tournamentId: ranking.tournamentId,
+        tournamentRefereeRankingId: ranking.id,
+        actorCoachAttendeeId: coach.id,
+      })
+      .pipe(
+        finalize(() => this.saving.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.rankings.update((items) => items.filter((item) => item.id !== ranking.id));
+          if (this.selectedId() === ranking.id) this.selectRanking(this.rankings()[0]?.id ?? null);
+        },
+        error: (error: unknown) => {
+          console.error('[Referee ranking] Deletion failed', error);
+          this.error.set('Deletion could not be completed. Please retry to finish removing the ranking.');
+        },
+      });
   }
 
   /** Changes the viewed target without writes or extra reads, retaining selection while a save is pending. */
@@ -381,6 +475,7 @@ export class TournamentRefereeRankingComponent {
 
   /** Saves an allowed phase transition without changing the local status on failure. */
   changeStatus(status: RefereeRankingStatus): void {
+    if (!this.transitions().includes(status)) return;
     const ranking = this.selectedRanking();
     const coach = this.currentCoach();
     if (!this.allowed() || !ranking || !coach || this.saving() || this.loadingCoaches() || this.coachError()) return;
@@ -421,6 +516,17 @@ export class TournamentRefereeRankingComponent {
           );
         },
       });
+  }
+
+  /** Applies page access, grouped-load and missing-referee guards to Panel actions. */
+  private panelActionAllowed(): boolean {
+    return (
+      this.allowed() &&
+      !this.saving() &&
+      !this.loadingCoaches() &&
+      !this.coachError() &&
+      !!this.selectedRanking()?.selectedRefereeAttendeeIds.length
+    );
   }
 
   /** Uses the coach short name, then full name or attendee ID when identity details are incomplete. */
@@ -526,6 +632,7 @@ export class TournamentRefereeRankingComponent {
 
   /** Replaces the selection and immediately removes the previous coach data. */
   private selectRanking(id: string | null): void {
+    this.pendingDeletion.set(null);
     this.pendingRemoval.set([]);
     this.pendingCoachChanges.set(null);
     this.selectedId.set(id);

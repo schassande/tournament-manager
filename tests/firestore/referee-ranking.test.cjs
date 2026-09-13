@@ -437,3 +437,39 @@ test('delegated empty locks retain NOT_COMPUTED and reject CONFIGURE, CLOSED and
     await status(await put('tournament/t', { managerEmails: ['manager@example.com'], enablesModules: ['RANKING'] }), 200);
   }
 });
+
+test('Compute saves result-only fields for non-panel coaches and persists an empty CURRENT result that can close', async () => {
+  const id = 'panel-compute';
+  const initial = ranking(id, { status: 'PANEL_RANKING', selectedRefereeAttendeeIds: ['a'] });
+  await status(await put(`tournament-referee-ranking/${id}`, initial), 200);
+  const computed = { ...initial, panelResultState: 'CURRENT', lastChange: 3,
+    panelRefereesRanking: { rankingLastChange: '2026-09-13T00:00:00.000Z', rankedRefereeAttendeeIds: ['a'], stats: [{ ranks: [1, 3] }] } };
+  await status(await put(`tournament-referee-ranking/${id}`, computed, 'coach@example.com'), 200);
+  const reloaded = await (await request(`tournament-referee-ranking/${id}`, 'coach@example.com')).json();
+  assert.equal(reloaded.fields.panelResultState.stringValue, 'CURRENT');
+  assert.equal(reloaded.fields.panelRefereesRanking.mapValue.fields.stats.arrayValue.values.length, 1);
+  const empty = { ...computed, panelRefereesRanking: { ...computed.panelRefereesRanking, rankedRefereeAttendeeIds: [], stats: [] } };
+  await status(await put(`tournament-referee-ranking/${id}`, empty, 'coach@example.com'), 200);
+  await status(await put(`tournament-referee-ranking/${id}`, { ...empty, status: 'CLOSED' }, 'coach@example.com'), 200);
+  await status(await put(`tournament-referee-ranking/${id}`, { ...empty, status: 'CLOSED', lastChange: 4 }, 'coach@example.com'), 403);
+});
+
+test('Compute rejects malformed result shapes, outsiders, forged actors, mixed configuration and invalid phases', async () => {
+  const id = 'invalid-compute';
+  const initial = ranking(id, { status: 'PANEL_RANKING', selectedRefereeAttendeeIds: ['a'] });
+  const panel = { rankingLastChange: '2026-09-13T00:00:00.000Z', rankedRefereeAttendeeIds: ['a'], stats: [{ ranks: [1] }] };
+  const computed = { ...initial, panelResultState: 'CURRENT', panelRefereesRanking: panel };
+  await status(await put(`tournament-referee-ranking/${id}`, initial), 200);
+  for (const patch of [{ rankingLastChange: '' }, { rankedRefereeAttendeeIds: ['a', 'a'], stats: [{ ranks: [1] }, { ranks: [2] }] },
+    { rankedRefereeAttendeeIds: ['foreign'] }, { stats: [] }, { stats: 'invalid' }, { unexpected: true }]) {
+    await status(await put(`tournament-referee-ranking/${id}`, { ...computed, panelRefereesRanking: { ...panel, ...patch } }, 'coach@example.com'), 403);
+  }
+  for (const identity of ['outsider@example.com', 'manager@example.com'])
+    await status(await put(`tournament-referee-ranking/${id}`, computed, identity), 403);
+  for (const patch of [{ name: 'Mixed edit' }, { voteMajority: 9 }, { updatedByCoachAttendeeId: 'accountless' }])
+    await status(await put(`tournament-referee-ranking/${id}`, { ...computed, ...patch }, 'coach@example.com'), 403);
+  for (const phase of ['CONFIGURE', 'INDIVIDUAL_RANKING', 'CLOSED']) {
+    await status(await put(`tournament-referee-ranking/${id}`, { ...initial, status: phase }), 200);
+    await status(await put(`tournament-referee-ranking/${id}`, { ...computed, status: phase }, 'coach@example.com'), 403);
+  }
+});

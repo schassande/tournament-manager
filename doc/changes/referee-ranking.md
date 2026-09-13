@@ -163,9 +163,16 @@ Example: at majority 3, `[1, 3, 5]` precedes `[1, 4, 5]`. The original reference
 
 - Available to every tournament referee coach. Compute is available to all of them in PANEL_RANKING; selected panel membership is a vote filter, not Compute authorization.
 - If selected referees are empty, display only `Configure referees first`.
-- Large scrollable table with fixed header. Compute and Export are above it on the right; show current result state alongside these actions.
+- Large scrollable table with fixed header. Compute and Export are in the page action bar, in that order immediately before Delete, and remain visible across tabs when a ranking is selected. Compute requires PANEL_RANKING; both actions are disabled while saving/loading, after a grouped-load error or without selected referees.
+- Compute and Export are icon-only buttons using `pi-sort-amount-up-alt` and `pi-download`, respectively. Their action names are retained as tooltips and accessible labels.
+- While Panel is active, fill the viewport below the 48px application toolbar. The table fills the remaining height below page actions and tabs, adapting to wrapped controls; scrolling stays inside the table with its header fixed.
+- A saved CURRENT empty result explicitly reports that no selected coach ranking is locked, or that no referee reached the majority. Before CLOSED, the no-locked-vote message directs coaches to lock their rankings and compute again. This feedback does not change contribution rules or lock votes automatically.
+- UI revision confirmed on 2026-09-13: disable Compute until at least voteMajority selected coach rankings are locked and contain a selected referee. A tooltip on its focusable wrapper explains the missing prerequisite, including the ready/required count, phase, load or save state. This supersedes the previous unrestricted empty-input UI Compute behavior, without requiring every selected coach to vote or changing the algorithm/backend acceptance of empty output. A qualifying result is still not guaranteed when the contributing votes nominate different referees.
 - Columns: Rank, Panel referee, Panel statistics, repeated Rank, one column for every coach with an existing individual ranking, including unlocked and empty rankings.
+- Center body-cell values in columns 1 (Rank), 3 (Panel statistics) and 4 (repeated Rank).
+- Center every column heading in the Panel table.
 - Group selected coaches first, other coaches second, and sort each group alphabetically by short name. Lock state does not affect ordering. Use ID only as a final fallback.
+- Coach column headings show `Unlocked` only for unlocked rankings; omit `Locked` for locked rankings. Preserve the `Practice` annotation outside the panel and use the same headings in Excel.
 - Table height covers the longest displayed ranking. Display empty cells for shorter rankings and nomination stats in readable list form, e.g. `[1, 3, 5]`.
 - Excel export includes every displayed row and column in the same order, referee identity strings, stats, current ranking name/status, and the recomputation indicator when applicable. Export does not implicitly Compute and is permitted for all tournament referee coaches, including in CLOSED.
 - Use one worksheet for this table with a header row and a filename based on tournament/ranking names. Reuse the project's XLSX download conventions.
@@ -373,7 +380,13 @@ Recommended implementation order: update model/service contracts and rules toget
 
 ### Implementation stages and validation gates
 
-Current stage: **Stages 1-3 validated by the developer; the Stage 4 Coach Ranking revision is implemented and tested locally, awaiting developer validation before Stage 5.**
+Current stage: **Stages 1-4 validated by the developer's request to implement the next stage on 2026-09-13. Stage 5 (Panel) is implemented and tested locally, awaiting developer review.**
+
+Stage 5 delivery (2026-09-13): the pure panel algorithm collects complete nomination rounds, admits at or above the stored majority, applies nomination/name/ID tie-breakers, freezes admission statistics and ignores N as a limit. The Panel tab displays a scrollable PrimeNG comparison with fixed headers, selected coaches before practice coaches and short-name ordering, including unlocked and empty votes. Display and XLSX export share the same table representation; the single worksheet preserves context, freshness, column/row order and missing-referee placeholders. Compute saves only converted result fields, CURRENT, ISO time and actor metadata through Firestore in PANEL_RANKING. Any tournament coach may compute regardless of panel membership. Failed saves preserve previous output; existing closure guards accept empty CURRENT results and reject stale/never-computed results.
+
+Stage 5 deletion: confirmed standalone deletion calls deleteRefereeRanking, authenticates the tournament coach/module, validates parent and child tournament relationships, deletes children in batches of 500 and deletes the parent last. CLOSED and practice data are included. A failed cascade retains its parent for retry and reports completion only after all deletions succeed. TournamentDeletionService includes both collections in its existing tournamentId queries, progress totals and batches; manager deletion rules already support attendee removal and disabled modules. No new architecture decision or index was required: these choices follow the confirmed specification.
+
+Stage 5 validation: 95 frontend tests passed, including the ten exact algorithm datasets, comparator checks, XLSX serialization/readback, table actions, non-panel Compute, failed save retention, empty-result closure, CLOSED export and deletion confirmation/cancellation/retry. All 33 Firestore emulator tests passed, including result-write permissions and shapes, reload-persistent CURRENT, empty-result closure, CLOSED/practice deletion and retry after a real second-batch failure following 500 committed deletions. Production Angular, shared-model and Functions builds passed. Documentation reviewed and updated in doc/pages.md, doc/datamodel.md, doc/functions.md and doc/dev.md. The existing upgrade-vote deletion mismatch remains outside scope; ranking cascade validation does not claim that unrelated upgrade data can be deleted. Deployment requires the updated Firestore rules and deleteRefereeRanking callable before publishing the frontend. No deployment was performed.
 
 Stage 4 revision delivery (2026-09-13): Coach Ranking uses a PrimeNG Select over the shared coach cache, includes selected coaches without accounts and the actor's own practice entry, and loads the target vote from existing grouped records. The target heading, lock, drag/drop and keyboard editor use target-specific authorization. Selection resets on ranking/membership changes, cancels obsolete drags and is disabled while saves are pending. Direct saves preserve target ownership, record the actual authenticated actor and atomically link any freshness transition to the target vote. Firestore checks actor identity, target role/tournament, both selected memberships for delegation, phase, lock and the exact narrow freshness batch. Legacy records remain readable without backfill; maintenance preserves metadata.
 
@@ -459,7 +472,7 @@ Implement ten algorithm datasets with explicit expected results. Notation: `AB` 
 | 9 | Later votes do not modify already-admitted stats | AB, AB, BA; 2 | A:[1,1], B:[1,2,2] |
 | 10 | All qualifiers beyond N; omit insufficient votes | ABC, ABD; 2; N=1 | A:[1,1], B:[2,2] |
 
-These expected results were checked during specification analysis using a temporary calculation in the tool session; this is not an implementation test run. The feature code and its tests remain to be written.
+These expected results were initially checked during specification analysis and are now implemented as explicit fixtures in frontend/src/service/panel-ranking.spec.ts. All ten datasets passed during Stage 5 validation.
 
 Additional checks:
 

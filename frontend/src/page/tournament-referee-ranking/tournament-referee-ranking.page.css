@@ -2,34 +2,34 @@
   display: block;
 }
 
-/* The application toolbar occupies the first 48px; only Referees fills the remaining viewport. */
-:host:has(.referees-panel[data-p-active='true']) {
+/* Referees and Panel share the viewport remaining below the 48px application toolbar. */
+:host:has(:is(.referees-panel, .panel-panel)[data-p-active='true']) {
   position: fixed;
   inset: 48px 0 0;
   overflow: hidden;
 }
 
-:host:has(.referees-panel[data-p-active='true']) .ranking-page {
+:host:has(:is(.referees-panel, .panel-panel)[data-p-active='true']) .ranking-page {
   display: flex;
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
 }
 
-:host:has(.referees-panel[data-p-active='true']) p-tabs {
+:host:has(:is(.referees-panel, .panel-panel)[data-p-active='true']) p-tabs {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
 }
 
-:host:has(.referees-panel[data-p-active='true']) p-tabpanels {
+:host:has(:is(.referees-panel, .panel-panel)[data-p-active='true']) p-tabpanels {
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-.referees-panel[data-p-active='true'] {
+:is(.referees-panel, .panel-panel)[data-p-active='true'] {
   display: block;
   height: 100%;
   min-height: 0;
@@ -47,13 +47,48 @@
   margin-bottom: 0.5rem;
 }
 
-.status-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+.status-stepper {
+  width: 200px;
+  max-width: 100%;
   margin-left: auto;
+  --p-stepper-step-padding: 0;
+  --p-stepper-step-gap: 0.25rem;
+}
+
+.status-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 50%;
+  background: var(--p-content-background);
+  color: var(--p-text-color);
+  cursor: pointer;
+}
+
+.status-step .pi {
+  font-size: 1.2em;
+}
+
+.status-step[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.status-step.active {
+  background: var(--p-primary-color);
+  border-color: var(--p-primary-color);
+  color: var(--p-primary-contrast-color);
+  opacity: 1;
+}
+
+.status-step:focus-visible {
+  outline: 2px solid var(--p-primary-color);
+  outline-offset: 2px;
 }
 
 .coach-selection {
@@ -68,10 +103,6 @@
   flex: 0 0 9rem;
   min-height: 1.25rem;
   white-space: nowrap;
-}
-
-.status {
-  font-weight: 600;
 }
 
 .create-form {

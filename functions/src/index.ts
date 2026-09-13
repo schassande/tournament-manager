@@ -30,3 +30,4 @@ export const api = onRequest({ secrets }, app);
 export { createPerson };
 export { removeRankingReferees } from './referee-ranking/remove-ranking-referees';
 export { repairRefereeRanking } from './referee-ranking/repair-referee-ranking';
+export { deleteRefereeRanking } from './referee-ranking/delete-referee-ranking';

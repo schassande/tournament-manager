@@ -161,6 +161,26 @@ service cloud.firestore {
         && next.panelResultState == (changed && old.panelResultState != 'NOT_COMPUTED' ? 'STALE' : old.panelResultState);
     }
 
+    // Compute is a direct result-only save available to every tournament coach in PANEL_RANKING.
+    function validPanelComputation() {
+      let old = resource.data;
+      let next = request.resource.data;
+      let panel = next.panelRefereesRanking;
+      return old.status == 'PANEL_RANKING'
+        && next.diff(old).affectedKeys().hasOnly(['panelRefereesRanking', 'panelResultState',
+          'updatedByCoachAttendeeId', 'lastChange'])
+        && isRankingCoach(next.updatedByCoachAttendeeId, old.tournamentId) && rankingEnabled(old.tournamentId)
+        && next.lastChange is number && next.panelResultState == 'CURRENT'
+        && panel is map && panel.keys().hasAll(['rankingLastChange', 'rankedRefereeAttendeeIds', 'stats'])
+        && panel.keys().hasOnly(['rankingLastChange', 'rankedRefereeAttendeeIds', 'stats'])
+        && panel.rankingLastChange is string
+        && panel.rankingLastChange.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z')
+        && panel.rankedRefereeAttendeeIds is list
+        && panel.rankedRefereeAttendeeIds.toSet().size() == panel.rankedRefereeAttendeeIds.size()
+        && panel.rankedRefereeAttendeeIds.hasOnly(old.selectedRefereeAttendeeIds)
+        && panel.stats is list && panel.stats.size() == panel.rankedRefereeAttendeeIds.size();
+    }
+
     // Matches the shared helper, preserving Unicode and escaping percent before delimiters.
     function rankingIdComponent(value) {
       return value.replace('%', '%25').replace('/', '%2F').replace('[|]', '%7C');
@@ -238,7 +258,7 @@ service cloud.firestore {
       // Deliberately temporary: every authenticated user can read both ranking collections.
       allow read: if signedIn();
       allow create: if signedIn() && validNewRefereeRanking(documentId);
-      allow update: if signedIn() && (validRankingStatusChange() || validRankingRefereeChange() || validRankingCoachChange() || validIndividualFreshnessChange());
+      allow update: if signedIn() && (validRankingStatusChange() || validRankingRefereeChange() || validRankingCoachChange() || validPanelComputation() || validIndividualFreshnessChange());
       // Supports complete tournament deletion, including after attendees have been removed.
       allow delete: if canManageTournament(resource.data.tournamentId);
     }

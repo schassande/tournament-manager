@@ -14,19 +14,58 @@
       [formControl]="rankingSelection"
       placeholder="Select a ranking"
       [readonly]="saving()" />
-    <p-button label="Create new Ranking" icon="pi pi-plus" [disabled]="saving()" (onClick)="openCreate()" />
+    <p-button icon="pi pi-plus" [disabled]="saving()" (onClick)="openCreate()" />
+    @if (selectedRanking(); as ranking) {
+    <span
+      [pTooltip]="computeDisabledReason() || 'Compute'"
+      tooltipEvent="both"
+      [attr.tabindex]="computeDisabledReason() ? 0 : null"
+      [attr.aria-label]="computeDisabledReason() || null">
+      <p-button
+        ariaLabel="Compute"
+        severity="secondary"
+        icon="pi pi-sort-amount-up-alt"
+        [disabled]="!!computeDisabledReason()"
+        (onClick)="computePanel()" />
+    </span>
+    <p-button
+      pTooltip="Export"
+      severity="secondary"
+      ariaLabel="Export"
+      icon="pi pi-download"
+      [disabled]="saving() || loadingCoaches() || !!coachError() || !ranking.selectedRefereeAttendeeIds.length"
+      (onClick)="exportPanel()" />
+    <p-button
+      icon="pi pi-trash"
+      severity="danger"
+      [outlined]="true"
+      [disabled]="saving()"
+      (onClick)="pendingDeletion.set(ranking.id)" />
+    }
     <span class="saving-message" role="status">{{ saving() ? 'Saving ranking…' : '' }}</span>
     @if (selectedRanking(); as ranking) {
-    <div class="status-actions">
-      Step: <span class="status">{{ statusLabels[ranking.status] }}</span>
-      @for (status of transitions(); track status) {
-      <p-button
-        [label]="'Move to step ' + statusLabels[status]"
-        [outlined]="true"
-        [disabled]="saving() || loadingCoaches() || !!coachError()"
-        (onClick)="changeStatus(status)" />
-      }
-    </div>
+    <p-stepper class="status-stepper" [value]="statusStep()" aria-label="Ranking status">
+      <p-step-list>
+        @for (step of statusSteps; track step.status; let index = $index) {
+        <p-step [value]="index + 1">
+          <ng-template #content>
+            <button
+              type="button"
+              class="status-step"
+              [class.active]="ranking.status === step.status"
+              [attr.aria-label]="step.label"
+              [attr.aria-current]="ranking.status === step.status ? 'step' : null"
+              [attr.aria-disabled]="saving() || loadingCoaches() || !!coachError() || !transitions().includes(step.status)"
+              [pTooltip]="step.label"
+              tooltipEvent="both"
+              (click)="changeStatus(step.status)">
+              <i [class]="'pi ' + step.icon" aria-hidden="true"></i>
+            </button>
+          </ng-template>
+        </p-step>
+        }
+      </p-step-list>
+    </p-stepper>
     }
   </div>
   @if (selectedRanking(); as ranking) { @if (loadingCoaches()) {
@@ -83,13 +122,33 @@
           [busy]="saving() || loadingCoaches() || !!coachError()"
           (changes)="saveIndividual($event)" />
       </p-tabpanel>
-      <p-tabpanel value="panel"><app-ranking-panel [ranking]="ranking" [coachRankings]="coachRankings()" /></p-tabpanel>
+      <p-tabpanel value="panel" class="panel-panel">
+        <app-ranking-panel [ranking]="ranking" [coachRankings]="coachRankings()" [attendees]="attendeesById()" />
+      </p-tabpanel>
     </p-tabpanels>
   </p-tabs>
   } @else {
   <p class="empty-state">Create a ranking for this tournament using “Create new Ranking”.</p>
   } }
 </section>
+
+<p-dialog
+  header="Delete ranking"
+  [visible]="!!pendingDeletion()"
+  (visibleChange)="pendingDeletion.set(null)"
+  [modal]="true"
+  [closable]="!saving()"
+  [style]="{ width: '30rem', maxWidth: '95vw' }">
+  <p>
+    Delete {{ selectedRanking()?.name }}? All associated individual rankings, including practice rankings, will also be
+    permanently deleted.
+  </p>
+  @if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+  }
+  <p-button label="Cancel" [text]="true" [disabled]="saving()" (onClick)="pendingDeletion.set(null)" />
+  <p-button label="Delete" severity="danger" [loading]="saving()" [disabled]="saving()" (onClick)="confirmDeletion()" />
+</p-dialog>
 
 <p-dialog
   header="New Ranking"

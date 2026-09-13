@@ -16,6 +16,7 @@ import { RefereesRankingService } from '../../service/referees-ranking.service';
 import { TournamentRefereeRankingService } from '../../service/tournament-referee-ranking.service';
 import { TournamentService } from '../../service/tournament.service';
 import { UserService } from '../../service/user.service';
+import { PanelRankingExportService } from '../../service/panel-ranking-export.service';
 import { TournamentRefereeRankingComponent } from './tournament-referee-ranking.page';
 
 describe('tournament ranking page shell', () => {
@@ -49,6 +50,8 @@ describe('tournament ranking page shell', () => {
       'saveCoaches',
       'removeReferees',
       'repairRanking',
+      'compute',
+      'deleteRanking',
     ]);
     rankings.findByTournament.and.returnValue(of([structuredClone(parent)]));
     individual = jasmine.createSpyObj('RefereesRankingService', ['findByRanking', 'saveIndividual']);
@@ -92,6 +95,157 @@ describe('tournament ranking page shell', () => {
     expect(page.activeTab()).toBe('referees');
     expect(rankings.findByTournament).toHaveBeenCalledTimes(1);
     expect(individual.findByRanking).toHaveBeenCalledTimes(1);
+  });
+
+  it('computes as a non-panel coach, retains stale output on failure and allows closing an empty saved result', () => {
+    const initial = {
+      ...parent,
+      selectedRefereeAttendeeIds: ['full'],
+      selectedCoachAttendeeIds: ['target'],
+      status: 'PANEL_RANKING' as const,
+      panelResultState: 'STALE' as const,
+      panelRefereesRanking: { rankingLastChange: 'old', rankedRefereeAttendeeIds: ['full'], stats: [[1]] },
+    };
+    rankings.findByTournament.and.returnValue(of([initial]));
+    const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
+    const page = fixture.componentInstance;
+    page.coachRankings.set([
+      {
+        coachAttendeeId: 'target',
+        tournamentId: 't',
+        tournamentRefereeRankingId: 'ranking',
+        locked: true,
+        rankedRefereeAttendeeIds: ['full'],
+      } as CoachRefereesRanking,
+    ]);
+    fixture.detectChanges();
+    const pending = new Subject<typeof initial>();
+    rankings.compute.and.returnValue(pending);
+    page.computePanel();
+    expect(page.saving()).toBeTrue();
+    expect(page.selectedRanking()).toEqual(initial);
+    page.computePanel();
+    expect(rankings.compute).toHaveBeenCalledTimes(1);
+    pending.error(new Error('offline'));
+    expect(page.selectedRanking()).toEqual(initial);
+    expect(page.error()).toContain('could not be saved');
+    expect(page.transitions()).not.toContain('CLOSED');
+    const saved = {
+      ...initial,
+      panelResultState: 'CURRENT' as const,
+      panelRefereesRanking: { rankingLastChange: '2026-09-13T00:00:00.000Z', rankedRefereeAttendeeIds: [], stats: [] },
+    };
+    rankings.compute.and.returnValue(of(saved));
+    page.computePanel();
+    expect(page.selectedRanking()).toEqual(saved);
+    expect(page.transitions()).toContain('CLOSED');
+    rankings.changeStatus.and.returnValue(of({ ...saved, status: 'CLOSED' }));
+    page.changeStatus('CLOSED');
+    page.computePanel();
+    expect(rankings.compute).toHaveBeenCalledTimes(2);
+    expect(individual.findByRanking).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables Compute until enough selected nonempty votes are locked and explains how to proceed', () => {
+    rankings.findByTournament.and.returnValue(
+      of([
+        {
+          ...parent,
+          status: 'PANEL_RANKING',
+          selectedRefereeAttendeeIds: ['full'],
+          selectedCoachAttendeeIds: ['a', 'b'],
+          voteMajority: 2,
+        },
+      ]),
+    );
+    const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
+    const page = fixture.componentInstance;
+    const vote = {
+      tournamentId: 't',
+      tournamentRefereeRankingId: 'ranking',
+      rankedRefereeAttendeeIds: ['full'],
+      locked: false,
+    };
+    page.coachRankings.set([
+      { ...vote, coachAttendeeId: 'a' },
+      { ...vote, coachAttendeeId: 'b' },
+      { ...vote, coachAttendeeId: 'practice', locked: true },
+    ] as CoachRefereesRanking[]);
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button[aria-label="Compute"]') as HTMLButtonElement;
+    expect(button.disabled).toBeTrue();
+    expect(page.computeDisabledReason()).toContain('0/2 ready');
+    expect(page.computeDisabledReason()).toContain('Fill and lock');
+    expect(button.closest('span[tabindex="0"]')?.getAttribute('aria-label')).toContain(
+      'Coach Ranking',
+    );
+    page.computePanel();
+    expect(rankings.compute).not.toHaveBeenCalled();
+    page.coachRankings.set([
+      { ...vote, coachAttendeeId: 'a', locked: true },
+      { ...vote, coachAttendeeId: 'b', locked: true, rankedRefereeAttendeeIds: [] },
+    ] as CoachRefereesRanking[]);
+    fixture.detectChanges();
+    expect(button.disabled).toBeTrue();
+    expect(page.computeDisabledReason()).toContain('1/2 ready');
+    page.coachRankings.update((votes) => votes.map((item) => ({ ...item, rankedRefereeAttendeeIds: ['full'] })));
+    fixture.detectChanges();
+    expect(button.disabled).toBeFalse();
+    expect(page.computeDisabledReason()).toBe('');
+    page.loadingCoaches.set(true);
+    fixture.detectChanges();
+    expect(button.disabled).toBeTrue();
+    expect(page.computeDisabledReason()).toContain('Wait');
+  });
+
+  it('exports stale and CLOSED visible data without computing and reports recoverable export errors', () => {
+    const initial = {
+      ...parent,
+      selectedRefereeAttendeeIds: ['full'],
+      status: 'CLOSED' as const,
+      panelResultState: 'STALE' as const,
+    };
+    rankings.findByTournament.and.returnValue(of([initial]));
+    const page = TestBed.createComponent(TournamentRefereeRankingComponent).componentInstance;
+    const download = spyOn(TestBed.inject(PanelRankingExportService), 'download');
+    page.exportPanel();
+    expect(download).toHaveBeenCalledOnceWith('Tournament', initial, jasmine.objectContaining({ rows: [] }));
+    expect(rankings.compute).not.toHaveBeenCalled();
+    download.and.throwError('download failed');
+    page.exportPanel();
+    expect(page.error()).toContain('could not be exported');
+    expect(page.selectedRanking()).toEqual(initial);
+  });
+
+  it('confirms deletion, cancels without writes, retains a failed cascade for retry and selects the next ranking', () => {
+    const closed = { ...parent, status: 'CLOSED' as const };
+    rankings.findByTournament.and.returnValue(of([closed, { ...closed, id: 'next' }]));
+    const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+      (item) => !!item.querySelector('.pi-trash'),
+    )!;
+    button.click();
+    fixture.detectChanges();
+    expect(page.pendingDeletion()).toBe(parent.id);
+    const cancel = Array.from(document.querySelectorAll('button')).find(
+      (item) => item.textContent?.trim() === 'Cancel',
+    )!;
+    cancel.click();
+    page.confirmDeletion();
+    expect(rankings.deleteRanking).not.toHaveBeenCalled();
+    page.pendingDeletion.set(parent.id);
+    rankings.deleteRanking.and.returnValue(throwError(() => new Error('partial failure')));
+    page.confirmDeletion();
+    expect(page.selectedId()).toBe(parent.id);
+    expect(page.error()).toContain('retry');
+    rankings.deleteRanking.and.returnValue(of({ deletedRankingId: parent.id, deletedCoachRankingCount: 3 }));
+    page.confirmDeletion();
+    expect(page.selectedId()).toBe('next');
+    expect(page.pendingDeletion()).toBeNull();
+    expect(page.rankings().map((item) => item.id)).toEqual(['next']);
+    expect(individual.findByRanking).toHaveBeenCalledTimes(2);
   });
 
   it('writes tab selections to the URL and ignores invalid or unchanged selections', () => {

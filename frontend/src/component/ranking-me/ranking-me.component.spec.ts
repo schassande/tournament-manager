@@ -54,7 +54,7 @@ describe('Coach ranking interactions', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ranking-lists')).toBeNull();
     expect(fixture.nativeElement.querySelector('#coach-ranking-lock')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Move to step Individual ranking');
+    expect(fixture.nativeElement.textContent).toContain('Individual vote');
     fixture.componentRef.setInput('ranking', parent);
     fixture.detectChanges();
     const add = fixture.nativeElement.querySelector('button[aria-label="Add L3S Zoe ALPHA"]') as HTMLButtonElement;
@@ -130,6 +130,20 @@ describe('Coach ranking interactions', () => {
     component.startDrag(new DragEvent('dragstart'), 'a');
     component.dropOutside(new DragEvent('drop'));
     expect(emit).toHaveBeenCalledWith({ rankedRefereeAttendeeIds: [] });
+  });
+
+  it('hides row actions while locked and restores them when unlocked', () => {
+    const fixture = setup();
+    const individual = prepareIndividualRanking(parent, null, 'coach', 'coach', {
+      rankedRefereeAttendeeIds: ['a'],
+    }).individual;
+    for (const locked of [false, true, false]) {
+      fixture.componentRef.setInput('individual', { ...individual, locked });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.pi-arrow-right').length).toBe(locked ? 0 : 2);
+      expect(fixture.nativeElement.querySelectorAll('.drag-handle').length).toBe(locked ? 0 : 1);
+      expect(fixture.nativeElement.querySelectorAll('.identity').length).toBe(3);
+    }
   });
 
   it('locks an empty vote using the actual toggle and blocks reordering while locked', () => {

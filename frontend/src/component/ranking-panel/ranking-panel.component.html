@@ -1,0 +1,25 @@
+@if (!ranking().selectedRefereeAttendeeIds.length) {
+  <p>Configure referees first</p>
+} @else {
+  @if (emptyResultMessage()) {
+    <p role="status" class="result-message">{{ emptyResultMessage() }}</p>
+  }
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Panel ranking comparison">
+    <p-table [value]="table().rows" [scrollable]="true" scrollHeight="flex" [style]="{ height: '100%' }">
+      <ng-template #header>
+        <tr>
+          @for (header of table().headers; track $index) {
+            <th scope="col">{{ header }}</th>
+          }
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          @for (cell of row; track $index) {
+            <td>{{ cell }}</td>
+          }
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+}

@@ -100,6 +100,12 @@ export interface RankingMaintenanceRequest {
   actorCoachAttendeeId: string;
 }
 
+/** Completed standalone cascade; the server removes all children before their parent. */
+export interface RankingDeletionResponse {
+  deletedRankingId: string;
+  deletedCoachRankingCount: number;
+}
+
 /** Atomic removal request for one or more currently selected referees. */
 export interface RemoveRankingRefereesRequest extends RankingMaintenanceRequest {
   refereeAttendeeIds: string[];

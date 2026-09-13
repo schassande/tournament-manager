@@ -15,13 +15,55 @@ import {
   RankingMaintenanceRequest,
   RankingMaintenanceResponse,
   RemoveRankingRefereesRequest,
+  Attendee,
+  CoachRefereesRanking,
+  RankingDeletionResponse,
 } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
+import { computePanelRanking } from './panel-ranking';
 
 /** Loads and creates parent rankings through their Firestore-safe representation. */
 @Injectable({ providedIn: 'root' })
 export class TournamentRefereeRankingService extends AbstractPersistentDataService<StoredTournamentRefereeRanking> {
   private readonly functions = inject(Functions);
+
+  /** Computes from grouped votes and returns CURRENT only after the Firestore result commit succeeds. */
+  compute(
+    ranking: TournamentRefereeRanking,
+    individuals: readonly CoachRefereesRanking[],
+    attendees: ReadonlyMap<string, Attendee>,
+    coachId: string,
+  ): Observable<TournamentRefereeRanking> {
+    return defer(() => {
+      if (ranking.status !== 'PANEL_RANKING') throw new Error('Compute requires Panel ranking.');
+      const now = Date.now();
+      const next: TournamentRefereeRanking = {
+        ...ranking,
+        panelRefereesRanking: computePanelRanking(ranking, individuals, attendees, now),
+        panelResultState: 'CURRENT',
+        updatedByCoachAttendeeId: coachId,
+        lastChange: now,
+      };
+      // Persist only the result and actor metadata; storage maps avoid Firestore nested arrays.
+      const changes = {
+        panelRefereesRanking: rankingToStorage(next).panelRefereesRanking,
+        panelResultState: next.panelResultState,
+        updatedByCoachAttendeeId: coachId,
+        lastChange: now,
+      };
+      return updateDoc(doc(this.firestore, colTournamentRefereeRanking, ranking.id), changes).then(() => next);
+    });
+  }
+
+  /** Deletes the whole ranking through the authenticated cross-owner backend cascade. */
+  deleteRanking(request: RankingMaintenanceRequest): Observable<RankingDeletionResponse> {
+    return defer(() =>
+      httpsCallable<RankingMaintenanceRequest, RankingDeletionResponse>(
+        this.functions,
+        'deleteRefereeRanking',
+      )(request),
+    ).pipe(map((response) => response.data));
+  }
 
   /** Saves panel configuration only; individual votes, locks and timestamps remain untouched. */
   saveCoaches(

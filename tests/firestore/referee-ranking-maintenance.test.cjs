@@ -128,3 +128,54 @@ test('maintenance preserves delegated editor and target metadata without inventi
   assert.equal(persisted.parent.updatedCoachAttendeeId, 'practice');
   assert.equal(persisted.records.find(record => record.coachAttendeeId === 'practice').updatedByCoachAttendeeId, 'previous-editor');
 });
+
+test('standalone deletion removes CLOSED and practice records, preserving unrelated rankings', async () => {
+  const { deleteRanking } = require('../../functions/lib/functions/src/referee-ranking/delete-referee-ranking');
+  await seed('delete-closed', { status: 'CLOSED' });
+  await seed('delete-unrelated');
+  const original = await snapshot('delete-unrelated');
+  assert.deepEqual(await deleteRanking(request('delete-closed')), { deletedRankingId: 'delete-closed', deletedCoachRankingCount: 3 });
+  assert.deepEqual(await snapshot('delete-closed'), { parent: undefined, records: [] });
+  assert.deepEqual(await snapshot('delete-unrelated'), original);
+});
+
+test('standalone deletion validates authentication, module, tournament and relationship before deleting', async () => {
+  const { deleteRanking } = require('../../functions/lib/functions/src/referee-ranking/delete-referee-ranking');
+  await seed('delete-denied');
+  const original = await snapshot('delete-denied');
+  await assert.rejects(deleteRanking({ data: request('delete-denied').data }), { code: 'unauthenticated' });
+  await assert.rejects(deleteRanking(request('delete-denied', undefined, 'manager@example.com')), { code: 'permission-denied' });
+  await assert.rejects(deleteRanking(request('../invalid')), { code: 'invalid-argument' });
+  await assert.rejects(deleteRanking(request('absent-ranking')), { code: 'not-found' });
+  await db.doc('tournament/maintenance').update({ enablesModules: [] });
+  try { await assert.rejects(deleteRanking(request('delete-denied')), { code: 'permission-denied' }); }
+  finally { await db.doc('tournament/maintenance').update({ enablesModules: ['RANKING'] }); }
+  assert.deepEqual(await snapshot('delete-denied'), original);
+  await children.doc('delete-denied-practice').update({ tournamentId: 'foreign' });
+  await assert.rejects(deleteRanking(request('delete-denied')), { code: 'failed-precondition' });
+  assert.equal((await snapshot('delete-denied')).records.length, 3);
+});
+
+test('standalone cascade retries after a real failed batch without deleting its parent early', async () => {
+  const { deleteRanking } = require('../../functions/lib/functions/src/referee-ranking/delete-referee-ranking');
+  await seed('delete-retry');
+  const extra = db.batch();
+  for (let index = 0; index < 500; index++) extra.set(children.doc(`delete-retry-extra-${index}`), {
+    tournamentId: 'maintenance', tournamentRefereeRankingId: 'delete-retry', coachAttendeeId: `practice-${index}`,
+  });
+  await extra.commit();
+  const original = db.batch.bind(db);
+  let batchNumber = 0;
+  db.batch = () => {
+    const batch = original();
+    if (++batchNumber === 2) batch.update(db.doc('missing-ranking-test/delete-failure'), { fail: true });
+    return batch;
+  };
+  try { await assert.rejects(deleteRanking(request('delete-retry')), { code: 'internal' }); }
+  finally { db.batch = original; }
+  const partial = await snapshot('delete-retry');
+  assert(partial.parent);
+  assert.equal(partial.records.length, 3);
+  assert.equal((await deleteRanking(request('delete-retry'))).deletedCoachRankingCount, 3);
+  assert.deepEqual(await snapshot('delete-retry'), { parent: undefined, records: [] });
+});

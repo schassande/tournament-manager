@@ -259,3 +259,16 @@ Si l'ajout d'un arbitre affiche « Referee changes could not be saved » alors q
 Pour l'étape 3, la sélection des coaches et la majorité nécessitent aussi validRankingCoachChange() dans les règles actives. Le 2026-09-12, la version active depuis 08:55:24 UTC ne contenait que les autorisations de l'étape 2, causant « Coach changes could not be saved ». Les règles de l'étape 3 ont été publiées à 12:01:05 UTC sur tournament-manager-90045 avec la commande ciblée firestore:rules ci-dessus. Le frontend local journalise désormais l'erreur d'origine dans la console lors d'un échec de sauvegarde ; cette journalisation nécessite la publication habituelle du frontend pour le site hébergé. Les 14 tests de la page et la compilation Angular passent.
 
 Pour l'étape 4 (Me), les règles doivent également autoriser validIndividualWrite et validIndividualFreshnessChange. Les règles locales ont été compilées et publiées avec succès sur tournament-manager-90045 le 2026-09-12, après 22 tests d'émulateur réussis. Aucun déploiement Hosting ou Functions n'a été effectué pour cette étape. La saisie individuelle écrit directement via un batch Firestore ; aucune nouvelle callable n'est nécessaire. L'identifiant rankingId|coachAttendeeId utilise l'échappement ciblé validé dans doc/datamodel.md, identique côté client et règles.
+
+### Validation et déploiement de Panel (étape 5)
+
+Les dix jeux de données de calcul et les comparateurs sont testés dans `frontend/src/service/panel-ranking.spec.ts`. Le tableau et le contenu XLSX sont testés dans `frontend/src/component/ranking-panel/ranking-panel.component.spec.ts`. Les tests de page couvrent le calcul hors panel, les échecs, la fermeture d'un résultat vide, l'export CLOSED et la confirmation/annulation/reprise de suppression. Les tests émulateur ci-dessus couvrent aussi les écritures de résultat et la suppression backend avec reprise après un lot réellement refusé.
+
+L'étape 5 nécessite de publier les règles incluant validPanelComputation et la nouvelle callable avant le frontend :
+
+```powershell
+firebase deploy --only firestore:rules --project tournament-manager-90045 --config firebase.ranking-test.json
+firebase deploy --only functions:deleteRefereeRanking --project tournament-manager-90045
+```
+
+Les callables de retrait/réparation des étapes précédentes restent nécessaires. Les tests de cette étape valident la cascade ranking ; ils ne corrigent pas le refus préexistant de suppression des votes d'upgrade dans la cascade tournoi. Aucun déploiement n'a été effectué pour cette livraison.

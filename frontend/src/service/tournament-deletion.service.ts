@@ -11,6 +11,8 @@ import {
 } from '@angular/fire/firestore';
 import {
   colAttendee,
+  colCoachRefereesRanking,
+  colTournamentRefereeRanking,
   colFitData,
   colFragmentRefereeAllocation,
   colFragmentRefereeAllocationStatistics,
@@ -51,6 +53,8 @@ const RELATED_COLLECTIONS: readonly DeletionCollection[] = [
   { name: colFragmentRefereeAllocationStatistics, label: 'fragment statistics' },
   { name: colRefereeUpgradeCoachVote, label: 'coach upgrade votes' },
   { name: colRefereeUpgradePanelVote, label: 'panel upgrade votes' },
+  { name: colCoachRefereesRanking, label: 'coach referee rankings' },
+  { name: colTournamentRefereeRanking, label: 'tournament referee rankings' },
   { name: colFitData, label: 'FIT snapshots' },
 ];
 

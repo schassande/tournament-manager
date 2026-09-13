@@ -22,7 +22,7 @@ function requireId(value: unknown): asserts value is string {
 }
 
 /** Validates transport data before accessing Firestore. */
-function validateRequest(data: RankingMaintenanceRequest, removal: boolean): string[] {
+export function validateRequest(data: RankingMaintenanceRequest, removal: boolean): string[] {
   if (!data || typeof data !== 'object') throw new HttpsError('invalid-argument', 'A ranking context is required.');
   requireId(data.tournamentId);
   requireId(data.tournamentRefereeRankingId);
@@ -32,6 +32,20 @@ function validateRequest(data: RankingMaintenanceRequest, removal: boolean): str
   if (!Array.isArray(ids) || !ids.length) throw new HttpsError('invalid-argument', 'Select referees to remove.');
   ids.forEach(requireId);
   return [...new Set(ids)];
+}
+
+/** Verifies a persisted coach and linked person against the callable identity and module gate. */
+export function authorizeRankingCoach(
+  request: CallableRequest<RankingMaintenanceRequest>,
+  attendee: Attendee | undefined,
+  personEmail: unknown,
+  enabledModules: unknown,
+): void {
+  if (!attendee?.isRefereeCoach || attendee.tournamentId !== request.data.tournamentId ||
+    !attendee.person?.personId || personEmail !== request.auth?.token.email ||
+    !Array.isArray(enabledModules) || !enabledModules.includes('RANKING')) {
+    throw new HttpsError('permission-denied', 'Ranking access requires a referee coach of this tournament.');
+  }
 }
 
 /** Removes invalid references atomically across the parent, panel statistics and every owner.
@@ -58,9 +72,7 @@ export async function maintainRanking(
       throw new HttpsError('permission-denied', 'A referee coach of this tournament is required.');
     }
     const person = await transaction.get(db.collection('person').doc(attendee.person.personId));
-    if (person.data()?.email !== request.auth!.token.email || !tournament.data()?.enablesModules?.includes('RANKING')) {
-      throw new HttpsError('permission-denied', 'Ranking access is not allowed.');
-    }
+    authorizeRankingCoach(request, attendee, person.data()?.email, tournament.data()?.enablesModules);
     if (!parent.exists) throw new HttpsError('not-found', 'Ranking not found.');
     const ranking = rankingFromStorage({ ...parent.data(), id: parent.id } as StoredTournamentRefereeRanking);
     if (ranking.tournamentId !== tournamentId) throw new HttpsError('permission-denied', 'Wrong tournament.');

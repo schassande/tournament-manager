@@ -2,7 +2,7 @@
   <p>Configure referees first</p>
 } @else if (ranking().status === 'CONFIGURE') {
   <p role="status">
-    Move to step Individual ranking using the button at the top of the page to enable Add and drag-and-drop.
+    Select the Individual vote step at the top of the page to enable Add and drag-and-drop.
   </p>
 } @else if (!coachId()) {
   <p>Configure coaches first</p>
@@ -11,8 +11,6 @@
     <p role="status">This ranking is closed and cannot be edited.</p>
   } @else if (!authorized()) {
     <p role="status">Editing another coach's ranking requires both coaches to be selected in Coaches.</p>
-  } @else if (individual()?.locked) {
-    <p role="status">Unlock this coach's ranking using the padlock toggle to enable Add and drag-and-drop.</p>
   }
   <div class="ranking-lists">
     <section aria-label="Unranked referees">
@@ -25,13 +23,15 @@
             [draggable]="canReorder()"
             (dragstart)="startDrag($event, referee.id)">
             <span class="identity">{{ label(referee) }}</span>
-            <p-button
-              [style]="{ '--p-button-padding-y': '0' }"
-              [ariaLabel]="'Add ' + label(referee)"
-              icon="pi pi-arrow-right"
-              [text]="true"
-              [disabled]="!canReorder()"
-              (onClick)="move(referee.id, order().length)" />
+            @if (!individual()?.locked) {
+              <p-button
+                [style]="{ '--p-button-padding-y': '0' }"
+                [ariaLabel]="'Add ' + label(referee)"
+                icon="pi pi-arrow-right"
+                [text]="true"
+                [disabled]="!canReorder()"
+                (onClick)="move(referee.id, order().length)" />
+            }
           </div>
         } @empty {
           <p>All selected referees are ranked.</p>
@@ -73,19 +73,21 @@
             <span class="position">{{ index + 1 }}</span>
             @if (order()[index]; as id) {
               <span class="identity">{{ label(referee(id)) }}</span>
-              <span
-                class="drag-handle"
-                role="button"
-                [attr.tabindex]="canReorder() ? 0 : -1"
-                [attr.aria-disabled]="!canReorder()"
-                [attr.aria-label]="'Move ' + label(referee(id)) + '. Use arrow keys to reorder or Delete to remove.'"
-                aria-keyshortcuts="ArrowUp ArrowDown Delete"
-                title="Drag to move. Keyboard: Up / Down / Delete."
-                (keydown.arrowup)="move(id, index - 1); $event.preventDefault()"
-                (keydown.arrowdown)="move(id, index + 1); $event.preventDefault()"
-                (keydown.delete)="move(id, null); $event.preventDefault()">
-                <i class="pi pi-equals" aria-hidden="true"></i>
-              </span>
+              @if (!individual()?.locked) {
+                <span
+                  class="drag-handle"
+                  role="button"
+                  [attr.tabindex]="canReorder() ? 0 : -1"
+                  [attr.aria-disabled]="!canReorder()"
+                  [attr.aria-label]="'Move ' + label(referee(id)) + '. Use arrow keys to reorder or Delete to remove.'"
+                  aria-keyshortcuts="ArrowUp ArrowDown Delete"
+                  title="Drag to move. Keyboard: Up / Down / Delete."
+                  (keydown.arrowup)="move(id, index - 1); $event.preventDefault()"
+                  (keydown.arrowdown)="move(id, index + 1); $event.preventDefault()"
+                  (keydown.delete)="move(id, null); $event.preventDefault()">
+                  <i class="pi pi-equals" aria-hidden="true"></i>
+                </span>
+              }
             } @else {
               <span>-</span>
             }

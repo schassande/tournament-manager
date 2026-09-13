@@ -4,7 +4,7 @@
 
 Le backend Firebase actuel est tres concentre :
 
-- quatre Cloud Functions exportees : `api`, `createPerson`, `removeRankingReferees` et `repairRefereeRanking`
+- cinq Cloud Functions exportees : `api`, `createPerson`, `removeRankingReferees`, `repairRefereeRanking` et `deleteRefereeRanking`
 - `api` encapsule une application Express
 - trois routers metier sont branches : `/refereeAllocationStatistics`, `/fitImport` et `/tournamentHome`
 
@@ -317,6 +317,14 @@ Contrat partagé dans `persistent-data-model/src/referee-ranking.ts` :
 
 Une transaction lit et valide les données avant toute écriture. Elle nettoie la sélection et tous les classements associés, conserve les verrous et l'ordre restant, aligne les statistiques du panel et marque STALE un résultat existant. Les dates individuelles ne changent que si la liste change. Les références qui ne sont plus sélectionnées sont également nettoyées. Un échec, y compris lors du commit ou du dépassement des limites Firestore, ne laisse aucune écriture partielle. Une réparation sans changement n'écrit rien.
 
-Les chargements normaux, le nom, N et les ajouts de sélection restent des opérations Firestore directes. Le frontend ne demande une réparation qu'après avoir détecté des références invalides dans ses lectures groupées. Le calcul du panel et la suppression complète du ranking ne font pas partie de cette étape.
+Les chargements normaux, le nom, N, les ajouts de sélection et le calcul du panel restent des opérations Firestore directes. Le frontend ne demande une réparation qu'après avoir détecté des références invalides dans ses lectures groupées. La suppression complète dispose du contrat ci-dessous depuis l'étape 5.
+
+### Suppression complète d'un referee ranking (étape 5)
+
+La callable v2 `deleteRefereeRanking`, dans `functions/src/referee-ranking/delete-referee-ranking.ts`, reçoit `{ tournamentId, tournamentRefereeRankingId, actorCoachAttendeeId }` et renvoie `RankingDeletionResponse` : `{ deletedRankingId, deletedCoachRankingCount }`.
+
+Elle vérifie le même coach authentifié et le module RANKING que la maintenance, ainsi que le tournoi du parent et de tous ses enfants avant la première suppression. Un manager sans rôle de coach ne peut pas utiliser cette action. CLOSED est accepté. Tous les individus, y compris les votes d'entraînement, sont supprimés par lots de 500, puis le parent est supprimé en dernier. Une erreur laisse le parent disponible pour une nouvelle tentative ; les lots déjà supprimés ne sont pas recréés. Le compteur retourné porte sur les enfants supprimés pendant la tentative réussie. La réponse n'est envoyée qu'après la fin de la cascade.
+
+Erreurs : `invalid-argument` pour un identifiant invalide, `unauthenticated` sans identité, `permission-denied` pour un accès refusé, `not-found` pour un parent absent, `failed-precondition` pour un enfant rattaché à un autre tournoi et `internal` si la suppression ne peut pas se terminer. Aucun secret supplémentaire n'est requis.
 
 Compilation : la lecture du compteur historique optionnel `nbGamesToAllocate` dans `tournament-home.ts` utilise maintenant un type local explicite. Cette correction de typage préserve le comportement existant et n'ajoute pas ce champ au modèle partagé.
