@@ -18,22 +18,24 @@ export class RefereesRankingService extends AbstractPersistentDataService<CoachR
   protected override autoIdAllocation = false;
   private readonly context = inject(EnvironmentInjector);
 
-  /** Commits the owner action and any required narrow parent freshness write atomically. */
+  /** Commits the target vote with its authenticated editor and any required freshness write atomically. */
   saveIndividual(
     parent: TournamentRefereeRanking,
     previous: CoachRefereesRanking | null,
-    coachId: string,
+    actorCoachAttendeeId: string,
+    targetCoachAttendeeId: string,
     changes: IndividualRankingChanges,
   ): Observable<IndividualRankingSave> {
     return defer(() =>
       runInInjectionContext(this.context, () => {
-        const result = prepareIndividualRanking(parent, previous, coachId, changes);
+        const result = prepareIndividualRanking(parent, previous, actorCoachAttendeeId, targetCoachAttendeeId, changes);
         const batch = writeBatch(this.firestore);
         batch.set(doc(this.firestore, colCoachRefereesRanking, result.individual.id), result.individual);
         if (result.panelResultState !== parent.panelResultState) {
           batch.update(doc(this.firestore, colTournamentRefereeRanking, parent.id), {
             panelResultState: result.panelResultState,
-            updatedByCoachAttendeeId: coachId,
+            updatedByCoachAttendeeId: actorCoachAttendeeId,
+            updatedCoachAttendeeId: targetCoachAttendeeId,
             lastChange: result.individual.lastChange,
           });
         }

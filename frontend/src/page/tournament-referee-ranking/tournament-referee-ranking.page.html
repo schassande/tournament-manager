@@ -41,7 +41,7 @@
     <p-tablist>
       <p-tab value="referees">Referees</p-tab>
       <p-tab value="coaches">Coaches</p-tab>
-      <p-tab value="me">Me</p-tab>
+      <p-tab value="me">Coach Ranking</p-tab>
       <p-tab value="panel">Panel</p-tab>
     </p-tablist>
     <p-tabpanels>
@@ -61,10 +61,25 @@
           (changes)="saveCoaches($event)" />
       </p-tabpanel>
       <p-tabpanel value="me">
+        @if (ranking.selectedRefereeAttendeeIds.length && ranking.status !== 'CONFIGURE' && coachOptions().length) {
+        <div class="coach-selection">
+          <label for="ranking-coach-select">Coach</label>
+          <p-select
+            inputId="ranking-coach-select"
+            [options]="coachOptions()"
+            optionLabel="label"
+            optionValue="id"
+            [formControl]="coachSelection"
+            placeholder="Select a coach" />
+        </div>
+        }
         <app-ranking-me
           [ranking]="ranking"
           [referees]="referees()"
-          [individual]="ownRanking()"
+          [coachId]="selectedCoach()?.id ?? ''"
+          [coachName]="selectedCoach()?.label ?? ''"
+          [authorized]="canEditSelectedCoach()"
+          [individual]="selectedCoachRanking()"
           [busy]="saving() || loadingCoaches() || !!coachError()"
           (changes)="saveIndividual($event)" />
       </p-tabpanel>

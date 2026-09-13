@@ -1,6 +1,6 @@
 # Referee ranking
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 ## Objective
 
@@ -29,7 +29,7 @@ Let tournament referee coaches rank eligible referees individually and merge the
 1. Create a ranking by entering its name in a popup opened by `Create new Ranking`.
 2. Select the current ranking using a PrimeNG Select displaying its name.
 3. Configure eligible full-time referees and a panel selected from tournament referee coaches.
-4. Allow every tournament referee coach to maintain their own ranking, including non-panel coaches for practice. Only locked rankings of selected coaches contribute votes.
+4. Allow any selected referee coach to choose any selected referee coach in a PrimeNG Select and edit the ranking defined by that coach, including their own. The target needs no application account. Only locked rankings of selected coaches contribute votes. Non-panel coaches retain editing of their own practice ranking; editing another coach requires both actor and target to be selected.
 5. Allow every tournament referee coach, including non-panel coaches, to run Compute in PANEL_RANKING.
 6. Allow every tournament referee coach to export the visible Panel data, including in CLOSED.
 7. Save configuration selections and individual edits immediately; do not debounce individual ranking saves.
@@ -46,8 +46,8 @@ All tournament referee coaches may perform these transitions, including those no
 | Action | CONFIGURE | INDIVIDUAL_RANKING | PANEL_RANKING | CLOSED |
 | --- | --- | --- | --- | --- |
 | Edit name, target N, referee selection, coach selection, majority | Yes | Yes | Yes | No |
-| Edit own individual ranking while unlocked | No | Yes | Yes | No |
-| Lock/unlock own ranking | No | Yes | Yes | No |
+| Edit chosen coach ranking while unlocked, subject to actor/target eligibility | No | Yes | Yes | No |
+| Lock/unlock chosen coach ranking, subject to actor/target eligibility | No | Yes | Yes | No |
 | Compute, for any tournament referee coach | No | No | Yes | No |
 | Read and export existing data | Yes | Yes | Yes | Yes |
 | Repair invalid references, including locked individual rankings | Yes | Yes | Yes | No |
@@ -74,7 +74,7 @@ The creation and numeric-validation details above are routine implementation def
 
 - Referee and coach selection is editable without removal confirmation in CONFIGURE. Removing a selected referee or coach in INDIVIDUAL_RANKING or PANEL_RANKING requires confirmation.
 - A referee removal is an atomic backend operation: update selection, remove that ID from all associated coach rankings, remove its panel ID and corresponding stats row, and mark an existing panel result stale. Report success only after the full operation commits. Failure leaves all persisted documents unchanged.
-- Removing a coach only changes panel membership. Preserve their individual ranking, ordered IDs, lock, and change timestamp. It remains visible as a practice ranking and contributes no votes while the coach is unselected.
+- Removing a coach only changes panel membership. Preserve their individual ranking, ordered IDs, lock, and change timestamp. It remains visible in Panel as a practice ranking and contributes no votes while the coach is unselected. The coach retains editing of their own practice ranking; other coaches cannot edit it while its owner is unselected.
 - Before CLOSED, remove deleted or ineligible referee references from selections and rankings on load/refresh. Preserve the relative order of remaining referees and the alignment of panel IDs/stats. Maintenance may clean a locked individual ranking without unlocking it; update its ranking timestamp only if its ordered list changes.
 - In CLOSED, perform no repair writes. Preserve IDs, positions, statistics, and timestamps; display missing referees as `Deleted referee` (`Arbitre supprimé` in French), including in exported data.
 
@@ -116,7 +116,8 @@ Example: at majority 3, `[1, 3, 5]` precedes `[1, 4, 5]`. The original reference
 - Action bar: ranking Select, `Create new Ranking`, legal status transitions, and confirmed deletion of the selected ranking.
 - Creation asks only for the name and selects the newly saved ranking. On initial load, select the first available ranking; switching rankings replaces the shared coach-ranking state.
 - With no current ranking, explain that a ranking must be created using the button.
-- A selected ranking exposes four tabs: `Referees`, `Coaches`, `Me`, `Panel`.
+- A selected ranking exposes four tabs: `Referees`, `Coaches`, `Coach Ranking`, `Panel`.
+- Preserve the existing `tab=me` URL value and internal ranking-me component paths for compatible links; the visible tab and editor wording use Coach Ranking.
 
 ### Referees tab
 
@@ -125,7 +126,7 @@ Example: at majority 3, `[1, 3, 5]` precedes `[1, 4, 5]`. The original reference
 - Place the filters on the left and the name/target form on the far right of the same compact toolbar above the PickList. Label N `Ranked referees`; wrap only when the viewport is too narrow.
 - PrimeNG PickList: available full-time referees on the left, selected referees on the right.
 - The selected-list title includes the count (`x Selected referees`); do not repeat N next to that count.
-- Center both PickList titles. Both lists use the Me-tab identity format, e.g. `L2S* Jean DUPONT`: level, category except O, `*` when an upgrade is requested, first name and uppercase last name.
+- Center both PickList titles. Both lists use the Coach Ranking-tab identity format, e.g. `L2S* Jean DUPONT`: level, category except O, `*` when an upgrade is requested, first name and uppercase last name.
 - While Referees is active, fill the viewport below the 48px application toolbar. The PickList uses the remaining height below the page controls and filters; overflow scrolls inside each list, not on the page.
 - Place Level, Category, Upgrade and Gender filters in a compact row above and outside the PickList, with reduced control padding. Filter available items in memory; filtering does not remove selected items.
 - Emit changes to the page for immediate persistence. Removals use the atomic backend operation and relevant confirmation.
@@ -137,19 +138,25 @@ Example: at majority 3, `[1, 3, 5]` precedes `[1, 4, 5]`. The original reference
 - Show `Vote majority: <input> / <selected coach count>` below the list.
 - Removing a coach leaves their complete individual ranking unchanged.
 
-### Me tab
+### Coach Ranking tab
 
-- Available to all tournament referee coaches, including unselected coaches for practice.
+- Rename the visible Me tab to `Coach Ranking`.
+- The purpose is to enter rankings for coaches without an account or unable to use the application. Distinguish the authenticated acting coach from the target coach whose opinion is ranked: selecting a target never changes the signed-in identity.
+- Add a PrimeNG Select labeled `Coach` above the lists. Populate it from the shared coach cache filtered by the current ranking's selectedCoachAttendeeIds, including coaches without personId, email or account. Every selected referee coach may edit any selected referee coach, including themselves. Also include the current coach's own entry when they are outside the panel, so they can edit their practice ranking. For a non-panel actor, other selected coaches remain viewable but their editor and lock controls are read-only.
+- Show the target's CoachRefereesRanking from the grouped records, without additional queries. Identify the target in the ranking heading instead of `My ranking`.
+- Default to the current coach if eligible, otherwise the first eligible target sorted by short name and ID. Reset this local selection when switching tournament rankings; choose an eligible fallback if membership removes the target. With no target, show `Configure coaches first` and no editor. Existing missing-referee and CONFIGURE empty states take precedence.
+- Merely selecting a coach never writes or creates a record. Disable target selection during an immediate save; apply the response to the original target, preserve saved data on failure and retain existing feedback.
+- Page access remains available to tournament referee coaches. A non-panel coach may edit and lock/unlock only their own practice ranking. Editing another coach requires both actor and target to be selected. Apply the existing phase and lock restrictions to both cases.
 - If selected referees are empty, display only `Configure referees first`.
-- When Me cannot be edited, explain the relevant phase/lock restriction: CONFIGURE shows only the Move to step Individual ranking message and hides the lists and lock control, CLOSED is read-only, and a locked vote points to the lock toggle. Add and drag/drop follow the existing lifecycle without silently advancing the phase.
+- When Coach Ranking cannot be edited, explain the relevant phase/lock restriction: CONFIGURE shows only the Move to step Individual ranking message and hides the lists and lock control, CLOSED is read-only, and a locked vote points to the lock toggle. Add and drag/drop follow the existing lifecycle without silently advancing the phase.
 - Both lists size to their content with a minimum width of 200px each, aligned left with a gap; stack them on narrow screens.
 - Left side: unranked eligible referees, sorted by descending level. Use first name, last name, then ID for stable ordering within a level.
 - Right side: ordered referees with one-based positions displayed at the left of each row. Show at least N+1 filled or empty slots, and a separator between N and N+1. Empty slots are presentation only; persisted ID arrays are dense.
 - Both sides use level/category/upgrade, first name and uppercase last name, e.g. `L2S* Jean DUPONT`. Omit category O. Reuse existing badge and identity conventions.
-- The toggle binds to `locked` and sits at the far right of the My ranking heading, on the same line. An open/closed padlock icon replaces the visible Ranking unlocked/Ranking locked text; retain an accessible control label and state tooltip. Lock/unlock is available to the owner only in the two editable individual phases. Unlocking permits editing again; no reordering is permitted while locked.
+- The toggle binds to `locked` and sits at the far right of the selected coach ranking heading, on the same line. An open/closed padlock icon replaces the visible Ranking unlocked/Ranking locked text; retain an accessible control label and state tooltip. Lock/unlock is available to an eligible actor for the chosen target in the two editable individual phases. Unlocking permits editing again; no reordering is permitted while locked.
 - Drag left to right inserts at the chosen position; drag inside the right list reorders; dropping outside the right list returns the referee to the sorted left list. Dropping on empty trailing slots appends without persisting gaps; cancelling a drag makes no change.
 - After every drag, the two lists partition the eligible selection exactly: no missing referee, no duplicates. On the left, use an icon-only right-arrow button for Add, retaining its accessible referee-specific label. On ranked rows, a horizontal-bars drag icon replaces the Up, Down and Remove buttons; the focusable icon supports ArrowUp/ArrowDown to reorder and Delete to remove.
-- Create the owner's empty, unlocked individual record lazily on the first permitted edit or lock action, using its deterministic ID. Viewing CONFIGURE or CLOSED must not create records. An absent record is displayed as empty.
+- Create the selected target coach's empty, unlocked individual record lazily on the first permitted edit or lock action, using its deterministic ID. Viewing CONFIGURE or CLOSED must not create records. An absent record is displayed as empty.
 - On load/refresh, perform the agreed cleanup before CLOSED; in CLOSED render missing-referee placeholders without writes.
 
 ### Panel tab and export
@@ -197,6 +204,8 @@ interface TournamentRefereeRanking extends PersistentObject {
   panelResultState: PanelResultState;
   /** Actor attendee used to validate ordinary direct client writes. */
   updatedByCoachAttendeeId: string;
+  /** Target of the last individual-vote freshness batch; absent until such a batch occurs. */
+  updatedCoachAttendeeId?: string;
 }
 
 /** One coach's ranking for one tournament ranking. */
@@ -204,6 +213,8 @@ interface CoachRefereesRanking extends RefereesRanking, PersistentObject {
   tournamentRefereeRankingId: string;
   tournamentId: string;
   coachAttendeeId: string;
+  /** Authenticated editor; optional on legacy reads, required on ordinary client writes. */
+  updatedByCoachAttendeeId?: string;
   locked: boolean;
 }
 
@@ -216,7 +227,7 @@ interface StoredPanelStatsRow {
 - Collections: `tournament-referee-ranking` and `coach-referees-ranking`, with matching exported collection constants.
 - Parent IDs are generated. Individual IDs are deterministic and collision-free from `(tournamentRefereeRankingId, coachAttendeeId)`; use encoded pair components with an unambiguous separator in a shared helper. Validate that stored relationship fields match the ID.
 - New parent: CONFIGURE, empty selections, N=15, majority=1, empty panel IDs/stats, `rankingLastChange: ''`, `panelResultState: 'NOT_COMPUTED'`, current coach as updatedByCoachAttendeeId. Empty timestamp means no panel computation has occurred; every successful Compute writes an ISO timestamp even for an empty result.
-- New individual: current tournament/ranking/coach IDs, empty referee list, `locked: false`, ISO creation time. Ordered-list edits or actual cleanup update rankingLastChange. Lock-only changes update PersistentObject.lastChange but need not change the ranking timestamp.
+- New individual: current tournament/ranking IDs and the selected target coach attendee ID, authenticated actor as updatedByCoachAttendeeId, empty referee list, `locked: false`, ISO creation time. Ordered-list edits or actual cleanup update rankingLastChange. Lock-only changes update PersistentObject.lastChange but need not change the ranking timestamp.
 - Keep inherited PersistentObject id/lastChange conventions; rankingLastChange remains ISO rather than the numeric base timestamp.
 - Store panel statistics as `{ ranks: number[] }[]`, and convert to/from the application-facing `number[][]` in the service and backend mapper. Never write raw nested arrays to a Standard Firestore database. This preserves the original logical contract while accommodating its storage restriction. [Firebase supported data types](https://firebase.google.com/docs/firestore/manage-data/data-types).
 - `panelResultState` is the minimal persisted representation of the confirmed never-computed/current/stale behavior. `updatedByCoachAttendeeId` follows the existing panel-upgrade-vote actor pattern; neither field is a revision counter.
@@ -231,11 +242,11 @@ No permission-index collection or backend API for ordinary reads/saves is introd
 
 ### Writes and maintenance
 
-- Only the owner coach may ordinarily create/update their individual ranking, in INDIVIDUAL_RANKING or PANEL_RANKING, with an existing parent and immutable tournament/ranking/coach identity fields. Locked records permit unlocking but not list editing in the same write; list changes require the previously unlocked state.
+- Any authenticated tournament referee coach may ordinarily create/update their own individual ranking, including non-panel practice. Editing another coach requires both actor and target to be selected referee coaches of the same tournament. Both paths are allowed only in INDIVIDUAL_RANKING or PANEL_RANKING, with an existing parent and immutable tournament/ranking/coach identity fields. Locked records permit unlocking but not list editing in the same write; list changes require the previously unlocked state.
 - Any tournament referee coach may create or edit parent configuration before CLOSED, perform valid status transitions, and save a computed panel result only in PANEL_RANKING.
 - Authenticate the actor against the referenced tournament attendee and its linked person identity. Use the actual nested `Attendee.person.personId`/`person.email` fields; do not copy the existing upgrade rule's incorrect top-level personId reference. Validate the actor is a coach of the same tournament and matches the authenticated user's email.
 - Validate direct-write field types, positive integer values, immutable relationships, unique ranking IDs, ranking IDs being a subset of the selected referee IDs, legal state changes, and parallel panel IDs/stats lengths. UI configuration selection must come from the shared eligible tournament attendee cache. Backend cleanup revalidates attendee existence and eligibility from stored data.
-- On relevant parent edits, retain NOT_COMPUTED or set an existing result to STALE. When a contributing individual vote changes, save it and mark the parent stale in one write batch; allow that owner to update only the parent's freshness/actor/base timestamp fields as part of this path. Do not authorize them to overwrite another individual ranking.
+- On relevant parent edits, retain NOT_COMPUTED or set an existing result to STALE. When a contributing individual vote changes, save it and mark the parent stale in one write batch; allow that acting coach to update only the parent's panelResultState, updatedByCoachAttendeeId, updatedCoachAttendeeId and lastChange fields as part of this path. Authorize the selected target record, retaining its coach ownership and validating the actual actor separately; do not grant cross-tournament writes.
 - Saving a computed result sets CURRENT, writes IDs/stats and its ISO time, and requires PANEL_RANKING and a tournament coach actor. Closure requires the stored CURRENT state and a nonempty computation timestamp. No revision comparison or conflict handling is added.
 - Maintenance may remove invalid IDs across owners and preserve locks before CLOSED. Only the dedicated authenticated backend path receives this exception. CLOSED blocks repair and updates, but permits confirmed deletion.
 - Standalone whole-ranking deletion is authorized for tournament referee coaches through the backend cascade. Manager direct Firestore read/delete permissions remain available for the complete tournament-deletion service and must not depend on attendee documents that that service may already have deleted; reuse tournament managerEmails authorization.
@@ -243,7 +254,7 @@ No permission-index collection or backend API for ordinary reads/saves is introd
 
 ## Compatibility and migration
 
-- The inspected repository has no existing ranking collections/models/route to migrate. This is an additive feature; tournaments without rankings remain readable.
+- Stages 1-4 already introduced the collections, models and route. Preserve existing individual IDs, ownership, lists, locks and timestamps. Tournaments without rankings remain readable. Existing documents without the new optional metadata remain readable. Every new ordinary individual write supplies updatedByCoachAttendeeId; a parent updatedCoachAttendeeId is introduced only by an individual-vote freshness batch. No bulk backfill is required, and missing legacy actor metadata must not be fabricated on read.
 - Preserve existing module-enabled semantics and the RANKING module name.
 - Both new collections carry tournamentId so they fit the existing tournament deletion queries.
 - A loaded parent without computation state should be treated as NOT_COMPUTED until explicitly computed; never infer computation from result length.
@@ -271,12 +282,22 @@ These are repository observations, separate from the requested changes and imple
 
 Firestore rules require known document paths for identity lookups and are not post-query filters. Question 28 deliberately chooses authenticated collection reads instead of an additional membership lookup. Do not accidentally reinstate coach-only read conditions that break the required grouped queries. [Firebase rule conditions](https://firebase.google.com/docs/firestore/security/rules-conditions).
 
+### Delegated save contract (decision 30)
+
+- Extend `RefereesRankingService.saveIndividual` and `prepareIndividualRanking` to receive separate `actorCoachAttendeeId` and `targetCoachAttendeeId` arguments in addition to parent, previous record and changes. Use target identity for deterministic IDs, immutable relationships and contribution checks; write actor identity into the individual updatedByCoachAttendeeId on every ordinary save. Page-derived eligibility is a UI guard; Firestore independently verifies authorization.
+- Authenticate the actor using the existing tournament attendee/person identity lookup and RANKING gate. Validate that the target is a referee-coach attendee of the same tournament. Permit the action when actor equals target, or when both IDs belong to the parent's selectedCoachAttendeeIds. The target's personId, email and account are not authorization prerequisites for delegated writes.
+- A new parent omits updatedCoachAttendeeId. When an individual action changes panelResultState to STALE, batch the target record with exactly these parent fields: panelResultState = STALE, updatedByCoachAttendeeId = actor, updatedCoachAttendeeId = target, and lastChange = the individual save timestamp. The target marker is metadata about that batch, not a UI selection, ownership field or revision counter.
+- In `validIndividualFreshnessChange`, derive the deterministic child path from parent ID and the incoming updatedCoachAttendeeId. Verify a real contributing vote change using its before/after records, validate the child's actor equals the parent's incoming updatedByCoachAttendeeId, authenticate that actor, and enforce target eligibility and matching timestamps. Reject marker-only changes and isolated freshness batches without a valid contributing vote change. Other parent save paths preserve the optional target marker and do not use it as an authorization source.
+- In `validIndividualWrite`, retain the existing requirement that a relevant vote change leaves the parent STALE using getAfter. If the parent is already STALE, its marker need not be rewritten; if it is NOT_COMPUTED, keep that state without a parent write. Non-contributing and practice edits do not write the parent. Each individual action still writes its actual actor metadata, including lock-only actions.
+- Extend exact allowed-field lists and shared storage/mapping contracts for both optional fields. Optional TypeScript fields support legacy reads only: new ordinary individual writes must contain a valid actor. Backend maintenance preserves existing metadata, including its absence on legacy data, rather than pretending to be a coach edit. Existing callable request/response shapes remain unchanged; returned ranking objects retain metadata.
+- Metadata-only or lock-only changes preserve rankingLastChange; ordered-list edits and initial lazy creation retain the established timestamp rules. Continue refusing combined unlock/reorder writes, invalid IDs and CLOSED updates. Deploy matching rules before enabling the revised frontend so delegated actions are not rejected by old owner-only rules.
+
 ### Frontend structure and data flow
 
 1. Add `frontend/src/page/tournament-referee-ranking/tournament-referee-ranking.page.ts` with separate template/styles and four focused tab components, following frontend/AGENTS.md and the angular-formatting skill when implementation starts.
 2. The page owns tournament context, current ranking selection, shared attendee cache, loaded parent rankings, loaded coach rankings, save feedback, and cleanup coordination. Use signals/derived state and OnPush rather than tab-specific refetches.
 3. Load attendees once using exactly two query methods: referees and coaches. Cache and deduplicate by attendee ID for shared identity lookup. Load all tournament ranking documents with one `tournamentId == ...` query. When switching rankings, load all associated individual records in one `tournamentRefereeRankingId == ...` query. A refresh repeats the grouped load; never query per row or coach column.
-4. Use `TournamentRefereeRankingService` for parent load/save, status updates, result state, and panel computation; use the requested `RefereesRankingService` for individual load/save and deterministic identity. Tab outputs delegate parent saves to the page. The Me tab delegates owner saves through the individual service and updates shared page state.
+4. Use `TournamentRefereeRankingService` for parent load/save, status updates, result state, and panel computation; use the requested `RefereesRankingService` for individual load/save and deterministic identity. Tab outputs delegate parent saves to the page. The Coach Ranking tab delegates target saves through the individual service and updates shared page state, passing actor and target separately.
 5. Put the pure panel algorithm and nomination comparator in reusable helpers invoked by TournamentRefereeRankingService. Compute from the current grouped data, return the complete IDs/stats, and save the result without moving computation to a backend endpoint.
 6. Persist only fields belonging to the current action instead of blindly saving stale copies of the entire parent from individual-vote actions. Use the existing Firestore client APIs plus focused write batches for vote/freshness updates; there is no application-level edit lock, version, conflict dialog, or retry-on-conflict workflow.
 7. Referee removal and detected invalid-reference repair call the dedicated backend operation. On success, replace affected shared records from its response or refresh the grouped records. Do not apply speculative cleanup writes to CLOSED data.
@@ -314,8 +335,8 @@ Selected-coach individual edits/lock changes update the parent marker in the sam
 ### Firestore rules and query verification
 
 - Add collection matches with `allow read` for any signed-in user.
-- Define a focused ranking coach-identity predicate using an attendee ID and tournament ID. Ordinary parent writes supply updatedByCoachAttendeeId; individual writes use coachAttendeeId. Do not depend on selectedCoachAttendeeIds to grant coach write rights.
-- Keep individual identity immutable; enforce owner, editable phase and lock semantics. Permit the accompanying narrow parent freshness write required by the owner's valid vote update.
+- Define a focused ranking coach-identity predicate using an attendee ID and tournament ID. Ordinary parent writes supply updatedByCoachAttendeeId; individual writes must distinguish the authenticated actor from target coachAttendeeId. Selected membership now grants delegated individual editing rights; parent configuration, transitions, Compute and export keep their existing all-tournament-coach authorization. Own-practice writes remain allowed for a non-panel coach; delegated writes require both actor and target to be selected.
+- Keep individual identity immutable; enforce actor/target eligibility, editable phase and lock semantics. Permit the accompanying narrow parent freshness write tied to the target vote and recording the actual actor.
 - Parent field changes must respect the lifecycle and CLOSED immutability; status transitions follow the declared graph. Computed-result writes require PANEL_RANKING; closure requires CURRENT and a computation timestamp.
 - Client referee selection additions may use the configuration save path; removals require backend atomic cleanup. Validate unique selected/ordered IDs and array shape. Reject non-selected ranked IDs.
 - Manager deletion uses tournament.managerEmails and the existing canManageTournament convention; keep it usable after attendee deletion. Manager access remains available when RANKING is disabled so complete tournament deletion is not blocked.
@@ -331,9 +352,32 @@ Selected-coach individual edits/lock changes update the parent marker in the sam
 - Existing upgrade-vote rules deny deletion, while TournamentDeletionService currently lists those vote collections. This is a pre-existing mismatch that can block complete tournament deletion independently of ranking. The ranking change must not claim to repair it; record it in validation results and distinguish ranking cascade verification from a pre-existing upgrade-data failure.
 - No application files or unrelated user edits were changed during this specification analysis.
 
+### Coach Ranking revision: verified impacts and confirmed design
+
+The 2026-09-13 request supersedes owner-only ordinary editing for selected actors and selected targets. Historical stage notes below describe the previous implementation, not the new authorization policy. Stage 4 must incorporate this revision and receive developer validation before Stage 5.
+
+Verified code findings on 2026-09-13:
+
+| Evidence | Required implementation |
+| --- | --- |
+| `frontend/src/page/tournament-referee-ranking/tournament-referee-ranking.page.ts`: currentCoach, ownRanking, saveIndividual; corresponding HTML binds ownRanking and labels the tab Me | Keep currentCoach as actor; add target selection and derive its ranking from coachRankings; wire PrimeNG Select and target-specific authorization. |
+| `frontend/src/component/ranking-me/ranking-me.component.ts` and template | Reuse the existing editor, drag/drop, keyboard actions and locks; replace personal wording and accept target-dependent editing permissions. |
+| `frontend/src/service/referees-ranking.service.ts`: saveIndividual; `persistent-data-model/src/referee-ranking.ts`: prepareIndividualRanking | Separate actor and target parameters. Derive identity and contribution from target, record actual actor and update JSDoc. |
+| `firestore.rules`: validIndividualRecord, validIndividualWrite, validIndividualFreshnessChange | Existing rules authenticate the owner and derive the freshness-linked vote ID from the actor. Update both checks together to support delegated writes without allowing forged actors or unrelated freshness updates. |
+
+Design confirmed by the user in decision 30 on 2026-09-13: retain ordinary direct Firestore saves and extend the existing actor-metadata pattern. Add updatedByCoachAttendeeId to individual records for the authenticated editor; coachAttendeeId still identifies the target. Add updatedCoachAttendeeId to the parent for narrow vote/freshness batches so rules can locate the exact target record with getAfter independently of actor identity. Keep immutable relationships and phase/lock checks; validate target tournament and referee-coach role without requiring a target account; require selected membership for both actor and target on delegated writes, while allowing own-practice writes outside the panel. Require actor metadata on new ordinary writes, accept existing documents without it on read and populate it on their next permitted save. Do not rewrite historical ranking timestamps or IDs; maintenance preserves metadata. No audit collection or ordinary-save endpoint is introduced. This extends the existing actor-metadata pattern to preserve direct saves and let Firestore verify the changed target vote separately from the authenticated editor.
+
+Documentation review: the initial analysis verified the previous owner-only descriptions. Implementation now updates doc/pages.md and doc/datamodel.md for coach selection, delegated authorization, actor/target metadata and legacy reads. doc/dev.md documents the regression checks and coordinated rules/frontend rollout, including reloading old clients whose individual saves lack the required actor. doc/functions.md maintenance contracts remain accurate and unchanged.
+
+Recommended implementation order: update model/service contracts and rules together; wire coach selection and editor permissions; add targeted regression tests and update page/model documentation; validate the revised Stage 4. Grouped query counts and the computation algorithm remain unchanged.
+
 ### Implementation stages and validation gates
 
-Current stage: **Stages 1–3 validated by the developer; Stage 4 (Me) implemented and awaiting developer validation before Stage 5.**
+Current stage: **Stages 1-3 validated by the developer; the Stage 4 Coach Ranking revision is implemented and tested locally, awaiting developer validation before Stage 5.**
+
+Stage 4 revision delivery (2026-09-13): Coach Ranking uses a PrimeNG Select over the shared coach cache, includes selected coaches without accounts and the actor's own practice entry, and loads the target vote from existing grouped records. The target heading, lock, drag/drop and keyboard editor use target-specific authorization. Selection resets on ranking/membership changes, cancels obsolete drags and is disabled while saves are pending. Direct saves preserve target ownership, record the actual authenticated actor and atomically link any freshness transition to the target vote. Firestore checks actor identity, target role/tournament, both selected memberships for delegation, phase, lock and the exact narrow freshness batch. Legacy records remain readable without backfill; maintenance preserves metadata.
+
+Stage 4 revision validation (2026-09-13): 54 targeted Angular tests and 28 Firestore emulator tests validated after targeted reruns of corrected test fixtures/assertions. Coverage includes a real PrimeNG selection and target Add/lock actions, accountless targets, unchanged actor votes and query counts, own practice and forbidden delegation, failed-save selection retention, fallback/reset, legacy metadata, forged actors/targets, atomic freshness rollback, already-stale/never-computed results, CLOSED and maintenance preservation. Shared-model and Functions compilation and the production Angular build passed. Documentation was updated in doc/pages.md, doc/datamodel.md and doc/dev.md; doc/functions.md remains accurate. No deployment was performed; publish matching rules before the revised frontend and reload existing clients. Stage 5 has not started.
 
 Stage 4 delivery (2026-09-12): Me now displays the owner's ranking using the page's grouped records, without extra reads or creation on view. Dense insert/reorder/remove transformations are shared by native drag/drop and accessible Add/Up/Down/Remove buttons; cancellation saves nothing. Unranked identities are sorted by descending level, first name, surname and stable ID. The right list displays N+1 or more numbered slots with the N separator. Only the two active phases allow editing, and a locked record must first be unlocked. Empty and incomplete votes may be locked; CLOSED uses missing-referee placeholders without writes. Each action commits immediately and the page accepts the record only on success. Contributing vote changes and parent freshness use one batch; practice/unlocked non-contributing edits preserve freshness and panel output.
 
@@ -364,7 +408,7 @@ Verification: production Angular build passed; all 36 existing/new frontend test
 1. **Page:** models, storage mapping, services, route/menu/access, shared grouped loads, creation/selection/state, and security foundations.
 2. **Referees:** selection/filter UI, backend atomic removal/repair and corresponding persistence validation.
 3. **Coaches:** panel selection, confirmation, majority form and preserved individual data.
-4. **Me:** partitioned lists, drag/drop and keyboard actions, locks, immediate saves and freshness updates.
+4. **Coach Ranking:** partitioned lists, drag/drop and keyboard actions, locks, immediate saves and freshness updates.
 5. **Panel:** pure algorithm, table, Compute, stale/closure behavior, Excel, deletion integration, required tests and documentation completion.
 
 Obtain developer validation after every stage before starting the next. Record the current stage and validation in this file or the project work log. This gate comes from the original specification and remains required.
@@ -387,6 +431,16 @@ Obtain developer validation after every stage before starting the next. Record t
 - Confirmed coach deletion removes one ranking and all associated individual records. Manager-only users have no such UI action; complete tournament deletion includes both ranking collections.
 - Anonymous collection reads and unauthorized ordinary writes fail; authenticated reads succeed even outside the tournament under the temporary policy.
 - No revision/conflict handling or panel-leader feature is introduced. Stage validation and relevant documentation updates are complete before implementation is declared finished.
+
+### Coach Ranking revision acceptance checks
+
+- The tab label is Coach Ranking and the PrimeNG Select includes selected coaches without accounts. Signed-in selected coach A can choose B and see B's ranking without any extra query or write.
+- A can create, reorder, lock and unlock B's ranking in the permitted phases; A's own record remains unchanged. Deterministic ID and coachAttendeeId identify B; actor metadata identifies A.
+- An absent target record is created lazily on a permitted action. Parent/membership changes reset the target safely; pending saves cannot be redirected by changing the selection.
+- Existing phase, lock, timestamp, dense-list and empty-state behavior remains intact. Failed saves retain the previous record.
+- Rules deny forged actors, cross-tournament or ineligible targets and invalid phases. Verify that a non-panel coach can create, edit and lock/unlock their own practice vote, but cannot edit another coach; selected actors cannot edit another non-panel coach. Practice writes must not alter panel freshness. Verify target eligibility without any account identity on B.
+- Delegated contributing changes requiring a freshness transition and their narrow parent updates succeed together or fail together. Rules verify the target vote, matching actor and timestamps, and deny isolated freshness updates or forged target markers. Cover CURRENT to STALE, already STALE, NOT_COMPUTED, lock-only timestamp preservation, missing required actor on new writes and spoofed actors even on non-contributing edits.
+- Verify reading legacy individuals without updatedByCoachAttendeeId and parents without updatedCoachAttendeeId, then saving them with the required metadata. Neither IDs nor ownership may change; metadata-only upgrades preserve rankingLastChange.
 
 ### List of new tests
 
@@ -421,11 +475,15 @@ Additional checks:
 
 Readiness: **Ready for implementation**.
 
-No blocking functional decision remains. Implementation choices for validation defaults, storage adaptation, actor metadata and result-state persistence are explicitly documented above and derived from the confirmed behavior and existing project patterns. The temporary read policy is an accepted limitation, not an unresolved permission question. Future hardening is outside this increment.
+No blocking decision remains. Decisions 29 and 30 are confirmed. The revision preserves own-practice editing and extends the existing direct-write metadata model to separate the authenticated actor from the target coach.
+
+Remaining assumptions: routine selector defaults, alphabetical ordering and save-time disabling are specified above; no unresolved architecture or permission assumption remains. The user subsequently authorized implementation, whose delivery and checks are recorded in the Stage 4 revision notes above.
+
+The temporary authenticated read policy, lifecycle, immediate saves and absence of concurrency management remain confirmed.
 
 ### Confirmed decision record
 
-All decisions below were collected on 2026-09-12. Later clarifications supersede earlier wording where noted.
+Decisions 1-28 were collected on 2026-09-12; decisions 29-30 were confirmed on 2026-09-13. Later clarifications supersede earlier wording where noted.
 
 | Question | Final decision |
 | --- | --- |
@@ -457,3 +515,9 @@ All decisions below were collected on 2026-09-12. Later clarifications supersede
 | 26 | Any tournament referee coach can Compute; panel leader is not a supported feature. |
 | 27 | Manager delete rights support complete tournament deletion only; no standalone ranking-delete workflow. |
 | 28 | Temporary Firestore reads for all authenticated users; ordinary CRUD stays direct, preserving defined write restrictions and required backend cleanup. |
+| 29 | Confirmed on 2026-09-13: non-panel coaches retain editing and lock/unlock of their own practice ranking. Editing another coach requires both actor and target to be selected. |
+| 30 | Confirmed on 2026-09-13: add updatedByCoachAttendeeId to individual records and updatedCoachAttendeeId to the parent to validate delegated direct Firestore saves and target-linked freshness batches; preserve existing documents. |
+
+### Revision requested on 2026-09-13
+
+Confirmed by the user: rename Me to Coach Ranking; select the coach with PrimeNG Select; edit the ranking defined by that coach; any selected referee coach may edit any selected referee coach, including targets without an account or unable to use the application. Decision 29 is confirmed: preserve own-practice editing for non-panel coaches; editing another coach requires both to be selected. Decision 30 is confirmed: keep direct Firestore saves and add updatedByCoachAttendeeId on individual records plus updatedCoachAttendeeId on the parent for target-linked freshness batches, with backward-compatible reads.

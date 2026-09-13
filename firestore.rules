@@ -144,7 +144,7 @@ service cloud.firestore {
           || (selectionChanged && next.panelResultState == (old.panelResultState == 'NOT_COMPUTED' ? 'NOT_COMPUTED' : 'STALE')));
     }
 
-    // Panel membership never authorizes the actor and never modifies an individual vote.
+    // Configuration remains available to every tournament coach, independently of panel membership.
     function validRankingCoachChange() {
       let old = resource.data;
       let next = request.resource.data;
@@ -176,15 +176,26 @@ service cloud.firestore {
         : old.locked != next.locked || ((old.locked || next.locked) && old.rankedRefereeAttendeeIds != next.rankedRefereeAttendeeIds);
     }
 
+    // Targets need a tournament coach attendee, but no account or linked person.
+    function canEditRankingTarget(next, parent) {
+      let target = get(/databases/$(database)/documents/attendee/$(next.coachAttendeeId)).data;
+      return next.updatedByCoachAttendeeId is string
+        && isRankingCoach(next.updatedByCoachAttendeeId, parent.tournamentId)
+        && target.tournamentId == parent.tournamentId && target.isRefereeCoach == true
+        && (next.updatedByCoachAttendeeId == next.coachAttendeeId
+          || (next.updatedByCoachAttendeeId in parent.selectedCoachAttendeeIds
+            && next.coachAttendeeId in parent.selectedCoachAttendeeIds));
+    }
+
     function validIndividualRecord(documentId, next, old, parent) {
       return next.keys().hasOnly(['id', 'lastChange', 'tournamentId', 'tournamentRefereeRankingId',
-          'coachAttendeeId', 'locked', 'rankingLastChange', 'rankedRefereeAttendeeIds'])
+          'coachAttendeeId', 'updatedByCoachAttendeeId', 'locked', 'rankingLastChange', 'rankedRefereeAttendeeIds'])
         && next.id == documentId
         && documentId == rankingVoteId(next.tournamentRefereeRankingId, next.coachAttendeeId)
         && next.tournamentId == parent.tournamentId
         && next.tournamentRefereeRankingId == parent.id
         && parent.status in ['INDIVIDUAL_RANKING', 'PANEL_RANKING']
-        && isRankingCoach(next.coachAttendeeId, parent.tournamentId) && rankingEnabled(parent.tournamentId)
+        && canEditRankingTarget(next, parent) && rankingEnabled(parent.tournamentId)
         && next.lastChange is number && next.locked is bool
         && next.rankingLastChange is string && next.rankingLastChange.size() > 0
         && next.rankedRefereeAttendeeIds is list
@@ -205,17 +216,20 @@ service cloud.firestore {
         && (!relevant || parent.panelResultState == 'NOT_COMPUTED' || getAfter(parentPath).data.panelResultState == 'STALE');
     }
 
-    // A valid contributing owner action may dirty only freshness and actor metadata in the same batch.
+    // Link a contributing target vote to its actual editor, without replacing parent configuration or output.
     function validIndividualFreshnessChange() {
       let old = resource.data;
       let next = request.resource.data;
-      let id = rankingVoteId(old.id, next.updatedByCoachAttendeeId);
+      let id = rankingVoteId(old.id, next.updatedCoachAttendeeId);
       let path = /databases/$(database)/documents/coach-referees-ranking/$(id);
       let before = exists(path) ? get(path).data : null;
       let after = getAfter(path).data;
-      return next.diff(old).affectedKeys().hasOnly(['panelResultState', 'updatedByCoachAttendeeId', 'lastChange'])
+      return next.diff(old).affectedKeys().hasOnly(['panelResultState', 'updatedByCoachAttendeeId',
+          'updatedCoachAttendeeId', 'lastChange'])
         && old.panelResultState != 'NOT_COMPUTED' && next.panelResultState == 'STALE' && next.lastChange is number
-        && next.updatedByCoachAttendeeId in old.selectedCoachAttendeeIds
+        && next.updatedCoachAttendeeId in old.selectedCoachAttendeeIds
+        && after.updatedByCoachAttendeeId == next.updatedByCoachAttendeeId
+        && after.lastChange == next.lastChange
         && validIndividualRecord(id, after, before, old)
         && individualVoteChanged(before, after);
     }

@@ -8,7 +8,7 @@ import {
 import { moveRankedReferee } from './ranking-me-state';
 import { RankingMeComponent } from './ranking-me.component';
 
-describe('Me ranking interactions', () => {
+describe('Coach ranking interactions', () => {
   const parent = {
     ...createTournamentRefereeRanking('t', 'coach', 'Finals'),
     id: 'ranking',
@@ -32,6 +32,9 @@ describe('Me ranking interactions', () => {
     const fixture = TestBed.createComponent(RankingMeComponent);
     fixture.componentRef.setInput('ranking', parent);
     fixture.componentRef.setInput('referees', referees);
+    fixture.componentRef.setInput('coachId', 'coach');
+    fixture.componentRef.setInput('coachName', 'Coach');
+    fixture.componentRef.setInput('authorized', true);
     fixture.detectChanges();
     return fixture;
   }
@@ -50,7 +53,7 @@ describe('Me ranking interactions', () => {
     fixture.componentRef.setInput('ranking', { ...parent, status: 'CONFIGURE' });
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ranking-lists')).toBeNull();
-    expect(fixture.nativeElement.querySelector('#own-ranking-lock')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#coach-ranking-lock')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Move to step Individual ranking');
     fixture.componentRef.setInput('ranking', parent);
     fixture.detectChanges();
@@ -114,7 +117,7 @@ describe('Me ranking interactions', () => {
     const component = fixture.componentInstance;
     fixture.componentRef.setInput(
       'individual',
-      prepareIndividualRanking(parent, null, 'coach', { rankedRefereeAttendeeIds: ['a'] }).individual,
+      prepareIndividualRanking(parent, null, 'coach', 'coach', { rankedRefereeAttendeeIds: ['a'] }).individual,
     );
     fixture.detectChanges();
     const emit = spyOn(component.changes, 'emit');
@@ -133,19 +136,19 @@ describe('Me ranking interactions', () => {
     const fixture = setup();
     const component = fixture.componentInstance;
     const emit = spyOn(component.changes, 'emit');
-    (fixture.nativeElement.querySelector('#own-ranking-lock') as HTMLInputElement).click();
+    (fixture.nativeElement.querySelector('#coach-ranking-lock') as HTMLInputElement).click();
     expect(emit).toHaveBeenCalledWith({ locked: true });
     fixture.detectChanges();
-    expect((fixture.nativeElement.querySelector('#own-ranking-lock') as HTMLInputElement).checked).toBeFalse();
+    expect((fixture.nativeElement.querySelector('#coach-ranking-lock') as HTMLInputElement).checked).toBeFalse();
     fixture.componentRef.setInput(
       'individual',
-      prepareIndividualRanking(parent, null, 'coach', { locked: true }).individual,
+      prepareIndividualRanking(parent, null, 'coach', 'coach', { locked: true }).individual,
     );
     fixture.detectChanges();
     emit.calls.reset();
     component.move('a', 0);
     expect(emit).not.toHaveBeenCalled();
-    (fixture.nativeElement.querySelector('#own-ranking-lock') as HTMLInputElement).click();
+    (fixture.nativeElement.querySelector('#coach-ranking-lock') as HTMLInputElement).click();
     expect(emit).toHaveBeenCalledWith({ locked: false });
   });
 
@@ -154,23 +157,25 @@ describe('Me ranking interactions', () => {
     const component = fixture.componentInstance;
     fixture.componentRef.setInput(
       'individual',
-      prepareIndividualRanking(parent, null, 'coach', { rankedRefereeAttendeeIds: ['a', 'b'] }).individual,
+      prepareIndividualRanking(parent, null, 'coach', 'coach', { rankedRefereeAttendeeIds: ['a', 'b'] }).individual,
     );
     fixture.detectChanges();
     const emit = spyOn(component.changes, 'emit');
     const source = fixture.nativeElement.querySelector('[aria-label="Unranked referees"] .referee-row') as HTMLElement;
     const rankedRows = fixture.nativeElement.querySelectorAll(
-      '[aria-label="My ranked referees"] .referee-row',
+      '[aria-label="Coach ranked referees"] .referee-row',
     ) as NodeListOf<HTMLElement>;
     const transfer = new DataTransfer();
     const preview = spyOn(transfer, 'setDragImage');
     const bounds = source.getBoundingClientRect();
-    source.dispatchEvent(new DragEvent('dragstart', {
-      bubbles: true,
-      dataTransfer: transfer,
-      clientX: bounds.left + 10,
-      clientY: bounds.top + 10,
-    }));
+    source.dispatchEvent(
+      new DragEvent('dragstart', {
+        bubbles: true,
+        dataTransfer: transfer,
+        clientX: bounds.left + 10,
+        clientY: bounds.top + 10,
+      }),
+    );
     expect(preview.calls.mostRecent().args[0] instanceof HTMLCanvasElement).toBeTrue();
     const dragImage = document.querySelector('.referee-drag-preview') as HTMLElement;
     expect(dragImage).not.toBe(source);
@@ -182,12 +187,14 @@ describe('Me ranking interactions', () => {
     expect(getComputedStyle(dragImage).opacity).toBe('1');
     expect(getComputedStyle(dragImage).pointerEvents).toBe('none');
     expect(dragImage.inert).toBeTrue();
-    rankedRows[1].dispatchEvent(new DragEvent('dragover', {
-      bubbles: true,
-      cancelable: true,
-      clientX: 300,
-      clientY: 200,
-    }));
+    rankedRows[1].dispatchEvent(
+      new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+        clientX: 300,
+        clientY: 200,
+      }),
+    );
     expect(dragImage.style.transform).toBe('translate(290px, 190px)');
     fixture.detectChanges();
     expect(getComputedStyle(rankedRows[1]).marginTop).toBe('30px');
@@ -210,7 +217,7 @@ describe('Me ranking interactions', () => {
     expect(emit).not.toHaveBeenCalled();
     const handles = fixture.nativeElement.querySelectorAll('.drag-handle') as NodeListOf<HTMLElement>;
     expect(handles.length).toBe(2);
-    expect(fixture.nativeElement.querySelector('[aria-label="My ranked referees"] button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[aria-label="Coach ranked referees"] button')).toBeNull();
     expect(handles[0].querySelector('.pi-equals')).not.toBeNull();
     handles[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     expect(emit).toHaveBeenCalledWith({ rankedRefereeAttendeeIds: ['b', 'a'] });
@@ -248,7 +255,7 @@ describe('Me ranking interactions', () => {
     fixture.componentRef.setInput('referees', []);
     fixture.componentRef.setInput(
       'individual',
-      prepareIndividualRanking(parent, null, 'coach', { rankedRefereeAttendeeIds: ['a'] }).individual,
+      prepareIndividualRanking(parent, null, 'coach', 'coach', { rankedRefereeAttendeeIds: ['a'] }).individual,
     );
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Deleted referee');
@@ -256,5 +263,37 @@ describe('Me ranking interactions', () => {
     fixture.componentRef.setInput('ranking', { ...parent, selectedRefereeAttendeeIds: [] });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent.trim()).toBe('Configure referees first');
+  });
+
+  it('disables every mutation when the actor cannot edit the selected coach, while keeping the vote visible', () => {
+    const fixture = setup();
+    fixture.componentRef.setInput(
+      'individual',
+      prepareIndividualRanking(parent, null, 'coach', 'coach', { rankedRefereeAttendeeIds: ['a'] }).individual,
+    );
+    fixture.componentRef.setInput('authorized', false);
+    fixture.detectChanges();
+    const emit = spyOn(fixture.componentInstance.changes, 'emit');
+    expect(fixture.nativeElement.textContent).toContain('requires both coaches to be selected');
+    expect(fixture.nativeElement.textContent).toContain('Coach ranking (1 / 2)');
+    expect((fixture.nativeElement.querySelector('#coach-ranking-lock') as HTMLInputElement).disabled).toBeTrue();
+    expect(
+      (fixture.nativeElement.querySelector('button[aria-label^="Add "]') as HTMLButtonElement).disabled,
+    ).toBeTrue();
+    fixture.componentInstance.move('a', null);
+    fixture.componentInstance.toggleLock(true);
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it('cancels a drag when switching between coaches without records and shows an empty-target explanation', () => {
+    const fixture = setup();
+    fixture.componentInstance.startDrag(new DragEvent('dragstart'), 'a');
+    fixture.componentRef.setInput('coachId', 'other');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.dragging()).toBeNull();
+    fixture.componentRef.setInput('coachId', '');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent.trim()).toBe('Configure coaches first');
+    expect(fixture.nativeElement.querySelector('.ranking-lists')).toBeNull();
   });
 });

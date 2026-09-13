@@ -116,3 +116,15 @@ test('a failed transaction commit does not persist the parent or any earlier que
   } finally { db.runTransaction = original; }
   assert.deepEqual(await snapshot('failed-commit'), initial);
 });
+
+test('maintenance preserves delegated editor and target metadata without inventing legacy actors', async () => {
+  await seed('delegated-metadata', { updatedCoachAttendeeId: 'practice' });
+  await children.doc('delegated-metadata-practice').update({ updatedByCoachAttendeeId: 'previous-editor' });
+  const result = await maintainRanking(request('delegated-metadata', ['ma']), true);
+  assert.equal(result.ranking.updatedCoachAttendeeId, 'practice');
+  assert.equal(result.coachRankings.find(record => record.coachAttendeeId === 'practice').updatedByCoachAttendeeId, 'previous-editor');
+  assert.equal(result.coachRankings.find(record => record.coachAttendeeId === 'maintainer').updatedByCoachAttendeeId, undefined);
+  const persisted = await snapshot('delegated-metadata');
+  assert.equal(persisted.parent.updatedCoachAttendeeId, 'practice');
+  assert.equal(persisted.records.find(record => record.coachAttendeeId === 'practice').updatedByCoachAttendeeId, 'previous-editor');
+});

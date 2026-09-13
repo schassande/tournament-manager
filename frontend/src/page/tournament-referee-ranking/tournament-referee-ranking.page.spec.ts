@@ -284,28 +284,28 @@ describe('tournament ranking page shell', () => {
     expect(page.pendingCoachChanges()).toBeNull();
   });
 
-  it('adds through the real Me tab button and displays the committed vote in My ranking', () => {
+  it('adds through the real Coach Ranking tab button and displays the committed vote for the chosen coach', () => {
     const current = { ...parent, status: 'INDIVIDUAL_RANKING' as const, selectedRefereeAttendeeIds: ['full'] };
     rankings.findByTournament.and.returnValue(of([current]));
-    individual.saveIndividual.and.callFake((ranking, previous, coachId, changes) =>
-      of(prepareIndividualRanking(ranking, previous, coachId, changes)),
+    individual.saveIndividual.and.callFake((ranking, previous, actorId, targetId, changes) =>
+      of(prepareIndividualRanking(ranking, previous, actorId, targetId, changes)),
     );
     const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
     fixture.detectChanges();
     const tabs = Array.from(fixture.nativeElement.querySelectorAll('[role="tab"]')) as HTMLElement[];
-    tabs.find((tab) => tab.textContent?.trim() === 'Me')!.click();
+    tabs.find((tab) => tab.textContent?.trim() === 'Coach Ranking')!.click();
     fixture.detectChanges();
     const add = fixture.nativeElement.querySelector('app-ranking-me button[aria-label^="Add "]') as HTMLButtonElement;
     expect(add.disabled).toBeFalse();
     add.click();
     fixture.detectChanges();
-    expect(individual.saveIndividual).toHaveBeenCalledOnceWith(current, null, 'coach', {
+    expect(individual.saveIndividual).toHaveBeenCalledOnceWith(current, null, 'coach', 'coach', {
       rankedRefereeAttendeeIds: ['full'],
     });
-    expect(fixture.componentInstance.ownRanking()?.rankedRefereeAttendeeIds).toEqual(['full']);
+    expect(fixture.componentInstance.selectedCoachRanking()?.rankedRefereeAttendeeIds).toEqual(['full']);
     expect(
-      fixture.nativeElement.querySelector('app-ranking-me [aria-label="My ranked referees"]').textContent,
-    ).toContain('My ranking (1 / 15)');
+      fixture.nativeElement.querySelector('app-ranking-me [aria-label="Coach ranked referees"]').textContent,
+    ).toContain('coach ranking (1 / 15)');
     expect(fixture.nativeElement.querySelector('app-ranking-me button[aria-label^="Add "]')).toBeNull();
   });
 
@@ -325,12 +325,12 @@ describe('tournament ranking page shell', () => {
     const response = new Subject<ReturnType<typeof prepareIndividualRanking>>();
     individual.saveIndividual.and.returnValue(response);
     page.saveIndividual({ locked: true });
-    expect(individual.saveIndividual).toHaveBeenCalledOnceWith(current, null, 'coach', { locked: true });
-    expect(page.ownRanking()).toBeNull();
+    expect(individual.saveIndividual).toHaveBeenCalledOnceWith(current, null, 'coach', 'coach', { locked: true });
+    expect(page.selectedCoachRanking()).toBeNull();
     expect(page.selectedRanking()?.panelResultState).toBe('CURRENT');
-    response.next(prepareIndividualRanking(current, null, 'coach', { locked: true }));
+    response.next(prepareIndividualRanking(current, null, 'coach', 'coach', { locked: true }));
     response.complete();
-    expect(page.ownRanking()?.locked).toBeTrue();
+    expect(page.selectedCoachRanking()?.locked).toBeTrue();
     expect(page.selectedRanking()?.panelResultState).toBe('STALE');
     expect(page.saving()).toBeFalse();
   });
@@ -345,7 +345,7 @@ describe('tournament ranking page shell', () => {
     page.rankings.set([{ ...parent, status: 'INDIVIDUAL_RANKING', selectedRefereeAttendeeIds: ['full'] }]);
     individual.saveIndividual.and.returnValue(throwError(() => new Error('denied')));
     page.saveIndividual({ rankedRefereeAttendeeIds: ['full'] });
-    expect(page.ownRanking()).toBeNull();
+    expect(page.selectedCoachRanking()).toBeNull();
     expect(page.error()).toContain('previous order and lock are unchanged');
     expect(page.saving()).toBeFalse();
   });
@@ -362,5 +362,142 @@ describe('tournament ranking page shell', () => {
     page.retryCoachRankings();
     expect(rankings.repairRanking).not.toHaveBeenCalled();
     expect(page.selectedRanking()?.selectedRefereeAttendeeIds).toEqual(['deleted']);
+  });
+
+  it('selects an accountless coach through PrimeNG and saves that target without changing the actor vote or querying again', async () => {
+    const target = {
+      id: 'target',
+      tournamentId: 't',
+      isRefereeCoach: true,
+      person: { shortName: 'Target coach' },
+    } as Attendee;
+    const current = {
+      ...parent,
+      status: 'PANEL_RANKING' as const,
+      selectedCoachAttendeeIds: ['coach', 'target'],
+      selectedRefereeAttendeeIds: ['full'],
+      panelResultState: 'CURRENT' as const,
+    };
+    const actorVote = prepareIndividualRanking(current, null, 'coach', 'coach', { locked: false }).individual;
+    attendees.findTournamentRefereeCoaches.and.returnValue(of([target, coach]));
+    rankings.findByTournament.and.returnValue(of([current]));
+    individual.findByRanking.and.returnValue(of([actorVote]));
+    individual.saveIndividual.and.callFake((ranking, previous, actorId, targetId, changes) =>
+      of(prepareIndividualRanking(ranking, previous, actorId, targetId, changes)),
+    );
+    queryParams.next(convertToParamMap({ tab: 'me' }));
+    const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(page.selectedCoach()?.id).toBe('coach');
+    (fixture.nativeElement.querySelector('#ranking-coach-select') as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(
+      (item) => item.textContent?.trim() === 'Target coach',
+    )!;
+    expect(option).toBeDefined();
+    option.click();
+    fixture.detectChanges();
+    expect(page.selectedCoach()?.id).toBe('target');
+    expect(page.selectedCoachRanking()).toBeNull();
+    expect(individual.saveIndividual).not.toHaveBeenCalled();
+    (fixture.nativeElement.querySelector('app-ranking-me button[aria-label^="Add "]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(individual.saveIndividual).toHaveBeenCalledOnceWith(current, null, 'coach', 'target', {
+      rankedRefereeAttendeeIds: ['full'],
+    });
+    expect(page.selectedCoachRanking()?.updatedByCoachAttendeeId).toBe('coach');
+    expect(page.coachRankings().find((item) => item.coachAttendeeId === 'coach')).toBe(actorVote);
+    expect(fixture.nativeElement.textContent).toContain('Target coach ranking (1 / 15)');
+    (fixture.nativeElement.querySelector('#coach-ranking-lock') as HTMLInputElement).click();
+    fixture.detectChanges();
+    expect(page.selectedRanking()?.panelResultState).toBe('STALE');
+    expect(page.selectedRanking()?.updatedByCoachAttendeeId).toBe('coach');
+    expect(page.selectedRanking()?.updatedCoachAttendeeId).toBe('target');
+    expect(individual.findByRanking).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps target selection during pending or failed saves, and falls back after membership or parent changes', () => {
+    spyOn(console, 'error');
+    const target = { id: 'target', tournamentId: 't', isRefereeCoach: true } as Attendee;
+    const current = {
+      ...parent,
+      status: 'INDIVIDUAL_RANKING' as const,
+      selectedCoachAttendeeIds: ['coach', 'target'],
+      selectedRefereeAttendeeIds: ['full'],
+    };
+    attendees.findTournamentRefereeCoaches.and.returnValue(of([coach, target]));
+    rankings.findByTournament.and.returnValue(of([current, { ...current, id: 'second' }]));
+    const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+    page.coachSelection.setValue('target');
+    const response = new Subject<ReturnType<typeof prepareIndividualRanking>>();
+    individual.saveIndividual.and.returnValue(response);
+    page.saveIndividual({ locked: true });
+    fixture.detectChanges();
+    expect(page.coachSelection.disabled).toBeTrue();
+    page.selectCoach('coach');
+    expect(page.selectedCoach()?.id).toBe('target');
+    response.error(new Error('offline'));
+    fixture.detectChanges();
+    expect(page.coachSelection.disabled).toBeFalse();
+    expect(page.selectedCoachRanking()).toBeNull();
+    expect(page.selectedCoach()?.id).toBe('target');
+    page.rankings.update((items) => items.map((item) => ({ ...item, selectedCoachAttendeeIds: ['coach'] })));
+    fixture.detectChanges();
+    expect(page.selectedCoach()?.id).toBe('coach');
+    page.rankings.set([current, { ...current, id: 'second' }]);
+    fixture.detectChanges();
+    expect(page.selectedCoach()?.id).toBe('coach');
+    page.selectCoach('target');
+    page.rankingSelection.setValue('second');
+    fixture.detectChanges();
+    expect(page.selectedCoach()?.id).toBe('coach');
+    expect(individual.findByRanking).toHaveBeenCalledTimes(2);
+  });
+
+  it('allows non-panel own practice but shows selected coaches read-only, excluding invalid target attendees', () => {
+    queryParams.next(convertToParamMap({ tab: 'me' }));
+    const target = { id: 'target', tournamentId: 't', isRefereeCoach: true } as Attendee;
+    const current = {
+      ...parent,
+      status: 'PANEL_RANKING' as const,
+      selectedCoachAttendeeIds: ['target', 'foreign', 'not-coach'],
+      selectedRefereeAttendeeIds: ['full'],
+    };
+    attendees.findTournamentRefereeCoaches.and.returnValue(
+      of([
+        target,
+        coach,
+        { ...target, id: 'foreign', tournamentId: 'other' },
+        { ...target, id: 'not-coach', isRefereeCoach: false },
+      ]),
+    );
+    rankings.findByTournament.and.returnValue(of([current]));
+    individual.saveIndividual.and.callFake((ranking, previous, actorId, targetId, changes) =>
+      of(prepareIndividualRanking(ranking, previous, actorId, targetId, changes)),
+    );
+    const fixture = TestBed.createComponent(TournamentRefereeRankingComponent);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(page.coachOptions().map((item) => item.id)).toEqual(['coach', 'target']);
+    expect(page.canEditSelectedCoach()).toBeTrue();
+    page.saveIndividual({ locked: true });
+    expect(page.selectedCoachRanking()?.locked).toBeTrue();
+    page.selectCoach('target');
+    fixture.detectChanges();
+    expect(page.canEditSelectedCoach()).toBeFalse();
+    page.saveIndividual({ locked: true });
+    expect(individual.saveIndividual).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.textContent).toContain('requires both coaches to be selected');
+    page.coaches.set([target]);
+    fixture.detectChanges();
+    expect(page.selectedCoach()?.id).toBe('target');
+    page.coaches.set([]);
+    fixture.detectChanges();
+    expect(page.selectedCoach()).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Configure coaches first');
   });
 });

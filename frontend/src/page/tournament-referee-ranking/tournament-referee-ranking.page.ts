@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -10,6 +10,7 @@ import { TabsModule } from 'primeng/tabs';
 import { catchError, EMPTY, finalize, forkJoin, map, Observable, of, Subject, switchMap, take, tap } from 'rxjs';
 import {
   Attendee,
+  canEditCoachRanking,
   CoachRefereesRanking,
   createTournamentRefereeRanking,
   RefereeRankingStatus,
@@ -32,6 +33,12 @@ import { TournamentRefereeRankingService } from '../../service/tournament-refere
 import { TournamentService } from '../../service/tournament.service';
 import { UserService } from '../../service/user.service';
 
+/** Account-independent identity displayed in the coach selector and ranking heading. */
+interface RankingCoachOption {
+  id: string;
+  label: string;
+}
+
 /** Page-owned ranking context shared by all four tabs without per-tab reads. */
 @Component({
   selector: 'app-tournament-referee-ranking',
@@ -53,6 +60,7 @@ import { UserService } from '../../service/user.service';
 })
 export class TournamentRefereeRankingComponent {
   readonly rankingSelection = new FormControl<string | null>(null);
+  readonly coachSelection = new FormControl<string | null>(null);
   readonly newName = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required, Validators.pattern(/\S/)],
@@ -92,6 +100,7 @@ export class TournamentRefereeRankingComponent {
   readonly createDialog = signal(false);
   readonly pendingRemoval = signal<string[]>([]);
   readonly pendingCoachChanges = signal<RankingCoachChanges | null>(null);
+  private readonly requestedCoach = signal<{ rankingId: string | null; coachId: string | null } | null>(null);
 
   readonly attendeesById = computed(
     () => new Map([...this.referees(), ...this.coaches()].map((attendee) => [attendee.id, attendee])),
@@ -103,9 +112,37 @@ export class TournamentRefereeRankingComponent {
     const ranking = this.selectedRanking();
     return ranking ? refereeRankingTransitions(ranking) : [];
   });
-  readonly ownRanking = computed(
-    () => this.coachRankings().find((item) => item.coachAttendeeId === this.currentCoach()?.id) ?? null,
+  readonly coachOptions = computed(() => {
+    const ranking = this.selectedRanking();
+    return this.coaches()
+      .filter(
+        (coach) =>
+          coach.isRefereeCoach &&
+          coach.tournamentId === ranking?.tournamentId &&
+          (ranking.selectedCoachAttendeeIds.includes(coach.id) || coach.id === this.currentCoach()?.id),
+      )
+      .map((coach) => ({ id: coach.id, label: this.coachLabel(coach) }))
+      .sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
+  });
+  readonly selectedCoach = computed<RankingCoachOption | null>(() => {
+    const options = this.coachOptions();
+    const requested = this.requestedCoach();
+    const chosen =
+      requested?.rankingId === this.selectedId() ? options.find((coach) => coach.id === requested?.coachId) : undefined;
+    return chosen ?? options.find((coach) => coach.id === this.currentCoach()?.id) ?? options[0] ?? null;
+  });
+  readonly selectedCoachRanking = computed(
+    () => this.coachRankings().find((item) => item.coachAttendeeId === this.selectedCoach()?.id) ?? null,
   );
+  readonly canEditSelectedCoach = computed(() => {
+    const ranking = this.selectedRanking();
+    return (
+      this.allowed() &&
+      !!ranking &&
+      canEditCoachRanking(ranking, this.currentCoach()?.id ?? '', this.selectedCoach()?.id ?? '')
+    );
+  });
+  readonly coachSelectionDisabled = computed(() => this.saving() || this.loadingCoaches() || !!this.coachError());
 
   /** Installs page-level loaders; switching context cancels obsolete reads. */
   constructor() {
@@ -115,6 +152,18 @@ export class TournamentRefereeRankingComponent {
     });
     this.watchRankingSelection();
     this.rankingSelection.valueChanges.pipe(takeUntilDestroyed()).subscribe((id) => this.selectRanking(id));
+    this.coachSelection.valueChanges.pipe(takeUntilDestroyed()).subscribe((id) => this.selectCoach(id));
+    effect(() => {
+      const coachId = this.selectedCoach()?.id ?? null;
+      const rankingId = this.selectedId();
+      const requested = this.requestedCoach();
+      // Persist fallbacks locally so a removed target is not restored when membership changes again.
+      if (requested?.rankingId !== rankingId || requested?.coachId !== coachId)
+        this.requestedCoach.set({ rankingId, coachId });
+      this.coachSelection.setValue(coachId, { emitEvent: false });
+      if (this.coachSelectionDisabled()) this.coachSelection.disable({ emitEvent: false });
+      else this.coachSelection.enable({ emitEvent: false });
+    });
     this.route.paramMap
       .pipe(
         switchMap((params) => this.loadTournament(params.get('tournamentId') ?? '')),
@@ -134,14 +183,24 @@ export class TournamentRefereeRankingComponent {
     });
   }
 
-  /** Saves only the current coach's action, accepting the vote and freshness together after commit. */
+  /** Changes the viewed target without writes or extra reads, retaining selection while a save is pending. */
+  selectCoach(coachId: string | null): void {
+    if (!this.coachSelectionDisabled() && this.coachOptions().some((coach) => coach.id === coachId))
+      this.requestedCoach.set({ rankingId: this.selectedId(), coachId });
+    this.coachSelection.setValue(this.selectedCoach()?.id ?? null, { emitEvent: false });
+  }
+
+  /** Saves the selected target as the authenticated actor, accepting shared data only after commit. */
   saveIndividual(changes: IndividualRankingChanges): void {
     const ranking = this.selectedRanking();
     const coach = this.currentCoach();
+    const target = this.selectedCoach();
     if (
       !this.allowed() ||
       !ranking ||
       !coach ||
+      !target ||
+      !this.canEditSelectedCoach() ||
       this.saving() ||
       this.loadingCoaches() ||
       this.coachError() ||
@@ -152,7 +211,7 @@ export class TournamentRefereeRankingComponent {
     this.saving.set(true);
     this.error.set('');
     this.coachRankingService
-      .saveIndividual(ranking, this.ownRanking(), coach.id, changes)
+      .saveIndividual(ranking, this.selectedCoachRanking(), coach.id, target.id, changes)
       .pipe(
         finalize(() => this.saving.set(false)),
         takeUntilDestroyed(this.destroyRef),
@@ -161,7 +220,15 @@ export class TournamentRefereeRankingComponent {
         next: (saved) => {
           this.rankings.update((items) =>
             items.map((item) =>
-              item.id === ranking.id ? { ...item, panelResultState: saved.panelResultState } : item,
+              item.id === ranking.id && saved.panelResultState !== ranking.panelResultState
+                ? {
+                    ...item,
+                    panelResultState: saved.panelResultState,
+                    updatedByCoachAttendeeId: coach.id,
+                    updatedCoachAttendeeId: target.id,
+                    lastChange: saved.individual.lastChange,
+                  }
+                : item,
             ),
           );
           if (this.selectedId() === ranking.id)
@@ -173,7 +240,7 @@ export class TournamentRefereeRankingComponent {
         error: (error: unknown) => {
           console.error('[Referee ranking] Individual save failed', error);
           this.error.set(
-            'Your ranking could not be saved. The previous order and lock are unchanged. Please try again.',
+            'The coach ranking could not be saved. The previous order and lock are unchanged. Please try again.',
           );
         },
       });
@@ -356,6 +423,15 @@ export class TournamentRefereeRankingComponent {
       });
   }
 
+  /** Uses the coach short name, then full name or attendee ID when identity details are incomplete. */
+  private coachLabel(coach: Attendee): string {
+    return (
+      coach.person?.shortName?.trim() ||
+      `${coach.person?.firstName ?? ''} ${coach.person?.lastName?.toUpperCase() ?? ''}`.trim() ||
+      coach.id
+    );
+  }
+
   /** Replaces page-owned records only for the still-selected parent. */
   private acceptMaintenance(response: RankingMaintenanceResponse): void {
     this.rankings.update((items) => items.map((item) => (item.id === response.ranking.id ? response.ranking : item)));
@@ -453,6 +529,7 @@ export class TournamentRefereeRankingComponent {
     this.pendingRemoval.set([]);
     this.pendingCoachChanges.set(null);
     this.selectedId.set(id);
+    this.requestedCoach.set(null);
     this.rankingSelection.setValue(id, { emitEvent: false });
     this.selectedRankingRequests.next(id);
   }

@@ -21,7 +21,7 @@ import {
 } from '@tournament-manager/persistent-data-model';
 import { compareUnrankedReferees, moveRankedReferee, rankingRefereeLabel } from './ranking-me-state';
 
-/** Own ranking UI; the page commits changes and shares the result with other tabs. */
+/** Selected coach ranking editor; the page controls authorization and commits shared changes. */
 @Component({
   selector: 'app-ranking-me',
   imports: [ReactiveFormsModule, ButtonModule, ToggleSwitchModule],
@@ -33,13 +33,20 @@ export class RankingMeComponent {
   readonly ranking = input.required<TournamentRefereeRanking>();
   readonly referees = input.required<Attendee[]>();
   readonly individual = input<CoachRefereesRanking | null>(null);
+  readonly coachId = input('');
+  readonly coachName = input('');
+  readonly authorized = input(false);
   readonly busy = input(false);
   readonly changes = output<IndividualRankingChanges>();
   readonly lockControl = new FormControl(false, { nonNullable: true });
   readonly dragging = signal<string | null>(null);
   readonly dropIndex = signal<number | null>(null);
   readonly editable = computed(
-    () => !this.busy() && ['INDIVIDUAL_RANKING', 'PANEL_RANKING'].includes(this.ranking().status),
+    () =>
+      !!this.coachId() &&
+      this.authorized() &&
+      !this.busy() &&
+      ['INDIVIDUAL_RANKING', 'PANEL_RANKING'].includes(this.ranking().status),
   );
   readonly canReorder = computed(() => this.editable() && !this.individual()?.locked);
   readonly order = computed(() => this.individual()?.rankedRefereeAttendeeIds ?? []);
@@ -65,6 +72,7 @@ export class RankingMeComponent {
       if (this.editable()) this.lockControl.enable({ emitEvent: false });
       else this.lockControl.disable({ emitEvent: false });
       this.ranking();
+      this.coachId();
       this.cancelDrag();
     });
   }
@@ -74,7 +82,7 @@ export class RankingMeComponent {
     return this.byId().get(id) ?? ({ id } as Attendee);
   }
 
-  /** Proposes the owner lock action and retains the committed toggle until persistence succeeds. */
+  /** Proposes the target lock action and retains the committed toggle until persistence succeeds. */
   toggleLock(locked: boolean, event?: Event): void {
     // Native checkbox state changes before Angular's unchanged-value binding can restore it.
     if (event?.target instanceof HTMLInputElement) event.target.checked = this.individual()?.locked ?? false;
@@ -184,7 +192,6 @@ export class RankingMeComponent {
   private positionDragPreview(event: DragEvent): void {
     if (!this.dragPreview) return;
     this.dragPreview.style.visibility = 'visible';
-    this.dragPreview.style.transform =
-      `translate(${event.clientX - this.dragOffset.x}px, ${event.clientY - this.dragOffset.y}px)`;
+    this.dragPreview.style.transform = `translate(${event.clientX - this.dragOffset.x}px, ${event.clientY - this.dragOffset.y}px)`;
   }
 }

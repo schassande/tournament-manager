@@ -239,7 +239,11 @@ Les tests de règles et de transactions utilisent exclusivement l'émulateur loc
 firebase emulators:exec --only firestore --project demo-ranking-stage1 --config firebase.ranking-test.json "node --test tests/firestore/referee-ranking.test.cjs tests/firestore/referee-ranking-maintenance.test.cjs"
 ```
 
-Les tests Angular de la fonctionnalité sont dans `src/page/tournament-referee-ranking/`, `src/component/ranking-referees/` et `src/service/referee-ranking-model.spec.ts` (commande ng test depuis frontend avec --watch=false et les --include correspondants).
+Les tests Angular de la fonctionnalité sont dans `src/page/tournament-referee-ranking/`, `src/component/ranking-referees/`, `src/component/ranking-coaches/`, `src/component/ranking-me/`, `src/service/individual-ranking-model.spec.ts` et `src/service/referee-ranking-model.spec.ts` (commande ng test depuis frontend avec --watch=false et les --include correspondants). Coach Ranking conserve le nom interne ranking-me et la valeur URL `tab=me` pour préserver les liens existants.
+
+La révision Coach Ranking du 2026-09-13 ajoute des vérifications de sélection PrimeNG, de sauvegarde pour un coach sans compte, d'entraînement personnel hors panel, de métadonnées auteur/cible, de rétrocompatibilité des documents et de refus des écritures déléguées non autorisées. Les tests de maintenance vérifient également la conservation des nouvelles métadonnées.
+
+Pour activer cette révision, publier les règles Firestore correspondantes avant le frontend modifié, puis recharger les clients déjà ouverts. Les anciennes versions du frontend ne fournissent pas updatedByCoachAttendeeId sur les votes individuels et leurs sauvegardes sont refusées par les nouvelles règles. Les documents existants restent lisibles sans migration. Aucun nouveau déploiement Functions n'est nécessaire pour cette révision ; les callables existantes conservent les métadonnées. La commande de déploiement des règles reste celle ci-dessous.
 
 Pour activer les retraits et la réparation dans l'environnement Firebase, déployer les deux callables en plus des règles. La configuration racine contient les Functions ; la configuration de test référence les règles Firestore et permet aussi leur déploiement explicite :
 

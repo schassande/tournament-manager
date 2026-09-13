@@ -4,11 +4,15 @@
   <p role="status">
     Move to step Individual ranking using the button at the top of the page to enable Add and drag-and-drop.
   </p>
+} @else if (!coachId()) {
+  <p>Configure coaches first</p>
 } @else {
   @if (ranking().status === 'CLOSED') {
     <p role="status">This ranking is closed and cannot be edited.</p>
+  } @else if (!authorized()) {
+    <p role="status">Editing another coach's ranking requires both coaches to be selected in Coaches.</p>
   } @else if (individual()?.locked) {
-    <p role="status">Unlock My ranking using the padlock toggle to enable Add and drag-and-drop.</p>
+    <p role="status">Unlock this coach's ranking using the padlock toggle to enable Add and drag-and-drop.</p>
   }
   <div class="ranking-lists">
     <section aria-label="Unranked referees">
@@ -34,16 +38,16 @@
         }
       </div>
     </section>
-    <section aria-label="My ranked referees">
+    <section aria-label="Coach ranked referees">
       <div class="ranking-header">
-        <h3>My ranking ({{ order().length }} / {{ ranking().nbRefereesToRank }})</h3>
+        <h3>{{ coachName() }} ranking ({{ order().length }} / {{ ranking().nbRefereesToRank }})</h3>
         <div class="lock-row">
           <p-toggleswitch
-            inputId="own-ranking-lock"
-            ariaLabel="Lock my ranking"
+            inputId="coach-ranking-lock"
+            [ariaLabel]="'Lock ranking for ' + coachName()"
             [formControl]="lockControl"
             (onChange)="toggleLock($event.checked, $event.originalEvent)" />
-          <label for="own-ranking-lock" [title]="individual()?.locked ? 'Ranking locked' : 'Ranking unlocked'">
+          <label for="coach-ranking-lock" [title]="individual()?.locked ? 'Ranking locked' : 'Ranking unlocked'">
             <i
               class="pi"
               [class.pi-lock]="individual()?.locked"
@@ -55,8 +59,7 @@
       <div class="scroll-list ranked-list" (drop)="dropRanked($event, dropIndex() ?? order().length)">
         @for (index of slots(); track index) {
           @if (index === ranking().nbRefereesToRank) {
-            <div class="target-separator" role="separator" aria-label="Ranking target">
-            </div>
+            <div class="target-separator" role="separator" aria-label="Ranking target"></div>
           }
           <div
             class="referee-row"

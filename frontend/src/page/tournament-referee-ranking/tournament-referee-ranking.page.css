@@ -56,6 +56,14 @@
   margin-left: auto;
 }
 
+.coach-selection {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 .saving-message {
   flex: 0 0 9rem;
   min-height: 1.25rem;

@@ -1,7 +1,7 @@
 import { PersistentObject } from './persistence';
 import { Attendee } from './tournament';
 
-/** One individual action: edit the dense order or change the owner's lock. */
+/** One individual action: edit the target coach's dense order or change their lock. */
 export type IndividualRankingChanges =
   { rankedRefereeAttendeeIds: string[]; locked?: never } | { locked: boolean; rankedRefereeAttendeeIds?: never };
 
@@ -11,25 +11,43 @@ export interface IndividualRankingSave {
   panelResultState: PanelResultState;
 }
 
-/** Builds an owner-only action without altering inputs, preserving the ranking time on lock-only changes. */
+/** Checks panel membership for delegated edits; own practice remains allowed. Identity is verified by the caller. */
+export function canEditCoachRanking(
+  parent: TournamentRefereeRanking,
+  actorCoachAttendeeId: string,
+  targetCoachAttendeeId: string,
+): boolean {
+  return (
+    !!actorCoachAttendeeId &&
+    !!targetCoachAttendeeId &&
+    (actorCoachAttendeeId === targetCoachAttendeeId ||
+      (parent.selectedCoachAttendeeIds.includes(actorCoachAttendeeId) &&
+        parent.selectedCoachAttendeeIds.includes(targetCoachAttendeeId)))
+  );
+}
+
+/** Builds a target vote with the actual editor, preserving ranking time on lock-only changes. */
 export function prepareIndividualRanking(
   parent: TournamentRefereeRanking,
   previous: CoachRefereesRanking | null,
-  coachId: string,
+  actorCoachAttendeeId: string,
+  targetCoachAttendeeId: string,
   changes: IndividualRankingChanges,
   now = Date.now(),
 ): IndividualRankingSave {
-  const id = coachRefereesRankingId(parent.id, coachId);
+  const id = coachRefereesRankingId(parent.id, targetCoachAttendeeId);
+  if (!canEditCoachRanking(parent, actorCoachAttendeeId, targetCoachAttendeeId))
+    throw new Error('Editing another coach requires both coaches to be selected.');
   if (!['INDIVIDUAL_RANKING', 'PANEL_RANKING'].includes(parent.status))
     throw new Error('Individual ranking is not editable in this phase.');
   if (
     previous &&
     (previous.id !== id ||
-      previous.coachAttendeeId !== coachId ||
+      previous.coachAttendeeId !== targetCoachAttendeeId ||
       previous.tournamentId !== parent.tournamentId ||
       previous.tournamentRefereeRankingId !== parent.id)
   ) {
-    throw new Error('Individual identity does not match the current coach and ranking.');
+    throw new Error('Individual identity does not match the target coach and ranking.');
   }
   const ids = changes.rankedRefereeAttendeeIds ?? previous?.rankedRefereeAttendeeIds ?? [];
   const locked = changes.locked ?? previous?.locked ?? false;
@@ -46,14 +64,15 @@ export function prepareIndividualRanking(
     id,
     tournamentId: parent.tournamentId,
     tournamentRefereeRankingId: parent.id,
-    coachAttendeeId: coachId,
+    coachAttendeeId: targetCoachAttendeeId,
+    updatedByCoachAttendeeId: actorCoachAttendeeId,
     rankedRefereeAttendeeIds: [...ids],
     locked,
     lastChange: now,
     rankingLastChange: !previous || listChanged ? new Date(now).toISOString() : previous.rankingLastChange,
   };
   const relevant =
-    parent.selectedCoachAttendeeIds.includes(coachId) &&
+    parent.selectedCoachAttendeeIds.includes(targetCoachAttendeeId) &&
     (locked !== (previous?.locked ?? false) || (listChanged && (locked || previous?.locked)));
   return {
     individual,
@@ -131,6 +150,8 @@ export interface TournamentRefereeRanking extends PersistentObject {
   panelRefereesRanking: PanelRefereesRanking;
   panelResultState: PanelResultState;
   updatedByCoachAttendeeId: string;
+  /** Target of the last individual-vote freshness batch; absent until such a batch occurs. */
+  updatedCoachAttendeeId?: string;
 }
 
 /** One owner's ranking, uniquely identified by its parent ranking and coach. */
@@ -138,6 +159,8 @@ export interface CoachRefereesRanking extends RefereesRanking, PersistentObject 
   tournamentRefereeRankingId: string;
   tournamentId: string;
   coachAttendeeId: string;
+  /** Authenticated editor; optional on legacy reads, required on ordinary client writes. */
+  updatedByCoachAttendeeId?: string;
   locked: boolean;
 }
 
