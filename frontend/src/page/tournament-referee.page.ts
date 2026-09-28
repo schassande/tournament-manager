@@ -444,7 +444,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
       const tournamentCountry = this.regionService.countryById(this.tournament()!.countryId);
       this.tournament()!.defaultRefereeBadgeSystem = tournamentCountry?.badgeSystem ?? 5;
     }
-    //console.log('createReferee, pastedData=', pastedData);
+    console.log('createReferee, pastedData=', pastedData);
     const attendee: Attendee = {
       id: '',
       tournamentId: this.tournament()!.id,
@@ -457,7 +457,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
         badgeSystem: (pastedData?.currentBadgeSystem ?? this.tournament()!.defaultRefereeBadgeSystem! ?? 5) as RefereeBadgeSystem,
         category: pastedData?.category ?? 'O',
       },
-      roles: [],
+      roles: ['Referee'],
       lastChange: 0
     };
 
@@ -476,7 +476,9 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
 
     if (team) { // Player referee
       attendee.isPlayer = true;
-      attendee.player = { teamId: team.id }
+      attendee.player = { teamId: team.id };
+      attendee.roles.push('PlayerReferee');
+      attendee.roles.push('Player');
       return firstValueFrom(this.attendeeService.save(attendee).pipe(
         map((att) => { return { attendee: att, isPR: true, team }; } )
       ));
@@ -628,9 +630,9 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
     
       // parse clipboard and filter values
     const referees = this.referees();
-    let refereeIdx = ri ?? referees.length;
-    const initialSize = this.referees().length;
-    await Promise.allSettled(rows.map(async(row:string[]) => {
+    const initialRefereeIdx = ri ?? referees.length;
+    const initialSize = referees.length;
+    await Promise.allSettled(rows.map(async(row:string[], idx) => {
       // extract data
       const pastedData: PersonPastedData = {};
       if (col === 'FN') {
@@ -653,7 +655,8 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
           && ref.attendee.person.lastName === pastedData.lastName)) {
         return; // ignore
       }
-
+      const refereeIdx = initialRefereeIdx + idx;
+      console.log('refereeIdx', refereeIdx, 'initialSize', initialSize)
       if (refereeIdx >= initialSize) {
         // add a new full time referee with the data
         referees.push(await this.createReferee(undefined, pastedData));
@@ -664,9 +667,8 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
         referees[refereeIdx].isPR = false;
         referees[refereeIdx].team = undefined;
 
-        this.pasteOnExistingAttendee(referees[refereeIdx].attendee, pastedData);
+        await this.pasteOnExistingAttendee(referees[refereeIdx].attendee, pastedData);
       }
-      refereeIdx++; // move to next row
     }));
     // when all referee are added, update the signal/view
     this.referees.set([...referees]);
@@ -687,8 +689,8 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
   }
 
 
-  pasteOnExistingAttendee(attendee: Attendee, pastedData: PersonPastedData) {
-    // console.log('pasteOnExistingAttendee begin', attendee, pastedData);
+  async pasteOnExistingAttendee(attendee: Attendee, pastedData: PersonPastedData) {
+    console.log('pasteOnExistingAttendee begin', attendee, pastedData);
     // badge levels
     if (pastedData.currentBadge != undefined) {
       attendee.referee!.badge = pastedData.currentBadge;
@@ -736,6 +738,8 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
         countryId: this.tournament()!.countryId
       }
     }
+    this.autoComputeShortName(attendee);
+    await firstValueFrom(this.attendeeService.save(attendee));
     // console.log('pasteOnExistingAttendee end', attendee, pastedData);
   }
 
@@ -827,7 +831,15 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
 
   upgradeChanged(referee: Referee, value:number) {
     if (referee.attendee.referee) {
-      referee.attendee.referee.upgrade!.badge = value;
+        const system = referee.attendee.referee.upgrade?.badgeSystem ?? referee.attendee.referee.badgeSystem ?? 5;
+      if (referee.attendee.referee.upgrade) {
+        referee.attendee.referee.upgrade.badge = Math.max(0, Math.min(value, system));
+      } else {
+        referee.attendee.referee.upgrade = { 
+          badge :Math.max(0, Math.min(value, system)), 
+          badgeSystem: referee.attendee.referee.badgeSystem
+        }
+      }
       this.attendeeChanged(referee);
     }
   }

@@ -10,14 +10,17 @@ export interface PlatformAdmin extends PersistentObject {
 }
 
 /**
- * Reusable identity persisted in Firestore and attached to attendees.
+ * Verified application account, created only by its authenticated owner.
+ * Tournament membership remains in Attendee independently of account deletion.
  */
 export interface Person extends PersistentObject {
+  /** Immutable Firebase Authentication UID; never a caller-assigned email. */
   userAuthId: string;
   firstName: string; // first name of the person
   lastName: string; // name of the person
   shortName: string; // short name of the person
-  email: string; // email of the person
+  /** Normalized verified email, immutable after account creation. */
+  email: string;
   search?: string; // concatenated search text built from identity fields
   regionId: string; // identifier of region of the person
   countryId: string; // identifier of country of the person

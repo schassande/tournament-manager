@@ -1,30 +1,6 @@
 import { inject, Injectable } from '@angular/core';
-import {
-  collection,
-  deleteDoc,
-  doc,
-  Firestore,
-  getDocs,
-  query,
-  where,
-  writeBatch,
-} from '@angular/fire/firestore';
-import {
-  colAttendee,
-  colCoachRefereesRanking,
-  colTournamentRefereeRanking,
-  colFitData,
-  colFragmentRefereeAllocation,
-  colFragmentRefereeAllocationStatistics,
-  colGame,
-  colGameAttendeeAllocation,
-  colRefereeUpgradeCoachVote,
-  colRefereeUpgradePanelVote,
-  colTournament,
-  colTournamentRefereeAllocation,
-  colTournamentRefereeAllocationStatistics,
-} from '@tournament-manager/persistent-data-model';
-import { Observable } from 'rxjs';
+import { Functions, httpsCallable } from '@angular/fire/functions';
+import { from, map, Observable, startWith } from 'rxjs';
 
 /** Progress information emitted while a tournament and its related data are deleted. */
 export interface TournamentDeletionProgress {
@@ -38,80 +14,26 @@ export interface TournamentDeletionProgress {
   totalDocuments: number;
 }
 
-interface DeletionCollection {
-  name: string;
-  label: string;
-}
-
-const RELATED_COLLECTIONS: readonly DeletionCollection[] = [
-  { name: colAttendee, label: 'attendees' },
-  { name: colGame, label: 'games' },
-  { name: colGameAttendeeAllocation, label: 'game allocations' },
-  { name: colTournamentRefereeAllocation, label: 'tournament allocations' },
-  { name: colFragmentRefereeAllocation, label: 'fragment allocations' },
-  { name: colTournamentRefereeAllocationStatistics, label: 'tournament statistics' },
-  { name: colFragmentRefereeAllocationStatistics, label: 'fragment statistics' },
-  { name: colRefereeUpgradeCoachVote, label: 'coach upgrade votes' },
-  { name: colRefereeUpgradePanelVote, label: 'panel upgrade votes' },
-  { name: colCoachRefereesRanking, label: 'coach referee rankings' },
-  { name: colTournamentRefereeRanking, label: 'tournament referee rankings' },
-  { name: colFitData, label: 'FIT snapshots' },
-];
-
-/** Deletes all Firestore data owned by one tournament. */
+/** Deletes tournament data through a retryable authorized server cascade. */
 @Injectable({ providedIn: 'root' })
 export class TournamentDeletionService {
-  private readonly firestore = inject(Firestore);
+  private readonly functions = inject(Functions);
 
-  /**
-   * Queries every related collection by `tournamentId` and deletes documents in
-   * Firestore batches, emitting progress after each committed batch.
-   */
+  /** Emits preparation and confirmed completion; retry resumes a partial server deletion. */
   deleteTournament(tournamentId: string): Observable<TournamentDeletionProgress> {
-    return new Observable<TournamentDeletionProgress>((subscriber) => {
-      void this.deleteTournamentInternal(tournamentId, subscriber);
-    });
-  }
-
-  private async deleteTournamentInternal(
-    tournamentId: string,
-    subscriber: { next: (progress: TournamentDeletionProgress) => void; complete: () => void; error: (error: unknown) => void },
-  ): Promise<void> {
-    try {
-      const snapshots = await Promise.all(RELATED_COLLECTIONS.map(({ name }) =>
-        getDocs(query(collection(this.firestore, name), where('tournamentId', '==', tournamentId))),
-      ));
-      const documents = snapshots.flatMap((snapshot) => snapshot.docs);
-      const totalDocuments = documents.length + 1;
-      let deletedDocuments = 0;
-      subscriber.next({ percentage: 0, collection: 'Preparing deletion', deletedDocuments, totalDocuments });
-
-      for (let collectionIndex = 0; collectionIndex < RELATED_COLLECTIONS.length; collectionIndex++) {
-        const collectionInfo = RELATED_COLLECTIONS[collectionIndex];
-        const collectionDocuments = snapshots[collectionIndex].docs;
-        for (let index = 0; index < collectionDocuments.length; index += 500) {
-          const batch = writeBatch(this.firestore);
-          collectionDocuments.slice(index, index + 500).forEach((document) => batch.delete(document.ref));
-          await batch.commit();
-          deletedDocuments += Math.min(500, collectionDocuments.length - index);
-          subscriber.next(this.progress(collectionInfo.label, deletedDocuments, totalDocuments));
-        }
-      }
-
-      await deleteDoc(doc(this.firestore, `${colTournament}/${tournamentId}`));
-      subscriber.next(this.progress('tournament', totalDocuments, totalDocuments));
-      subscriber.complete();
-    } catch (error) {
-      subscriber.error(error);
-    }
-  }
-
-  private progress(collectionName: string, deletedDocuments: number, totalDocuments: number): TournamentDeletionProgress {
-    return {
-      percentage: totalDocuments === 0 ? 100 : Math.round((deletedDocuments / totalDocuments) * 100),
-      collection: collectionName,
-      deletedDocuments,
-      totalDocuments,
-    };
+    const call = httpsCallable<{ tournamentId: string }, { deletedDocuments: number }>(
+      this.functions,
+      'deleteTournament',
+      { timeout: 540000 },
+    );
+    return from(call({ tournamentId })).pipe(
+      map((result) => ({
+        percentage: 100,
+        collection: 'tournament',
+        deletedDocuments: result.data.deletedDocuments,
+        totalDocuments: result.data.deletedDocuments,
+      })),
+      startWith({ percentage: 0, collection: 'Deleting tournament', deletedDocuments: 0, totalDocuments: 0 }),
+    );
   }
 }

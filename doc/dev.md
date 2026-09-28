@@ -1,5 +1,22 @@
 # Documentation technique
 
+## Attendee identity rollout (2026-09-14)
+
+This revision replaces managerEmails/Person-link authorization with verified-email attendee indexes. Old clients writing attendees directly become incompatible when the new rules are enabled. Production data has not been migrated or deployed by this implementation.
+
+The database was reset before this rollout, so no legacy-data migration is required. Build and deploy the changed Functions, Firestore rules, and frontend as one coordinated release, then verify verified-email registration, indexed management/coach access, accountless attendee linking, profile updates, and deletion workflows.
+
+Local verification uses demo projects and never production data:
+
+```powershell
+npm --prefix functions run build
+firebase emulators:exec --only "firestore,auth" --project demo-ranking-stage1 --config firebase.identity-test.json "node --test tests/firestore/attendee-index.test.cjs tests/firestore/referee-ranking.test.cjs tests/firestore/referee-ranking-maintenance.test.cjs"
+```
+
+For Angular, run `node node_modules/@angular/cli/bin/ng.js build --configuration development` from `frontend`, and the same CLI with `test --watch=false --include=src/page/tournament-referee-ranking/tournament-referee-ranking.page.spec.ts` for the affected ranking UI. Tests require local emulators; the identity suite refuses to run without local Firestore and Auth emulator addresses.
+
+Registration filters attendees by normalized `person.email` and links matching results in pages of 150 using transactional rechecks. Failed linking retries reuse Person and requery only matching attendees idempotently. Account deletion leaves attendees and index entries intact. All operations execute directly without persistent progress or deletion receipts. Account deletion removes Authentication first, then Person and its owned email index; an intervening failure may require a platform administrator to finish. Tournament deletion checks current permissions on every attempt; if the manager attendee has already been removed, a platform administrator must finish. Concurrent writes are not frozen. No new lifecycle collection or background trigger is used.
+
 ## Vue d'ensemble
 
 Le projet est organise en trois repertoires TypeScript :

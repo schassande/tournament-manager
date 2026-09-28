@@ -6,33 +6,57 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isTournamentManager(tournament) {
-      return signedIn()
-        && request.auth.token.email != null
-        && request.auth.token.email in tournament.managerEmails;
+    // Authorization identity must be verified; existing read policies use signedIn().
+    function verifiedIdentity() {
+      return signedIn() && request.auth.token.email is string
+        && request.auth.token.email_verified == true;
+    }
+
+    function normalizedEmail(email) {
+      return email.trim().lower();
+    }
+
+    function identityComponent(value) {
+      return value.replace('%', '%25').replace('/', '%2F').replace(':', '%3A');
+    }
+
+    function actorIndexId(tournamentId) {
+      return identityComponent(tournamentId) + ':' + identityComponent(normalizedEmail(request.auth.token.email));
+    }
+
+    function actorId(tournamentId) {
+      return get(/databases/$(database)/documents/attendee-index/$(actorIndexId(tournamentId))).data.attendeeId;
+    }
+
+    function validActor(attendee, tournamentId) {
+      return attendee.tournamentId == tournamentId
+        && normalizedEmail(attendee.person.email) == normalizedEmail(request.auth.token.email);
+    }
+
+    function isTournamentManager(tournamentId) {
+      let attendee = get(/databases/$(database)/documents/attendee/$(actorId(tournamentId))).data;
+      return validActor(attendee, tournamentId) && 'TournamentManager' in attendee.roles;
     }
 
     function isPlatformAdmin() {
-      return signedIn()
-        && request.auth.token.email != null
-        && exists(/databases/$(database)/documents/PlaformAdmin/$(request.auth.token.email));
+      return verifiedIdentity()
+        && exists(/databases/$(database)/documents/PlaformAdmin/$(normalizedEmail(request.auth.token.email)));
     }
 
     function canManageTournament(tournamentId) {
-      return isPlatformAdmin()
-        || isTournamentManager(
-          get(/databases/$(database)/documents/tournament/$(tournamentId)).data
-        );
+      return verifiedIdentity()
+        && (isPlatformAdmin() || isTournamentManager(tournamentId));
     }
 
-    // Allows the initial attendee to be created in the same atomic write as
-    // its tournament. getAfter() sees the tournament written by that request.
-    function canManageTournamentAfterWrite(tournamentId) {
-      return isPlatformAdmin()
-        || isTournamentManager(
-          getAfter(/databases/$(database)/documents/tournament/$(tournamentId)).data
-        )
-        || canManageTournament(tournamentId);
+    function hasCoachRole(attendee) {
+      return attendee.roles.hasAny(['Coach', 'CoachReferee', 'PlayerCoach', 'PlayerCoachReferee']);
+    }
+
+    function indexedCoach(attendeeId, tournamentId) {
+      let attendee = get(/databases/$(database)/documents/attendee/$(attendeeId)).data;
+      return verifiedIdentity()
+        && actorId(tournamentId) == attendeeId
+        && validActor(attendee, tournamentId) && hasCoachRole(attendee);
     }
 
     function validUpgradeVote(vote) {
@@ -40,15 +64,12 @@ service cloud.firestore {
     }
 
     function isRefereeCoachAttendee(attendeeId, tournamentId) {
-      return signedIn()
-        && get(/databases/$(database)/documents/attendee/$(attendeeId)).data.tournamentId == tournamentId
-        && get(/databases/$(database)/documents/attendee/$(attendeeId)).data.isRefereeCoach == true
-        && get(/databases/$(database)/documents/person/$(get(/databases/$(database)/documents/attendee/$(attendeeId)).data.personId)).data.email == request.auth.token.email;
+      return indexedCoach(attendeeId, tournamentId);
     }
 
     function isEligibleUpgradeReferee(refereeAttendeeId, tournamentId) {
       return get(/databases/$(database)/documents/attendee/$(refereeAttendeeId)).data.tournamentId == tournamentId
-        && get(/databases/$(database)/documents/attendee/$(refereeAttendeeId)).data.isReferee == true
+        && get(/databases/$(database)/documents/attendee/$(refereeAttendeeId)).data.roles.hasAny(['Referee', 'PlayerReferee', 'PlayerCoachReferee'])
         && get(/databases/$(database)/documents/attendee/$(refereeAttendeeId)).data.referee.upgrade.badge != 0;
     }
 
@@ -75,15 +96,9 @@ service cloud.firestore {
         && isEligibleUpgradeReferee(request.resource.data.refereeAttendeeId, request.resource.data.tournamentId);
     }
 
-    // Ranking identity follows the current nested Attendee.person contract.
+    // Actor identity no longer depends on a linked Person.
     function isRankingCoach(attendeeId, tournamentId) {
-      let attendee = get(/databases/$(database)/documents/attendee/$(attendeeId)).data;
-      return signedIn()
-        && request.auth.token.email != null
-        && attendee.tournamentId == tournamentId
-        && attendee.isRefereeCoach == true
-        && attendee.person.personId is string
-        && get(/databases/$(database)/documents/person/$(attendee.person.personId)).data.email == request.auth.token.email;
+      return indexedCoach(attendeeId, tournamentId);
     }
 
     function rankingEnabled(tournamentId) {
@@ -201,7 +216,7 @@ service cloud.firestore {
       let target = get(/databases/$(database)/documents/attendee/$(next.coachAttendeeId)).data;
       return next.updatedByCoachAttendeeId is string
         && isRankingCoach(next.updatedByCoachAttendeeId, parent.tournamentId)
-        && target.tournamentId == parent.tournamentId && target.isRefereeCoach == true
+        && target.tournamentId == parent.tournamentId && hasCoachRole(target)
         && (next.updatedByCoachAttendeeId == next.coachAttendeeId
           || (next.updatedByCoachAttendeeId in parent.selectedCoachAttendeeIds
             && next.coachAttendeeId in parent.selectedCoachAttendeeIds));
@@ -259,7 +274,7 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if signedIn() && validNewRefereeRanking(documentId);
       allow update: if signedIn() && (validRankingStatusChange() || validRankingRefereeChange() || validRankingCoachChange() || validPanelComputation() || validIndividualFreshnessChange());
-      // Supports complete tournament deletion, including after attendees have been removed.
+      // Requires current tournament management rights.
       allow delete: if canManageTournament(resource.data.tournamentId);
     }
 
@@ -276,13 +291,23 @@ service cloud.firestore {
     }
 
     match /person/{documentId} {
-      allow read, create, update, delete: if signedIn();
+      allow read: if signedIn();
+      // Creation and account deletion require the server identity/index workflows.
+      allow create, delete: if false;
+      allow update: if verifiedIdentity()
+        && (resource.data.userAuthId == request.auth.uid || isPlatformAdmin())
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.userAuthId == resource.data.userAuthId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'firstName', 'lastName', 'shortName', 'search', 'regionId', 'countryId',
+          'gender', 'photoUrl', 'phone', 'referee', 'refereeCoach', 'lastChange']);
     }
 
     match /tournament/{documentId} {
       allow read: if true;
-      allow create: if isTournamentManager(request.resource.data);
-      allow update, delete: if isTournamentManager(resource.data) || isPlatformAdmin();
+      allow create, delete: if false;
+      allow update: if canManageTournament(documentId) && request.resource.data.id == resource.data.id;
     }
 
     match /fit-data/{documentId} {
@@ -295,10 +320,11 @@ service cloud.firestore {
 
     match /attendee/{documentId} {
       allow read: if signedIn();
-      allow create: if canManageTournamentAfterWrite(request.resource.data.tournamentId);
-      allow update: if request.resource.data.tournamentId == resource.data.tournamentId
-        && canManageTournament(resource.data.tournamentId);
-      allow delete: if canManageTournament(resource.data.tournamentId);
+      allow create, update, delete: if false;
+    }
+
+    match /attendee-index/{documentId} {
+      allow read, write: if false;
     }
 
     match /game/{documentId} {

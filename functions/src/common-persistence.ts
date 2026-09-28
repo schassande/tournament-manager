@@ -25,6 +25,7 @@ export async function deleteById(collectionName:string,
   return firestore.collection(collectionName).doc(id).delete().then(wr=> wr.writeTime);
 }
 
+/** Creates an object with a generated identifier and current timestamp. */
 export async function create<T extends PersistentObject>(
   collectionName:string,
   persistentObject: T,
@@ -32,17 +33,17 @@ export async function create<T extends PersistentObject>(
   const doc = firestore.collection(collectionName).doc();
   persistentObject.id = doc.id;
   persistentObject.lastChange = dateToEpoch(new Date());
-  return doc.set(persistentObject).then(()=>persistentObject);
+  await doc.set(persistentObject);
+  return persistentObject;
 }
+/** Saves an object with the current timestamp. */
 export async function save<T extends PersistentObject>(
   collectionName:string,
   persistentObject: T,
   firestore: admin.firestore.Firestore): Promise<T> {
   persistentObject.lastChange = dateToEpoch(new Date());
-  return firestore.collection(collectionName)
-    .doc(persistentObject.id)
-    .set(persistentObject)
-    .then(()=>persistentObject);
+  await firestore.collection(collectionName).doc(persistentObject.id).set(persistentObject);
+  return persistentObject;
 }
 
 

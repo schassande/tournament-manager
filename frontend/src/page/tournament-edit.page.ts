@@ -376,47 +376,90 @@ export class TournamentEditComponent  implements OnInit {
       return;
     }
     this.managerBusy = true;
-    this.personService.byEmail(email).pipe(
-      switchMap(person => person ? this.attendeeService.findByPerson(tournament.id, person.id).pipe(
-        switchMap(attendees => this.ensureManagerAttendee(tournament, person, attendees[0]))
-      ) : of({ tournament, attendee: undefined as Attendee|undefined, person }))
-    ).subscribe({
-      next: result => {
-        result.tournament.managerEmails = Array.from(new Set([...result.tournament.managerEmails, email]));
-        this.saveManagerData(result.tournament, result.attendee).subscribe({
-          next: () => { this.managerBusy = false; this.managerEmail = ''; this.loadManagers(result.tournament); },
-          error: err => { this.managerBusy = false; console.error('Unable to save manager', err); }
-        });
-      },
-      error: err => { this.managerBusy = false; console.error('Unable to add manager', err); }
-    });
+    this.personService
+      .byEmail(email)
+      .pipe(
+        switchMap((person) =>
+          this.attendeeService.findByEmail(tournament.id, email).pipe(
+            switchMap((attendees) =>
+              this.ensureManagerAttendee(
+                tournament,
+                person || {
+                  id: '',
+                  userAuthId: '',
+                  email,
+                  firstName: '',
+                  lastName: '',
+                  shortName: email,
+                  countryId: '',
+                  regionId: '',
+                  lastChange: 0,
+                },
+                attendees[0],
+              ),
+            ),
+          ),
+        ),
+      )
+      .subscribe({
+        next: (result) => {
+          result.tournament.managerEmails = Array.from(new Set([...result.tournament.managerEmails, email]));
+          this.saveManagerData(result.tournament, result.attendee).subscribe({
+            next: () => {
+              this.managerBusy = false;
+              this.managerEmail = '';
+              this.loadManagers(result.tournament);
+            },
+            error: (err) => {
+              this.managerBusy = false;
+              console.error('Unable to save manager', err);
+            },
+          });
+        },
+        error: (err) => {
+          this.managerBusy = false;
+          console.error('Unable to add manager', err);
+        },
+      });
   }
 
   /** Removes a manager without deleting an existing attendee. */
   removeManager(manager: ManagerView) {
     const tournament = this.tournament();
     if (!tournament) return;
-    tournament.managerEmails = tournament.managerEmails.filter(email => email !== manager.email);
+    tournament.managerEmails = tournament.managerEmails.filter((email) => email !== manager.email);
     if (manager.attendee) {
       manager.attendee.isTournamentManager = false;
-      tournament.managerAttendeeIds = tournament.managerAttendeeIds.filter(id => id !== manager.attendee!.id);
+      manager.attendee.roles = manager.attendee.roles.filter((role) => role !== 'TournamentManager');
+      tournament.managerAttendeeIds = tournament.managerAttendeeIds.filter((id) => id !== manager.attendee!.id);
     }
     this.managerBusy = true;
     this.saveManagerData(tournament, manager.attendee).subscribe({
-      next: () => { this.managerBusy = false; this.loadManagers(tournament); },
-      error: err => { this.managerBusy = false; console.error('Unable to remove manager', err); }
+      next: () => {
+        this.managerBusy = false;
+        this.loadManagers(tournament);
+      },
+      error: (err) => {
+        this.managerBusy = false;
+        console.error('Unable to remove manager', err);
+      },
     });
   }
 
   private readonly attendeeService = inject(AttendeeService);
   private readonly personService = inject(PersonService);
 
-  private ensureManagerAttendee(tournament: Tournament, person: Person, attendee?: Attendee): Observable<{ tournament: Tournament; attendee: Attendee; person: Person }> {
+  private ensureManagerAttendee(
+    tournament: Tournament,
+    person: Person,
+    attendee?: Attendee,
+  ): Observable<{ tournament: Tournament; attendee: Attendee; person: Person }> {
     const managerAttendee: Attendee = attendee ?? {
-      id: '', lastChange: Date.now(), 
-      tournamentId: tournament.id, 
+      id: '',
+      lastChange: Date.now(),
+      tournamentId: tournament.id,
       person: {
-        personId: person.id,
+        ...(person.id ? { personId: person.id } : {}),
         countryId: person.countryId,
         firstName: person.firstName,
         lastName: person.lastName ?? '',
@@ -424,124 +467,56 @@ export class TournamentEditComponent  implements OnInit {
         shortName: person.shortName ?? '',
         email: person.email ?? '',
         gender: person.gender ?? 'M',
-        phone: person.phone ?? ''
+        phone: person.phone ?? '',
       },
-      roles: [], 
-      isPlayer: false, 
-      isReferee: false, 
-      isRefereeCoach: false, 
-      isTournamentManager: false
+      roles: [],
+      isPlayer: false,
+      isReferee: false,
+      isRefereeCoach: false,
+      isTournamentManager: false,
     };
     this.markAsTournamentManager(managerAttendee);
     return of({ tournament, attendee: managerAttendee, person });
   }
 
-  /**
-   * Creates and persists the attendee required for a Person who is listed as
-   * tournament manager but does not yet participate in this tournament.
-   *
-   * The attendee is intentionally created with no other role or restriction.
-   * Persisting it here gives the subsequent manager-list reconstruction a real
-   * attendee identifier to put into `managerAttendeeIds`.
-   */
-  private createManagerAttendee(tournament: Tournament, person: Person): Observable<Attendee> {
-    return this.ensureManagerAttendee(tournament, person).pipe(
-      switchMap(result => this.attendeeService.save(result.attendee))
-    );
-  }
-
+  /** Saves display metadata before a possible self-revocation of management rights. */
   private saveManagerData(tournament: Tournament, attendee?: Attendee): Observable<Tournament> {
-    const attendeeSave: Observable<Attendee | undefined> = attendee ? this.attendeeService.save(attendee) : of<Attendee | undefined>(undefined);
-    return attendeeSave.pipe(switchMap(savedAttendee => {
-      if (savedAttendee) {
-        tournament.managerAttendeeIds = Array.from(new Set([...tournament.managerAttendeeIds, savedAttendee.id]));
-      }
-      return this.tournamentService.save(tournament);
-    }));
+    return this.tournamentService
+      .save(tournament)
+      .pipe(switchMap((saved) => (attendee ? this.attendeeService.save(attendee).pipe(map(() => saved)) : of(saved))));
   }
 
-  /**
-   * Loads the managers of a tournament, repairs inconsistent persisted data,
-   * and builds the view model displayed by the Managers tab.
-   *
-   * Attendees are queried by tournament identifier. The corresponding persons
-   * are then loaded to display their identity and to complete `managerEmails`.
-   * Any repair is persisted after the view has been refreshed.
-   * @param tournament tournament whose managers must be loaded
-   */
+  /** Loads actual manager roles without repairing or granting rights from legacy email lists. */
   private loadManagers(tournament: Tournament): void {
-    this.loadManagerEntries(tournament).subscribe({
-      next: entries => this.applyLoadedManagers(tournament, entries),
-      error: error => console.error('Unable to load managers', error)
-    });
-  }
-
-  /**
-   * Loads each manager email and resolves its Person and tournament attendee.
-   * A missing attendee is created immediately so that the email source and the
-   * attendee relation are both complete when the view is built.
-   */
-  private loadManagerEntries(tournament: Tournament) {
-    // managerEmails is authoritative and also includes email-only managers.
-    const emails = Array.from(new Set(tournament.managerEmails.map(email => this.normalizeEmail(email))));
-    return forkJoin(emails.map(email => this.personService.byEmail(email).pipe(
-      switchMap(person => {
-        if (person) {
-          return this.attendeeService.findByPerson(tournament.id, person.id).pipe(
-            switchMap(attendees => attendees[0]
-              ? of({ email, person, attendee: attendees[0] })
-              : this.createManagerAttendee(tournament, person).pipe(map(attendee => ({ email, person, attendee })))
-            )
+    this.attendeeService
+      .findTournamentManager(tournament.id)
+      .pipe(
+        switchMap((attendees) =>
+          attendees.length
+            ? forkJoin(
+                attendees.map((attendee) => {
+                  const email = attendee.person?.email || '';
+                  return this.personService.byEmail(email).pipe(map((person) => ({ email, attendee, person })));
+                }),
+              )
+            : of([]),
+        ),
+      )
+      .subscribe({
+        next: (entries) => {
+          tournament.managerEmails = entries.map((entry) => entry.email).filter(Boolean);
+          tournament.managerAttendeeIds = entries.map((entry) => entry.attendee.id);
+          this.managers.set(
+            entries.map((entry) => ({
+              key: entry.attendee.id,
+              email: entry.email,
+              attendee: entry.attendee,
+              ...(entry.person ? { person: entry.person } : {}),
+            })),
           );
-        } else {
-          return of({ email, person: null, attendee: undefined });
-        }
-      })
-    )));
-  }
-  
-  /** Applies loaded entries, repairs tournament lists, and refreshes the UI. */
-  private applyLoadedManagers(tournament: Tournament, entries: ManagerEntry[]): void {
-    // Keep email-only managers in the result, even when no Person exists for them.
-    const validEntries = entries.filter(entry => entry.person !== null) as ManagerEntryWithPerson[];
-
-    // Every resolved Person should have a manager attendee for this tournament.
-    // The helper also repairs a missing TournamentManager role/flag.
-    const repairedAttendees = validEntries.filter(entry => entry.attendee !== undefined);
-    repairedAttendees.forEach(entry => this.markAsTournamentManager(entry.attendee!));
-
-    // Rebuild the attendee list from the authoritative manager email list,
-    // removing stale identifiers and duplicates.
-    const attendeeIds = repairedAttendees.map(entry => entry.attendee!.id);
-    const emails = entries.map(entry => this.normalizeEmail(entry.email));
-    const repairedIds = Array.from(new Set(attendeeIds));
-    const existingAttendeeIds = tournament.managerAttendeeIds ?? [];
-    const existingEmails = tournament.managerEmails ?? [];
-
-    // Normalize and deduplicate emails while preserving email-only managers.
-    const repairedEmails = Array.from(new Set([
-      ...existingEmails.map(email => this.normalizeEmail(email)), ...emails
-    ]));
-    const changed = repairedAttendees.some(entry => !existingAttendeeIds.includes(entry.attendee!.id))
-      || JSON.stringify(existingAttendeeIds) !== JSON.stringify(repairedIds)
-      || JSON.stringify(existingEmails) !== JSON.stringify(repairedEmails);
-
-    // Persist the repaired, normalized lists before constructing the displayed list.
-    tournament.managerAttendeeIds = repairedIds;
-    tournament.managerEmails = repairedEmails;
-
-    // Attendee managers display their identity; unresolved emails remain email-only.
-    this.managers.set([
-      ...validEntries.filter(entry => entry.attendee).map(entry => ({ 
-        key: entry.attendee!.id, 
-        email: entry.email,
-        attendee: entry.attendee, 
-        person: entry.person! })),
-      // add email not already in valid entries
-      ...tournament.managerEmails.filter(email => !validEntries.some(entry => entry.email === email))
-        .map(email => ({ key: `email:${email}`, email }))
-    ]);
-    if (changed) this.persistManagerRepairs(tournament, repairedAttendees.map(entry => entry.attendee!));
+        },
+        error: (error) => console.error('Unable to load managers', error),
+      });
   }
 
   /** Marks an attendee as manager without changing its other roles. */
@@ -550,14 +525,6 @@ export class TournamentEditComponent  implements OnInit {
     // Some legacy attendees have no roles array yet.
     attendee.roles ??= [];
     if (!attendee.roles.includes('TournamentManager')) attendee.roles.push('TournamentManager');
-  }
-
-  /** Persists attendee and tournament corrections found during loading. */
-  private persistManagerRepairs(tournament: Tournament, attendees: Attendee[]): void {
-    forkJoin([
-      ...attendees.filter(attendee => attendee.isTournamentManager).map(attendee => this.attendeeService.save(attendee)),
-      this.tournamentService.save(tournament)
-    ]).subscribe();
   }
 
   private normalizeEmail(email: string): string { 
@@ -642,13 +609,4 @@ export class TournamentEditComponent  implements OnInit {
       managerEmails :[ currentUser.email],
     };
   }
-}
-interface ManagerEntry {
-  email: string;
-  person: Person | null;
-  attendee?: Attendee;
-}
-
-interface ManagerEntryWithPerson extends ManagerEntry {
-  person: Person;
 }

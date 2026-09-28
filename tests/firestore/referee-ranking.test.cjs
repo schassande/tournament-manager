@@ -65,13 +65,19 @@ async function status(response, expected) {
 }
 
 before(async () => {
+  for (const [email, attendeeId, role] of [['coach@example.com', 'coach', 'Coach'],
+    ['delegate@example.com', 'delegate', 'Coach'], ['manager@example.com', 'manager', 'TournamentManager']]) {
+    await status(await put(`attendee-index/t:${email}`, { attendeeId }), 200);
+    if (role === 'TournamentManager') await status(await put(`attendee/${attendeeId}`,
+      { tournamentId: 't', person: { email }, roles: [role] }), 200);
+  }
   await status(await put('tournament/t', { managerEmails: ['manager@example.com'], enablesModules: ['RANKING'] }), 200);
   await status(await put('person/p', { email: 'coach@example.com' }), 200);
-  await status(await put('attendee/coach', { tournamentId: 't', isRefereeCoach: true, person: { personId: 'p' } }), 200);
-  await status(await put('attendee/accountless', { tournamentId: 't', isRefereeCoach: true }), 200);
+  await status(await put('attendee/coach', { tournamentId: 't', roles: ['Coach'], isRefereeCoach: true, person: { email: 'coach@example.com' } }), 200);
+  await status(await put('attendee/accountless', { tournamentId: 't', roles: ['Coach'], isRefereeCoach: true }), 200);
   await status(await put('person/delegate', { email: 'delegate@example.com' }), 200);
-  await status(await put('attendee/delegate', { tournamentId: 't', isRefereeCoach: true, person: { personId: 'delegate' } }), 200);
-  await status(await put('attendee/foreign-target', { tournamentId: 'other', isRefereeCoach: true }), 200);
+  await status(await put('attendee/delegate', { tournamentId: 't', roles: ['Coach'], isRefereeCoach: true, person: { email: 'delegate@example.com' } }), 200);
+  await status(await put('attendee/foreign-target', { tournamentId: 'other', roles: ['Coach'], isRefereeCoach: true }), 200);
   await status(await put('attendee/not-a-coach', { tournamentId: 't', isRefereeCoach: false }), 200);
   await status(await put('tournament-referee-ranking/existing', ranking('existing')), 200);
   await status(await put('coach-referees-ranking/existing', { tournamentId: 't' }), 200);
@@ -85,7 +91,7 @@ test('both collections allow outsider authenticated reads and deny anonymous rea
   }
 });
 
-test('a real tournament coach can create, using the nested person reference', async () => {
+test('a real tournament coach can create, using the email index without a Person reference', async () => {
   await status(await put('tournament-referee-ranking/created', ranking('created'), 'coach@example.com'), 200);
 });
 
@@ -104,7 +110,8 @@ test('creation rejects blank names, precomputed results and selected data before
 test('a coach cannot create for a different tournament or when the module is disabled', async () => {
   await status(await put('tournament-referee-ranking/cross', ranking('cross', { tournamentId: 'other' }), 'coach@example.com'), 403);
   await status(await put('tournament/off', { managerEmails: [], enablesModules: [] }), 200);
-  await status(await put('attendee/off-coach', { tournamentId: 'off', isRefereeCoach: true, person: { personId: 'p' } }), 200);
+  await status(await put('attendee-index/off:coach@example.com', { attendeeId: 'off-coach' }), 200);
+  await status(await put('attendee/off-coach', { tournamentId: 'off', roles: ['Coach'], isRefereeCoach: true, person: { email: 'coach@example.com' } }), 200);
   await status(await put('tournament-referee-ranking/off', ranking('off', {
     tournamentId: 'off', updatedByCoachAttendeeId: 'off-coach',
   }), 'coach@example.com'), 403);
@@ -226,7 +233,7 @@ async function voteBatch(vote, parentPatch, actor = 'coach@example.com') {
 
 test('owners create and reorder dense votes in both active phases, including non-panel practice', async () => {
   await status(await put('person/other-owner', { email: 'other-coach@example.com' }), 200);
-  await status(await put('attendee/other-owner', { tournamentId: 't', isRefereeCoach: true, person: { personId: 'other-owner' } }), 200);
+  await status(await put('attendee/other-owner', { tournamentId: 't', roles: ['Coach'], isRefereeCoach: true, person: { email: 'other-coach@example.com' } }), 200);
   for (const phase of ['INDIVIDUAL_RANKING', 'PANEL_RANKING']) {
     const id = `me-${phase}`;
     await status(await put(`tournament-referee-ranking/${id}`, ranking(id, { status: phase, selectedRefereeAttendeeIds: ['a', 'b'] })), 200);
@@ -301,17 +308,19 @@ test('individual writes require an existing open parent, active module and immut
 test('encoded pair identities preserve Unicode and reject colliding percent/separator aliases', async () => {
   const parentId = 'é%|ranking';
   const coachId = 'é%|coach';
-  await status(await put(`attendee/${coachId}`, { tournamentId: 't', isRefereeCoach: true, person: { personId: 'p' } }), 200);
+  await status(await put(`attendee/${coachId}`, { tournamentId: 't', roles: ['Coach'], isRefereeCoach: true, person: { email: 'coach@example.com' } }), 200);
   await status(await put(`tournament-referee-ranking/${parentId}`, ranking(parentId, {
     status: 'INDIVIDUAL_RANKING', selectedRefereeAttendeeIds: ['a'], selectedCoachAttendeeIds: [coachId], panelResultState: 'CURRENT',
   })), 200);
+  await status(await put('attendee-index/t:coach@example.com', { attendeeId: coachId }), 200);
   const vote = individualVote(parentId, coachId, { id: 'é%25%7Cranking|é%25%7Ccoach', locked: true });
   await status(await voteBatch(vote, { panelResultState: 'STALE', updatedByCoachAttendeeId: coachId, updatedCoachAttendeeId: coachId, lastChange: 1 }), 200);
   await status(await voteBatch({ ...vote, id: `${parentId}|${coachId}` }), 403);
   await status(await voteBatch({ ...vote, id: 'é%7Cranking|é%7Ccoach' }), 403);
+  await status(await put('attendee-index/t:coach@example.com', { attendeeId: 'coach' }), 200);
 });
 
-test('manager cascade deletes use tournament identity even without attendees; other users cannot delete', async () => {
+test('manager cascade deletes require the indexed manager; other users cannot delete', async () => {
   for (const collection of ['tournament-referee-ranking', 'coach-referees-ranking']) {
     await status(await put(`${collection}/cascade`, { tournamentId: 't' }), 200);
     await status(await request(`${collection}/cascade`, 'coach@example.com', 'DELETE'), 403);

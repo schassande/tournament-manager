@@ -1,23 +1,28 @@
 import { inject, Injectable } from '@angular/core';
-import { buildPersonSearch, Person } from '@tournament-manager/persistent-data-model';
+import { buildPersonSearch, normalizeIdentityEmail, Person } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService, PersistentDataFilter } from './abstract-persistent-data.service';
 import { from, map, Observable } from 'rxjs';
 import { query, Query, where } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 
+/** Verified self-registration payload. */
 interface CreatePersonRequest {
   person: Person;
 }
 
+/** Persisted profile returned after registration-time attendee linking. */
 type CreatePersonResponse = Person;
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
-export class PersonService extends AbstractPersistentDataService<Person>{
+export class PersonService extends AbstractPersistentDataService<Person> {
   private functions = inject(Functions);
 
-  protected override getCollectionName(): string { return 'person'; }
+  /** Returns the persisted collection used by inherited read operations. */
+  protected override getCollectionName(): string {
+    return 'person';
+  }
 
   /**
    * Persist a person.
@@ -38,18 +43,31 @@ export class PersonService extends AbstractPersistentDataService<Person>{
    * @returns the created persistent person
    */
   public createOnServer(person: Person): Observable<Person> {
-    const callable = httpsCallable<CreatePersonRequest, CreatePersonResponse>(this.functions, 'createPerson');
-    return from(callable({person})).pipe(
-      map((result) => result.data)
-    );
+    const callable = httpsCallable<CreatePersonRequest, CreatePersonResponse>(this.functions, 'createPerson', {
+      timeout: 540000,
+    });
+    return from(callable({ person })).pipe(map((result) => result.data));
   }
 
-  byEmail(email: string): Observable<Person|null> {
-    return this.queryOne(query(this.itemsCollection(), where('email', '==', email)));
+  /** Deletes the account on the server, preserving tournament participants. */
+  public override async delete(id: string): Promise<void> {
+    await httpsCallable<{ personId: string; deleteAccount: true }, void>(
+      this.functions,
+      'deletePerson',
+    )({
+      personId: id,
+      deleteAccount: true,
+    });
   }
 
+  /** Looks up a registered profile by its normalized immutable email. */
+  byEmail(email: string): Observable<Person | null> {
+    return this.queryOne(query(this.itemsCollection(), where('email', '==', normalizeIdentityEmail(email))));
+  }
+
+  /** Searches profiles using the supplied region, country, and text criteria. */
   search(searchCriteria: PersonSearchCriteria): Observable<Person[]> {
-    const queryConstraints = []
+    const queryConstraints = [];
     if (searchCriteria.regionId) {
       queryConstraints.push(where('regionId', '==', searchCriteria.regionId));
     }
@@ -64,17 +82,19 @@ export class PersonService extends AbstractPersistentDataService<Person>{
     }
   }
 
+  /** Builds a case-insensitive identity search predicate. */
   public getFilterByText(text: string): PersistentDataFilter<Person> {
-    const validText = text && text !== null  && text.trim().length > 0 ? text.trim() : null;
+    const validText = text && text !== null && text.trim().length > 0 ? text.trim() : null;
     if (validText === null) {
       return () => false;
     } else {
-      return (person: Person) => this.stringContains(validText, person.search ?? '')
-          || this.stringContains(validText, person.shortName)
-          || this.stringContains(validText, person.firstName)
-          || this.stringContains(validText, person.lastName)
-          || this.stringContains(validText, person.email);
-    };
+      return (person: Person) =>
+        this.stringContains(validText, person.search ?? '') ||
+        this.stringContains(validText, person.shortName) ||
+        this.stringContains(validText, person.firstName) ||
+        this.stringContains(validText, person.lastName) ||
+        this.stringContains(validText, person.email);
+    }
   }
 
   /**
@@ -89,6 +109,7 @@ export class PersonService extends AbstractPersistentDataService<Person>{
     };
   }
 }
+/** Optional profile search filters. */
 export interface PersonSearchCriteria {
   regionId?: string;
   countryId?: string;

@@ -1,4 +1,6 @@
 import * as admin from 'firebase-admin';
+import { indexedAttendee, verifiedIdentity } from '../identity/authorization';
+import { attendeeRoleFlags } from '../persistent-data-model';
 import { CallableRequest, HttpsError } from 'firebase-functions/v2/https';
 import {
   Attendee,
@@ -34,15 +36,14 @@ export function validateRequest(data: RankingMaintenanceRequest, removal: boolea
   return [...new Set(ids)];
 }
 
-/** Verifies a persisted coach and linked person against the callable identity and module gate. */
+/** Verifies an indexed coach against the requested actor and module gate. */
 export function authorizeRankingCoach(
   request: CallableRequest<RankingMaintenanceRequest>,
   attendee: Attendee | undefined,
-  personEmail: unknown,
   enabledModules: unknown,
 ): void {
-  if (!attendee?.isRefereeCoach || attendee.tournamentId !== request.data.tournamentId ||
-    !attendee.person?.personId || personEmail !== request.auth?.token.email ||
+  if (!attendee || !attendeeRoleFlags(attendee.roles || []).isRefereeCoach
+    || attendee.id !== request.data.actorCoachAttendeeId || attendee.tournamentId !== request.data.tournamentId ||
     !Array.isArray(enabledModules) || !enabledModules.includes('RANKING')) {
     throw new HttpsError('permission-denied', 'Ranking access requires a referee coach of this tournament.');
   }
@@ -56,23 +57,17 @@ export async function maintainRanking(
   request: CallableRequest<RankingMaintenanceRequest>,
   removal: boolean,
 ): Promise<RankingMaintenanceResponse> {
-  if (!request.auth?.token.email) throw new HttpsError('unauthenticated', 'An authenticated email is required.');
+  const identity = verifiedIdentity(request);
   const ids = validateRequest(request.data, removal);
   const { tournamentId, tournamentRefereeRankingId, actorCoachAttendeeId } = request.data;
   const db = admin.firestore();
   const parentRef = db.collection(colTournamentRefereeRanking).doc(tournamentRefereeRankingId);
   return db.runTransaction(async (transaction: admin.firestore.Transaction): Promise<RankingMaintenanceResponse> => {
-    const [parent, tournament, actor] = await transaction.getAll(
-      parentRef,
-      db.collection('tournament').doc(tournamentId),
-      db.collection('attendee').doc(actorCoachAttendeeId),
+    const [parent, tournament] = await transaction.getAll(
+      parentRef, db.collection('tournament').doc(tournamentId),
     );
-    const attendee = actor.data() as Attendee | undefined;
-    if (!attendee?.isRefereeCoach || attendee.tournamentId !== tournamentId || !attendee.person?.personId) {
-      throw new HttpsError('permission-denied', 'A referee coach of this tournament is required.');
-    }
-    const person = await transaction.get(db.collection('person').doc(attendee.person.personId));
-    authorizeRankingCoach(request, attendee, person.data()?.email, tournament.data()?.enablesModules);
+    const attendee = await indexedAttendee(transaction, identity, tournamentId);
+    authorizeRankingCoach(request, attendee, tournament.data()?.enablesModules);
     if (!parent.exists) throw new HttpsError('not-found', 'Ranking not found.');
     const ranking = rankingFromStorage({ ...parent.data(), id: parent.id } as StoredTournamentRefereeRanking);
     if (ranking.tournamentId !== tournamentId) throw new HttpsError('permission-denied', 'Wrong tournament.');

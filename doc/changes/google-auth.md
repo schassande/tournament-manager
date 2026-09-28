@@ -73,3 +73,7 @@ Cette configuration doit être réalisée et vérifiée avant la recette du parc
 - Aucun mot de passe Google ni identifiant email/mot de passe n’est enregistré localement.
 - La connexion email/mot de passe et les parcours existants continuent de fonctionner.
 - La documentation de la page de connexion est mise à jour avec le nouveau parcours.
+
+## Implementation update (2026-09-14)
+
+Google login now uses verified Firebase email and UID ownership checks shared with password login and session restoration. The existing createPerson callable is idempotent and resumes attendee-link population if incomplete; an existing Person owned by another UID is rejected. All same-email attendees are linked across tournaments without changing roles. Account deletion and profile editing follow the permissions in doc/changes/attendee-index.md. No email/password credentials are persisted by Google login.

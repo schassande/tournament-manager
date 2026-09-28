@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
+import { indexedAttendee, verifiedIdentity } from '../identity/authorization';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import {
-  Attendee,
   colCoachRefereesRanking,
   colTournamentRefereeRanking,
   RankingDeletionResponse,
@@ -13,18 +13,19 @@ import { authorizeRankingCoach, validateRequest } from './maintenance';
 export async function deleteRanking(
   request: CallableRequest<RankingMaintenanceRequest>,
 ): Promise<RankingDeletionResponse> {
-  if (!request.auth?.token.email) throw new HttpsError('unauthenticated', 'An authenticated email is required.');
+  const identity = verifiedIdentity(request);
   validateRequest(request.data, false);
-  const { tournamentId, tournamentRefereeRankingId, actorCoachAttendeeId } = request.data;
+  const { tournamentId, tournamentRefereeRankingId } = request.data;
   const db = admin.firestore();
   const parentRef = db.collection(colTournamentRefereeRanking).doc(tournamentRefereeRankingId);
-  const [parent, tournament, actor] = await db.getAll(
-    parentRef, db.collection('tournament').doc(tournamentId), db.collection('attendee').doc(actorCoachAttendeeId),
-  );
-  const attendee = actor.data() as Attendee | undefined;
-  const person = attendee?.person?.personId
-    ? await db.collection('person').doc(attendee.person.personId).get() : undefined;
-  authorizeRankingCoach(request, attendee, person?.data()?.email, tournament.data()?.enablesModules);
+  const parent = await db.runTransaction(async tx => {
+    const [snapshot, tournament] = await tx.getAll(
+      parentRef, db.collection('tournament').doc(tournamentId),
+    );
+    const attendee = await indexedAttendee(tx, identity, tournamentId);
+    authorizeRankingCoach(request, attendee, tournament.data()?.enablesModules);
+    return snapshot;
+  });
   if (!parent.exists) throw new HttpsError('not-found', 'Ranking not found.');
   if (parent.data()?.tournamentId !== tournamentId) throw new HttpsError('permission-denied', 'Wrong tournament.');
   const children = await db.collection(colCoachRefereesRanking)

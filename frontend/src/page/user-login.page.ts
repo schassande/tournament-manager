@@ -12,7 +12,6 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 
 @Component({
-  standalone: true,
   selector: 'app-user-login',
   imports: [
     CommonModule,
@@ -219,7 +218,7 @@ export class UserLoginComponent {
 
   goToSignup() {
     // Redirige vers une page d'inscription si disponible
-    this.router?.navigateByUrl('/signup');
+    this.router?.navigateByUrl('/user/create');
   }
 
   emailErrorMessage() {
@@ -238,6 +237,8 @@ export class UserLoginComponent {
 
   private mapFirebaseError(code?: string): string | null {
     switch (code) {
+      case 'auth/email-not-verified':
+        return 'Validate your email before signing in. Open the verification email, then try again.';
       case 'auth/invalid-credential':
       case 'auth/wrong-password':
       case 'auth/user-not-found':

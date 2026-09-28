@@ -184,15 +184,16 @@ export class TournamentRefereeEditComponent implements OnInit{
 
     if (this.referee && this.referee.attendee.person && this.referee.attendee.person.countryId) {
       this.refereeCountry = this.regionService.countryById(this.referee!.attendee.person!.countryId);
-      console.log(this.refereeCountry);
-      this.computeRefereeUpgrade();
+      // console.log(this.refereeCountry);
     }
+    this.computeRefereeUpgrade();
   }
 
   private computeRefereeUpgrade() {
     if (!this.referee || !this.referee.attendee || !this.referee.attendee.referee) return;
-    this.refereeUpgrade = this.referee.attendee.referee.upgrade!.badge === 0
-      || this.referee.attendee.referee.badge === this.referee.attendee.referee.badgeSystem;
+    this.refereeUpgrade = this.referee.attendee.referee.upgrade != undefined 
+      && this.referee.attendee.referee.upgrade.badge > 0
+      && this.referee.attendee.referee.badge < this.referee.attendee.referee.badgeSystem;
 
   }
   countrySelected(country: Country) {

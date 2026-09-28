@@ -198,7 +198,7 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
     return !!user && !!tournament && this.source.attendees.some(
       (attendee) =>
         attendee.tournamentId === tournament.id &&
-        attendee.person?.personId === user.id &&
+        attendee.person?.email?.trim().toLowerCase() === user.email?.trim().toLowerCase() &&
         attendee.isRefereeCoach,
     );
   });

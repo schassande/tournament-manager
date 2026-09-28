@@ -4,5 +4,13 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"firestoreWorkbench.connections": [
+			{
+				"name": "Tournament Manaer prod",
+				"type": "production",
+				"serviceAccountPath": "C:\\data\\perso\\dev\\tournament-manager\\tournament-manager-90045-firebase-adminsdk-fbsvc-c89e0c9a97.json"
+			}
+		]
+	}
 }

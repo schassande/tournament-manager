@@ -2,16 +2,21 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Attendee } from '@tournament-manager/persistent-data-model';
-import { AttendeeService } from '../service/attendee.service';
-import { TournamentHomeResponse, TournamentHomeService } from '../service/tournament-home.service';
-import { UserService } from '../service/user.service';
-import { TournamentService } from '../service/tournament.service';
+import { AttendeeService } from '../../service/attendee.service';
+import { TournamentHomeResponse, TournamentHomeService } from '../../service/tournament-home.service';
+import { UserService } from '../../service/user.service';
+import { TournamentService } from '../../service/tournament.service';
 
-interface HomeAction { label: string; path: string; }
+interface HomeAction {
+  label: string;
+  path: string;
+}
 
 @Component({
-  selector: 'app-tournament-home', imports: [CommonModule, RouterLink],
-  templateUrl: './tournament-home.page.html', styleUrl: './tournament-home.page.css',
+  selector: 'app-tournament-home',
+  imports: [CommonModule, RouterLink],
+  templateUrl: './tournament-home.page.html',
+  styleUrl: './tournament-home.page.css',
 })
 export class TournamentHomeComponent implements OnInit {
   private readonly tournamentService = inject(TournamentService);
@@ -25,7 +30,9 @@ export class TournamentHomeComponent implements OnInit {
   readonly error = signal(false);
   readonly actions = signal<HomeAction[]>([]);
   readonly sortedDivisions = computed(() =>
-    [...(this.overview()?.tournament.divisions ?? [])].sort((left, right) => this.compareDivisions(left.shortName, right.shortName))
+    [...(this.overview()?.tournament.divisions ?? [])].sort((left, right) =>
+      this.compareDivisions(left.shortName, right.shortName),
+    ),
   );
   readonly phase = computed(() => {
     const tournament = this.overview()?.tournament;
@@ -36,21 +43,33 @@ export class TournamentHomeComponent implements OnInit {
 
   ngOnInit(): void {
     const tournamentId = this.route.snapshot.paramMap.get('tournamentId');
-    if (!tournamentId) { this.router.navigate(['/tournament']); return; }
-    this.tournamentService.byId(tournamentId).subscribe((tournament) => this.tournamentService.setCurrentTournament(tournament ?? null));
+    if (!tournamentId) {
+      this.router.navigate(['/tournament']);
+      return;
+    }
+    this.tournamentService
+      .byId(tournamentId)
+      .subscribe((tournament) => this.tournamentService.setCurrentTournament(tournament ?? null));
     this.homeService.byTournament(tournamentId).subscribe({
-      next: overview => { this.overview.set(overview); this.loading.set(false); this.loadActions(tournamentId); },
-      error: () => { this.loading.set(false); this.error.set(true); },
+      next: (overview) => {
+        this.overview.set(overview);
+        this.loading.set(false);
+        this.loadActions(tournamentId);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error.set(true);
+      },
     });
   }
 
   dayStart(day: TournamentHomeResponse['tournament']['days'][number]): number | undefined {
-    const values = day.parts.flatMap(part => part.timeslots.map(timeslot => timeslot.start));
+    const values = day.parts.flatMap((part) => part.timeslots.map((timeslot) => timeslot.start));
     return values.length ? Math.min(...values) : undefined;
   }
 
   dayEnd(day: TournamentHomeResponse['tournament']['days'][number]): number | undefined {
-    const values = day.parts.flatMap(part => part.timeslots.map(timeslot => timeslot.end));
+    const values = day.parts.flatMap((part) => part.timeslots.map((timeslot) => timeslot.end));
     return values.length ? Math.max(...values) : undefined;
   }
 
@@ -73,22 +92,27 @@ export class TournamentHomeComponent implements OnInit {
   formatDayDate(epoch: number, timeZone: string): string {
     const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
-      year: 'numeric', month: '2-digit', day: '2-digit',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     };
     const fixedOffset = /^UTC([+-])(\d{2}):?(\d{2})$/.exec(timeZone);
     const date = new Date(epoch * 1000 + (fixedOffset ? this.offsetMinutes(fixedOffset) * 60_000 : 0));
     const formatter = new Intl.DateTimeFormat('en-US', {
       ...options,
-      timeZone: fixedOffset ? 'UTC' : (timeZone || 'UTC'),
+      timeZone: fixedOffset ? 'UTC' : timeZone || 'UTC',
     });
     const parts = formatter.formatToParts(date);
-    const value = (type: Intl.DateTimeFormatPartTypes): string => parts.find(part => part.type === type)?.value ?? '';
+    const value = (type: Intl.DateTimeFormatPartTypes): string => parts.find((part) => part.type === type)?.value ?? '';
     return `${value('weekday')}, ${value('day')}/${value('month')}/${value('year')}`;
   }
 
   barWidth(total: number): string {
-    const maximum = Math.max(...(this.overview()?.pyramid ?? []).flatMap(row => [row.male.total, row.female.total]), 1);
-    return `${Math.max(total / maximum * 100, total ? 8 : 0)}%`;
+    const maximum = Math.max(
+      ...(this.overview()?.pyramid ?? []).flatMap((row) => [row.male.total, row.female.total]),
+      1,
+    );
+    return `${Math.max((total / maximum) * 100, total ? 8 : 0)}%`;
   }
 
   /** Formats a referee count and omits the upgrade suffix when there is no upgrade. */
@@ -97,7 +121,7 @@ export class TournamentHomeComponent implements OnInit {
   }
 
   teamNames(division: TournamentHomeResponse['tournament']['divisions'][number]): string {
-    return division.teams.map(team => team.name).join(', ');
+    return division.teams.map((team) => team.name).join(', ');
   }
 
   /** Sorts divisions by category, then by age, with open divisions first in each category. */
@@ -117,17 +141,23 @@ export class TournamentHomeComponent implements OnInit {
   }
 
   private loadActions(tournamentId: string): void {
-    const personId = this.userService.currentUser$()?.id;
-    if (!personId) return;
-    this.attendeeService.findByPerson(tournamentId, personId).subscribe(attendees => this.actions.set(this.buildActions(attendees)));
+    const email = this.userService.currentUser$()?.email;
+    if (!email) return;
+    this.attendeeService
+      .findByEmail(tournamentId, email)
+      .subscribe((attendees) => this.actions.set(this.buildActions(attendees)));
   }
 
   private formatInTimeZone(epoch: number, timeZone: string, options: Intl.DateTimeFormatOptions): string {
     const fixedOffset = /^UTC([+-])(\d{2}):?(\d{2})$/.exec(timeZone);
     if (fixedOffset) {
-      return new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' }).format(new Date(epoch * 1000 + this.offsetMinutes(fixedOffset) * 60_000));
+      return new Intl.DateTimeFormat(undefined, { ...options, timeZone: 'UTC' }).format(
+        new Date(epoch * 1000 + this.offsetMinutes(fixedOffset) * 60_000),
+      );
     }
-    return new Intl.DateTimeFormat(undefined, { ...options, timeZone: timeZone || 'UTC' }).format(new Date(epoch * 1000));
+    return new Intl.DateTimeFormat(undefined, { ...options, timeZone: timeZone || 'UTC' }).format(
+      new Date(epoch * 1000),
+    );
   }
 
   private offsetMinutes(match: RegExpExecArray): number {
@@ -136,7 +166,7 @@ export class TournamentHomeComponent implements OnInit {
 
   private buildActions(attendees: Attendee[]): HomeAction[] {
     const tournament = this.overview()!.tournament;
-    const roles = new Set(attendees.flatMap(attendee => attendee.roles));
+    const roles = new Set(attendees.flatMap((attendee) => attendee.roles));
     const modules = new Set(tournament.enablesModules ?? []);
     const manager = roles.has('TournamentManager') || roles.has('GameAllocator');
     const coach = roles.has('CoachReferee') || roles.has('RefereeCoachLeader');
@@ -150,9 +180,11 @@ export class TournamentHomeComponent implements OnInit {
       actions.push({ label: 'View games list', path: `/tournament/${tournament.id}/game` });
     }
     if (manager || coach) {
-      actions.push({ label: 'Manage referees', path: `/tournament/${tournament.id}/referee` }, 
+      actions.push(
+        { label: 'Manage referees', path: `/tournament/${tournament.id}/referee` },
         { label: 'Manage referee Coaches', path: `/tournament/${tournament.id}/coach` },
-        { label: 'Allocate referees on games', path: `/tournament/${tournament.id}/allocation` });
+        { label: 'Allocate referees on games', path: `/tournament/${tournament.id}/allocation` },
+      );
     }
     actions.push({ label: 'View referee planning', path: `/tournament/${tournament.id}/referee-planning` });
     if (coach && modules.has('UPGRADE')) {

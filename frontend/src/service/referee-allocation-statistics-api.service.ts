@@ -1,12 +1,14 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Auth } from '@angular/fire/auth';
+import { from, Observable, switchMap } from 'rxjs';
 import { environment } from '../environments/environment';
 import {
   FragmentRefereeAllocationStatistics,
   TournamentRefereeAllocationStatistics,
 } from '@tournament-manager/persistent-data-model';
 
+/** Persisted statistics returned by the authorized calculation endpoint. */
 export interface RefereeAllocationStatisticsResponse {
   tournamentAllocationId: string;
   fragmentAllocationId: string;
@@ -21,6 +23,7 @@ export interface RefereeAllocationStatisticsResponse {
 @Injectable({ providedIn: 'root' })
 export class RefereeAllocationStatisticsApiService {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(Auth);
 
   /** Computes statistics for the supplied referees or for referees assigned to a game. */
   compute(
@@ -35,7 +38,18 @@ export class RefereeAllocationStatisticsApiService {
       .set('fragmentAllocationId', fragmentAllocationId);
     if (refereeAttendeeIds.length) params = params.set('refereeAttendeeIds', refereeAttendeeIds.join(','));
     if (gameId) params = params.set('gameId', gameId);
-    return this.http.get<RefereeAllocationStatisticsResponse>(
-      `${environment.functionsApiUrl}/refereeAllocationStatistics/compute`, { params });
+    const user = this.auth.currentUser;
+    if (!user?.emailVerified) throw new Error('A verified account is required to compute statistics.');
+    return from(user.getIdToken()).pipe(
+      switchMap((token) =>
+        this.http.get<RefereeAllocationStatisticsResponse>(
+          `${environment.functionsApiUrl}/refereeAllocationStatistics/compute`,
+          {
+            params,
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        ),
+      ),
+    );
   }
 }

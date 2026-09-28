@@ -4,11 +4,11 @@
 
 Le backend Firebase actuel est tres concentre :
 
-- cinq Cloud Functions exportees : `api`, `createPerson`, `removeRankingReferees`, `repairRefereeRanking` et `deleteRefereeRanking`
+- Exported functions: `api`, `createPerson`, `deletePerson`, `saveAttendee`, `deleteAttendee`, `createTournament`, `deleteTournament`, `removeRankingReferees`, `repairRefereeRanking`, `deleteRefereeRanking`.
 - `api` encapsule une application Express
 - trois routers metier sont branches : `/refereeAllocationStatistics`, `/fitImport` et `/tournamentHome`
 
-Le reste du CRUD metier est fait directement par le frontend via Firestore.
+Profile updates and other permitted business writes still use Firestore directly. Identity, attendee, and tournament lifecycle writes use the callables below.
 
 Les collections `referee-upgrade-coach-vote` et `referee-upgrade-panel-vote` sont validees par les regles Firestore : valeurs de vote autorisees, arbitre eligible, identite du referee coach pour les votes individuels et invariants d'identite lors des mises a jour. Les votes ne sont pas supprimables afin de conserver l'historique.
 
@@ -25,9 +25,7 @@ Responsabilites :
 - exporte la callable function `createPerson`
 - exporte `api = onRequest({ secrets: ['APP_API_KEY'] }, app)`
 
-Point important :
-
-- `APP_API_KEY` est declare comme secret requis, mais la verification du secret n'est pas encore implementee dans la route.
+The allocation-statistics endpoint now verifies an Authorization bearer token and indexed manager/admin access. It never logs authentication headers or APP_API_KEY. FIT proxy and the anonymized tournament home aggregate retain their existing public behavior.
 
 ## Fonction exposee : `api`
 
@@ -55,48 +53,28 @@ La route `/tournamentHome` est accessible sans authentification. Elle lit côté
 
 Le router `fitImportRouter` (`functions/src/fit-import.ts`) relaie les appels vers l'API publique FIT côté serveur. Le frontend appelle directement l'URL publique de la fonction `api` (`...cloudfunctions.net/api/fitImport/...`), ce qui évite le blocage CORS du site FIT sans proxy local. Le relais charge la saison, les divisions et les stages pour la route `download`, vérifie les erreurs HTTP et JSON, et renvoie les erreurs sous la forme `{ "error": "..." }`.
 
-## Fonction exposee : `createPerson`
+## Identity, attendee, and tournament callables (2026-09-14)
 
-Type :
+All these callables require verified Firebase email. Supplied UID/email or role flags are never proof of authorization. Admin SDK operations enforce their own permissions because they bypass Firestore rules.
 
-- Cloud Function callable v2
+| Callable | Request | Response | Authorization and effect |
+|---|---|---|---|
+| `createPerson` | `{ person: Person }` | `Person` | Verified self-registration only. Creates Person/email index transactionally, then links all matching attendees. |
+| `deletePerson` | `{ personId: string, deleteAccount: true }` | empty | Owner or platform admin. Deletes Authentication, Person, and account email index; preserves attendees and tournament indexes. |
+| `saveAttendee` | `{ attendee: Attendee }` | `Attendee` | Indexed manager or platform admin. Empty ID creates; a supplied ID must exist. Normalizes email, derives flags, validates Person links, and updates the index atomically. |
+| `deleteAttendee` | `{ id: string }` | empty | Indexed manager or platform admin. Deletes attendee and only its owned index entry. |
+| `createTournament` | `{ tournament: Tournament, attendee: Attendee }` | `{ tournament, attendee }` | Verified creator with an existing profile. Allocates IDs and creates tournament, first manager, and index atomically. |
+| `deleteTournament` | `{ tournamentId: string }` | `{ deletedDocuments: number }` | Current manager/admin on every attempt. Deletes related collections, attendees/index, then tournament. |
 
-But :
+`createPerson` rejects another owner's email/UID. A repeat for the same identity returns the existing Person and repeats linking. Linking queries `where("person.email", "==", createdPerson.email)` and paginates only matching attendees in pages of 150. Attendee emails are normalized by creation/update; registration never scans the whole collection. Transactions recheck current identity and email and update only `person.personId` and `lastChange`. Each invocation queries matching attendees again; no completion state is persisted. Concurrent attendee saves consult the Person index, so new membership converges to the correct link.
 
-- creer un document `Person` cote serveur
-- garantir l'unicite de l'email via une transaction Firestore
-- alimenter la collection d'index `email_personid` lorsque l'email est renseigne
+`createPerson` and `deleteTournament` have 540-second timeouts, matched by the frontend. Registration retries reuse the newly created account and repeat the filtered linking operation.
 
-Payload attendu :
+`deleteTournament` processes pages of 150 documents. It executes directly without freezing concurrent writes or recording progress. A partial failure after manager membership is removed requires a platform administrator to finish. Counters describe the current attempt. The frontend displays preparation and confirmed completion rather than simulated intermediate progress.
 
-```json
-{
-  "person": {
-    "userAuthId": "...",
-    "firstName": "...",
-    "lastName": "...",
-    "shortName": "...",
-    "email": "...",
-    "regionId": "...",
-    "countryId": "...",
-    "gender": "M"
-  }
-}
-```
+Errors: `unauthenticated`, `permission-denied`, `invalid-argument`, `already-exists` for email collisions, `not-found` for an absent attendee update, and `failed-precondition` for deletion in progress or identity repair needs.
 
-Comportement :
-
-1. normalise l'email avec `trim()`
-2. si l'email est non vide, lit `email_personid/{email}` dans la transaction
-3. si une entree existe deja, renvoie une erreur `already-exists`
-4. cree le document `person/{generatedId}`
-5. cree `email_personid/{email}` avec `{ personId }` quand l'email est non vide
-
-Choix de conception explicite :
-
-- l'index `email_personid` n'est maintenu que pour les emails non vides
-- ce choix permet de conserver la creation de personnes techniques ou temporaires sans email, par exemple dans les ecrans arbitres et coaches
-- l'unicite par email est donc garantie pour les personnes dont l'email est renseigne a la creation
+Internal collections and migration are documented in `doc/datamodel.md` and `doc/dev.md`. No additional secret is required.
 
 ## Route HTTP : `/refereeAllocationStatistics/compute`
 
@@ -289,7 +267,7 @@ But :
 Le backend Firebase porte aujourd'hui :
 
 - une API HTTP Express pour les statistiques d'allocation
-- une callable function `createPerson` pour la creation transactionnelle de `Person`
+- Account, attendee, and tournament lifecycle callables enforce identity, authorization, and transactional index consistency.
 
 Il ne porte pas encore :
 
@@ -306,7 +284,7 @@ En consequence, l'architecture actuelle est hybride :
 
 ## Maintenance des referee rankings (étape 2)
 
-Les callables v2 `removeRankingReferees` et `repairRefereeRanking` sont exportées séparément depuis `functions/src/referee-ranking/`. Elles exigent une authentification avec email, un attendee coach du tournoi relié par `person.personId` au `Person.email` connecté, et le module RANKING actif. Aucun rôle de leader du panel n'est requis. Aucun secret supplémentaire n'est nécessaire.
+The v2 callables `removeRankingReferees` and `repairRefereeRanking` require a verified email and an indexed tournament coach matching `actorCoachAttendeeId`, plus the enabled RANKING module. A linked Person and panel-leader role are not required. Tournament deletion in progress rejects these operations.
 
 Contrat partagé dans `persistent-data-model/src/referee-ranking.ts` :
 
@@ -328,3 +306,7 @@ Elle vérifie le même coach authentifié et le module RANKING que la maintenanc
 Erreurs : `invalid-argument` pour un identifiant invalide, `unauthenticated` sans identité, `permission-denied` pour un accès refusé, `not-found` pour un parent absent, `failed-precondition` pour un enfant rattaché à un autre tournoi et `internal` si la suppression ne peut pas se terminer. Aucun secret supplémentaire n'est requis.
 
 Compilation : la lecture du compteur historique optionnel `nbGamesToAllocate` dans `tournament-home.ts` utilise maintenant un type local explicite. Cette correction de typage préserve le comportement existant et n'ajoute pas ce champ au modèle partagé.
+
+## Statistics authorization update (2026-09-14)
+
+`GET /refereeAllocationStatistics/compute` requires `Authorization: Bearer <Firebase ID token>` with verified email and indexed manager or platform-admin rights for the allocation tournament. Allocation, fragment, game, and referee inputs must belong to that tournament. Errors return HTTP 401, 403, 400, or 409 as appropriate. The Angular API service adds the current user's token. This also removes the previous logging of headers and the API secret.

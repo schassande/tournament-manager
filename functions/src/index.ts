@@ -28,6 +28,11 @@ app.use('/tournamentHome', tournamentHomeRouter);
 
 export const api = onRequest({ secrets }, app);
 export { createPerson };
+export { deletePerson } from './person/delete-person';
+export { saveAttendee } from './attendee/save-attendee';
+export { deleteAttendee } from './attendee/delete-attendee';
+export { createTournament } from './tournament/create-tournament';
+export { deleteTournament } from './tournament/delete-tournament';
 export { removeRankingReferees } from './referee-ranking/remove-ranking-referees';
 export { repairRefereeRanking } from './referee-ranking/repair-referee-ranking';
 export { deleteRefereeRanking } from './referee-ranking/delete-referee-ranking';

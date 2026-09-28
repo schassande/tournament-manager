@@ -2,36 +2,43 @@ import * as admin from 'firebase-admin';
 import {HttpsError, CallableRequest, onCall} from 'firebase-functions/v2/https';
 import {buildPersonSearch, colEmailPersonId, colPerson, Gender, Person, RefereeCoachInfo, RefereeInfo} from '../persistent-data-model';
 import {dateToEpoch} from '../common-persistence';
+import { identityKeyComponent, normalizeIdentityEmail } from '../persistent-data-model';
+import { verifiedIdentity } from '../identity/authorization';
+import { linkPersonAttendees } from './link-attendees';
 
-interface CreatePersonRequest {
+/** Self-registration payload; ownership is always derived from verified authentication. */
+export interface CreatePersonRequest {
   person: Person;
 }
 
-interface EmailPersonIdRecord {
-  personId: string;
-}
-
 /**
- * Create a person in Firestore while enforcing email uniqueness.
- * The email index is only maintained when a non-empty email is provided.
+ * Creates the caller's profile idempotently, then links every matching attendee.
  * @param request callable payload containing the person to create
  * @returns the created persistent person
  */
-export const createPerson = onCall<CreatePersonRequest>(async (request: CallableRequest<CreatePersonRequest>): Promise<Person> => {
+export async function createPersonHandler(request: CallableRequest<CreatePersonRequest>): Promise<Person> {
+  const identity = verifiedIdentity(request);
   const person = sanitizeCreatePersonRequest(request.data);
+  if (normalizeIdentityEmail(person.email) !== identity.email || person.userAuthId !== identity.uid) {
+    throw new HttpsError('permission-denied', 'You can only create your own verified profile.');
+  }
   const firestore = admin.firestore();
-  const normalizedEmail = person.email.trim();
-
-  return firestore.runTransaction(async (transaction) => {
-    if (normalizedEmail.length > 0) {
-      const emailRef = firestore.collection(colEmailPersonId).doc(normalizedEmail);
-      const emailSnapshot = await transaction.get(emailRef);
-      if (emailSnapshot.exists) {
+  const normalizedEmail = identity.email;
+  const personRef = firestore.collection(colPerson).doc();
+  const saved = await firestore.runTransaction(async (transaction) => {
+    const emailRef = firestore.collection(colEmailPersonId).doc(identityKeyComponent(normalizedEmail));
+    const emailSnapshot = await transaction.get(emailRef);
+    if (emailSnapshot.exists) {
+      const existingRef = firestore.collection(colPerson).doc(emailSnapshot.data()!.personId);
+      const existing = await transaction.get(existingRef);
+      if (existing.data()?.userAuthId !== identity.uid || existing.data()?.email !== normalizedEmail) {
         throw new HttpsError('already-exists', 'A person already exists with this email.');
       }
+      return { ...existing.data(), id: existing.id } as Person;
     }
-
-    const personRef = firestore.collection(colPerson).doc();
+    // Protect against a stale index and attempts to register an existing UID under a new email.
+    const owned = await transaction.get(firestore.collection(colPerson).where('userAuthId', '==', identity.uid));
+    if (!owned.empty) throw new HttpsError('failed-precondition', 'An existing profile requires index repair.');
     const createdPerson: Person = {
       ...person,
       id: personRef.id,
@@ -42,15 +49,15 @@ export const createPerson = onCall<CreatePersonRequest>(async (request: Callable
 
     transaction.set(personRef, createdPerson);
 
-    if (normalizedEmail.length > 0) {
-      const emailRef = firestore.collection(colEmailPersonId).doc(normalizedEmail);
-      const emailRecord: EmailPersonIdRecord = {personId: createdPerson.id};
-      transaction.set(emailRef, emailRecord);
-    }
-
+    transaction.set(emailRef, { personId: createdPerson.id });
     return createdPerson;
   });
-});
+  await linkPersonAttendees(saved);
+  return saved;
+}
+
+/** Self-registration endpoint; retries resume linking without duplicating the account. */
+export const createPerson = onCall({ timeoutSeconds: 540 }, createPersonHandler);
 
 /**
  * Validate and normalize the create person payload.

@@ -26,6 +26,12 @@ export const routes: Routes = [
   },
 
   {
+    path: 'user/:id',
+    loadComponent: () => import('../page/user-profile/user-profile.page').then(m => m.UserProfilePage),
+    data: { title: 'User profile' },
+    canActivate: [AuthGuard],
+  },
+  {
     path: 'tournament',
     loadComponent: () =>
       import('../page/tournament-list.page').then(
@@ -54,7 +60,7 @@ export const routes: Routes = [
   {
     path: 'tournament/:tournamentId/home',
     loadComponent: () =>
-      import('../page/tournament-home.page').then(
+      import('../page/tournament-home/tournament-home.page').then(
         (m) => m.TournamentHomeComponent,
       ),
     data: { title: 'Tournament home' },
@@ -81,7 +87,7 @@ export const routes: Routes = [
   {
     path: 'tournament/:tournamentId/coach',
     loadComponent: () =>
-      import('../page/tournament-referee-coach.page').then(
+      import('../page/tournament-referee-coach/tournament-referee-coach.page').then(
         (m) => m.TournamentRefereeCoachComponent,
       ),
     data: { title: 'Referee Coaches of the tournament' },

@@ -18,7 +18,6 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 
 @Component({
   selector: 'app-user-create',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -104,6 +103,9 @@ import { RadioButtonModule } from 'primeng/radiobutton';
             </div>
           </div>
 
+          @if (verificationPending()) {
+            <p role="status">A verification email has been sent. Follow its link, then submit this form again to finish registration.</p>
+          }
           <!-- Erreur -->
           @if(error()) {
           <div  class="p-2 border-round bg-red-50 text-red-700 border-1 border-red-200">
@@ -147,6 +149,7 @@ export default class UserCreateComponent {
   private userService = inject(UserService);
 
   loading = signal(false);
+  verificationPending = signal(false);
   error = signal<string | null>(null);
 
   // Exemple de données (à remplacer par API ou Firestore)
@@ -163,6 +166,7 @@ export default class UserCreateComponent {
     gender: [null, Validators.required],
   });
 
+  /** Starts email validation, then completes registration with the verified account. */
   async onSubmit() {
     this.error.set(null);
     if (this.form.invalid) {
@@ -189,10 +193,11 @@ export default class UserCreateComponent {
         regionId: this.regionService.regionByCountryId(newUser.countryId)!.id,
       };
 
-      await firstValueFrom(this.userService.createUser(user, newUser.password));
-      this.router?.navigateByUrl('/');
+      const created = await firstValueFrom(this.userService.createUser(user, newUser.password));
+      this.verificationPending.set(!created);
+      if (created) this.router?.navigateByUrl('/');
     } catch (e) {
-      this.error.set('Error during user creation.');
+      this.error.set(e instanceof Error ? e.message : 'Error during user creation.');
     } finally {
       this.loading.set(false);
     }

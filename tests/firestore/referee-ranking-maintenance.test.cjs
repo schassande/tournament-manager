@@ -13,7 +13,7 @@ const children = db.collection('coach-referees-ranking');
 
 /** Creates a callable context without bypassing the maintenance function's authentication checks. */
 function request(id, ids, email = 'maintenance@example.com') {
-  return { auth: { uid: 'maintainer', token: { email } }, data: {
+  return { auth: { uid: 'maintainer', token: { email, email_verified: true } }, data: {
     tournamentId: 'maintenance', tournamentRefereeRankingId: id, actorCoachAttendeeId: 'maintainer',
     ...(ids ? { refereeAttendeeIds: ids } : {}),
   } };
@@ -46,9 +46,10 @@ async function snapshot(id) {
 
 before(async () => {
   const batch = db.batch();
+  batch.set(db.doc('attendee-index/maintenance:maintenance@example.com'), { attendeeId: 'maintainer' });
   batch.set(db.doc('tournament/maintenance'), { enablesModules: ['RANKING'] });
   batch.set(db.doc('person/maintainer'), { email: 'maintenance@example.com' });
-  batch.set(db.doc('attendee/maintainer'), { tournamentId: 'maintenance', isRefereeCoach: true, person: { personId: 'maintainer' } });
+  batch.set(db.doc('attendee/maintainer'), { id: 'maintainer', tournamentId: 'maintenance', roles: ['Coach'], isRefereeCoach: true, person: { email: 'maintenance@example.com' } });
   for (const id of ['ma', 'mb', 'mc']) batch.set(db.doc(`attendee/${id}`), { tournamentId: 'maintenance', isReferee: true, roles: ['Referee'] });
   await batch.commit();
 });
@@ -168,7 +169,15 @@ test('standalone cascade retries after a real failed batch without deleting its 
   let batchNumber = 0;
   db.batch = () => {
     const batch = original();
-    if (++batchNumber === 2) batch.update(db.doc('missing-ranking-test/delete-failure'), { fail: true });
+    const originalDelete = batch.delete.bind(batch);
+    let counted = false;
+    batch.delete = (...args) => {
+      if (!counted) {
+        counted = true;
+        if (++batchNumber === 2) batch.update(db.doc('missing-ranking-test/delete-failure'), { fail: true });
+      }
+      return originalDelete(...args);
+    };
     return batch;
   };
   try { await assert.rejects(deleteRanking(request('delete-retry')), { code: 'internal' }); }

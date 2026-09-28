@@ -1,5 +1,4 @@
 # TODO list du projet Tournament Maager
-- Ranking method NZ
 - Water carrier
   - pour impression
   - pour remplissage en ligne
@@ -85,6 +84,8 @@
   - Divisions / nombre d'équipe
   - home : Match alloué / restant à allouer
 - 2026/09/11: Page Referees : bug graphique/scroll : on ne voit pas la fin du tableau
+- 2026/09/13: Ranking method NZ
+- 2026/09/28: indexation des attendee <tournamentId>:<email>=>attendee.id pour permettre l'application des droits en fonction des roles définis dans l'attendee
 
 
 ## Bugs non reproduis

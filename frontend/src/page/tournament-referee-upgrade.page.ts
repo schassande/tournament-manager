@@ -338,7 +338,7 @@ export class TournamentRefereeUpgradeComponent extends AbstractTournamentPage {
       referees: this.loadReferees(tournamentId), coaches: this.loadCoaches(tournamentId),
       coachVotes: this.coachVoteService.findByTournament(tournamentId), panelVotes: this.panelVoteService.findByTournament(tournamentId),
       currentCoach: user
-        ? this.attendeeService.findByPerson(tournamentId, user.id).pipe(
+        ? this.attendeeService.findByEmail(tournamentId, user.email).pipe(
           take(1),
           map((attendees) => attendees.find((attendee) => attendee.isRefereeCoach)),
         )

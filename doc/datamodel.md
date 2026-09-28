@@ -67,53 +67,30 @@ Contraintes :
 
 ## `Person`
 
-Identite reutilisable d'un utilisateur ou d'un officiel.
+An application account created only by its owner after email verification, including a social login with a verified email.
 
-Champs principaux :
+Fields: immutable `userAuthId` (Firebase Authentication UID) and normalized `email`, plus `firstName`, `lastName`, `shortName`, `phone`, `photoUrl`, `search`, `regionId`, `countryId`, `gender`, `referee`, and `refereeCoach`.
 
-- `userAuthId`
-- `firstName`, `lastName`, `shortName`
-- `email`, `phone`, `photoUrl`
-- `search`
-- `regionId`, `countryId`
-- `gender`
-- `referee`
-- `refereeCoach`
+Authenticated reads are unchanged. The owner identified by UID or a platform administrator can update profile fields, but neither can change email or UID. Direct creation/deletion is forbidden: registration and account deletion use callables. Deletion is available to the owner through account deletion or to a platform administrator.
 
-Usage :
+`search` concatenates first name, last name, short name, and email. Registration assigns `person.personId` to all attendees with the same normalized email across tournaments, replacing stale links without changing business fields or roles.
 
-- support des comptes utilisateurs
-- fiche signaletique d'un arbitre temps plein ou d'un coach d'arbitres
-
-Droits :
-
-- une personne authentifiée peut modifier uniquement le document `Person` dont l'email correspond à son email authentifié ;
-- un `PlaformAdmin` peut modifier toute personne ;
-- la création et la suppression restent soumises aux règles Firestore générales actuelles.
-
-Contrainte :
-
-- `search` est un champ denormalise mis a jour a chaque creation ou modification
-- sa valeur est la concatenation de `firstName`, `lastName`, `shortName` et `email`, separes par un espace
+Account deletion removes Authentication, Person, and its email index but leaves every attendee and tournament/email index unchanged, including the optional Person link. References to deleted Persons must be tolerated. Re-registration with the same verified email restores preassigned rights and updates those links.
 
 ## `EmailPersonId`
 
-Index technique gere uniquement par le backend.
+Server-only collection `email_personid`: `{ personId: string }` keyed by normalized email (`trim().toLowerCase()`). Escape `%`, `/`, `:` as `%25`, `%2F`, `%3A` in that order. Ordinary email keys are unchanged. New Persons without emails are not supported. This index enforces account uniqueness and coordinates registration with concurrent attendee writes.
 
-Champs principaux :
+## `AttendeeIndex`
 
-- identifiant du document : email de la personne
-- `personId`
+Server-only collection `attendee-index`: `{ attendeeId: string }`, keyed by `escape(tournamentId) + ':' + escape(normalizedEmail)`. No roles are copied; authorization reads the current attendee.
 
-Usage :
+Each tournament/email pair belongs to one attendee. Email-less attendees have no entry; the same email can occur in different tournaments. Attendee and index mutations are transactional; conflicting ownership is rejected, never overwritten.
 
-- garantir l'unicite de l'email a la creation d'une `Person`
-- retrouver rapidement l'identifiant de la personne associee a un email
+The database was reset before the attendee index rollout, so no legacy duplicate merge is required. Runtime attendee and index mutations enforce the one-attendee-per-tournament/email invariant.
 
-Contrainte :
+Rules and server functions resolve the acting user from verified Firebase email, then check the supplied actor ID, tournament, and authoritative roles. A Person link is not required for authorization.
 
-- l'index n'est cree que lorsque l'email est non vide
-- plusieurs `Person` sans email restent donc possibles
 
 ## `Tournament`
 
@@ -149,7 +126,7 @@ parts ne modifie pas son identifiant. `Game` conserve `dayId` et
 `timeslotId`, mais ne persiste pas `partDayId` : la part se déduit du
 timeslot lorsque nécessaire.
 
-`managerAttendeeIds[]` contient les identifiants des participants qui administrent le tournoi. `managerEmails[]` contient les adresses email de tous les managers, qu'ils soient associés ou non à une `Person`/un `Attendee` ; il est utilisé par les règles Firestore pour autoriser la création, la modification et la suppression du tournoi. Un manager associé à un attendee doit donc être présent dans les deux listes, tandis qu'un manager uniquement identifié par son email est présent uniquement dans `managerEmails[]`.
+`managerAttendeeIds[]` and `managerEmails[]` are display metadata, not authorization sources. The indexed attendee's `TournamentManager` role grants management rights. The manager editor reads attendees and never recreates roles from the old email lists. Email-only managers must have an attendee even before their account exists.
 
 Dans l'etat actuel du projet, une grande partie du parametage du tournoi est embarquee dans le document `Tournament` plutot que stockee dans des sous-collections.
 
@@ -157,10 +134,7 @@ Dans l'etat actuel du projet, une grande partie du parametage du tournoi est emb
 
 Le champ optionnel `fit` conserve la sélection FIT (`competitionSlug`, `season`), le fuseau cible IANA (`targetTimeZone`), les renommages personnalisés (`renaming.divisions`, `renaming.teams`, `renaming.fields`, avec `fitName` et `appName`), l'option `capitalizeTeamName` et la date ISO du dernier téléchargement réussi (`lastImportDate`). Les données téléchargées (`FITData`) sont persistées dans la collection `fit-data`, avec un document par téléchargement et un champ `tournamentId`; le snapshot dont `importDate` est le plus récent est restauré au chargement de la page. Les objets `Division` et `Team` peuvent conserver leurs clés FIT (`fitSlug`, `fitDivisionSlug`) pour fiabiliser les imports ultérieurs. Cette phase ne modifie pas les `Game`, `Day`, `Timeslot`, `Field`, `Division` ou `Team` du tournoi.
 
-La creation initiale par le tournament wizard ecrit le `Tournament` et
-l'`Attendee` du manager dans une transaction Firestore. Les regles autorisent
-la creation de cet attendee en consultant l'etat final du tournoi avec
-`getAfter()`.
+The `createTournament` callable atomically creates the tournament, initial manager attendee, and index for the verified creator. Complete deletion uses the direct server-side `deleteTournament` cascade.
 
 ## `Attendee`
 
@@ -169,7 +143,7 @@ Participation d'une personne a un tournoi.
 Champs principaux :
 
 - `tournamentId`
-- `personId`
+- `person`, including `person.email` and optional `person.personId`
 - `roles[]`
 - `roleRestrictions[]` (optionnel)
 - indicateurs `isPlayer`, `isReferee`, `isRefereeCoach`, `isTournamentManager`
@@ -177,7 +151,6 @@ Champs principaux :
 - `referee`
 - `refereeCoach`
 - `unavailabilities[]` (optionnel) : exceptions de disponibilité par `dayId` et `timeslotId`
-- `partDays[]`
 - `comments`
 
 Chaque entrée de `unavailabilities[]` contient `dayId`, `unavailability`
@@ -194,13 +167,16 @@ contient uniquement les slots indisponibles.
 - `divisionIds[]` (optionnel) : divisions autorisées
 - `refereeeCategories[]` (optionnel) : catégories d'arbitres autorisées
 
-Les écritures sur `Attendee` sont réservées aux managers du tournoi référencé par `tournamentId` ou à un `PlaformAdmin`. Une mise à jour ne peut pas changer `tournamentId`.
+Direct attendee writes are forbidden. `saveAttendee` and `deleteAttendee` authorize indexed tournament managers or platform administrators. `tournamentId` is immutable. Registration-time linking is a narrowly scoped server action.
+
+`roles[]` is authoritative; role flags are derived on the server. Coach roles are `Coach`, `CoachReferee`, `PlayerCoach`, and `PlayerCoachReferee`. `roleRestrictions[]` remains stored but is not enforced by this change.
 
 Usage :
 
 - associe une `Person` a un `Tournament`
 - porte les roles effectifs dans le tournoi
 - permet aussi les player referees via `isPlayer = true` et `isReferee = true`
+
 
 ## `Game`
 
@@ -531,4 +507,4 @@ Décision validée par le développeur : chaque composant de l'identifiant ranki
 
 TournamentRefereeRankingService.compute utilise le calcul pur frontend et écrit uniquement panelRefereesRanking, panelResultState=CURRENT, updatedByCoachAttendeeId et lastChange. Les statistiques gelées à l'admission sont converties en `{ ranks: number[] }[]` avant l'écriture. La date ISO est renseignée même pour un résultat vide. Les règles exigent PANEL_RANKING, un coach authentifié du tournoi, RANKING actif, des IDs uniques appartenant à la sélection et autant de lignes de statistiques que d'IDs. Elles refusent les changements de configuration combinés au calcul. La fraîcheur et les prérequis de fermeture restent persistants ; un échec de calcul ou sauvegarde ne remplace pas les données locales validées.
 
-RankingDeletionResponse décrit la réponse de la callable de suppression complète. Les individus sont supprimés avant le parent, y compris dans CLOSED et hors panel ; cette cascade est reprenable, contrairement au retrait atomique d'arbitres. TournamentDeletionService référence les deux collections par tournamentId. Les droits managerEmails de suppression restent indépendants des attendees déjà supprimés et du module RANKING. Aucune migration ou nouvelle collection n'est ajoutée.
+RankingDeletionResponse describes the standalone ranking cascade. Direct ranking deletion requires an indexed tournament manager or platform administrator. Complete tournament deletion uses the server cascade, checking current management rights on every attempt. The identity migration in doc/dev.md is required.

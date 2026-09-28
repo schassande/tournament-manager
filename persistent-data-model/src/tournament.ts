@@ -132,6 +132,7 @@ export interface TeamDivision extends Team {
   divisionShortName: string;
 }
 
+/** Tournament membership and authoritative roles, persisted through server index transactions. */
 export interface Attendee extends PersistentObject {
   tournamentId: string; // unique identifier of the tournament
   roles: AttendeeRole[]; // roles of the attendee. it can have some restrictions
@@ -144,8 +145,10 @@ export interface Attendee extends PersistentObject {
     num?: number; // number of the player
   };
   person?: {
-    personId?: string; // unique identifier
-    email?: string; // email of the person
+    /** Optional account link; may refer to a deleted Person and is not proof of authorization. */
+    personId?: string;
+    /** Tournament identity email, unique after normalization within this tournament. */
+    email?: string;
     firstName: string; // first name of the person
     lastName: string; // name of the person
     shortName: string; // short name of the person

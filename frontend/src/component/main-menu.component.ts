@@ -276,7 +276,7 @@ export class MainMenuComponent {
       const user = this.userService.currentUser$();
       this.currentAttendee.set(null);
       if (tournament && user) {
-        this.attendeeService.findByPerson(tournament.id, user.id).pipe(take(1)).subscribe(attendees => {
+        this.attendeeService.findByEmail(tournament.id, user.email).pipe(take(1)).subscribe(attendees => {
           this.currentAttendee.set(attendees[0] ?? null);
         });
       }

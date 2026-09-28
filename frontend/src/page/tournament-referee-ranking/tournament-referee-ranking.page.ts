@@ -597,7 +597,9 @@ export class TournamentRefereeRankingComponent {
     coaches: Attendee[];
   }): Observable<unknown> {
     const user = this.userService.currentUser$();
-    const coach = context.coaches.find((item) => item.isRefereeCoach && item.person?.personId === user?.id);
+    const coach = context.coaches.find(
+      (item) => item.isRefereeCoach && item.person?.email?.trim().toLowerCase() === user?.email?.trim().toLowerCase(),
+    );
     if (!user || !coach || !context.tournament?.enablesModules?.includes('RANKING')) {
       this.error.set('Ranking is available to this tournament’s referee coaches when the Ranking module is enabled.');
       return EMPTY;

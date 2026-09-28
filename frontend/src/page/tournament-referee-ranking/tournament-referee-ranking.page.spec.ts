@@ -21,7 +21,12 @@ import { TournamentRefereeRankingComponent } from './tournament-referee-ranking.
 
 describe('tournament ranking page shell', () => {
   const parent = { ...createTournamentRefereeRanking('t', 'coach', 'Finals'), id: 'ranking' };
-  const coach = { id: 'coach', tournamentId: 't', isRefereeCoach: true, person: { personId: 'person' } } as Attendee;
+  const coach = {
+    id: 'coach',
+    tournamentId: 't',
+    isRefereeCoach: true,
+    person: { email: 'coach@example.com' },
+  } as Attendee;
   let tournament: Tournament;
   let attendees: jasmine.SpyObj<AttendeeService>;
   let rankings: jasmine.SpyObj<TournamentRefereeRankingService>;
@@ -65,7 +70,10 @@ describe('tournament ranking page shell', () => {
           useValue: { paramMap: of(convertToParamMap({ tournamentId: 't' })), queryParamMap: queryParams },
         },
         { provide: Router, useValue: router },
-        { provide: UserService, useValue: { currentUser$: signal({ id: 'person' } as Person) } },
+        {
+          provide: UserService,
+          useValue: { currentUser$: signal({ id: 'person', email: 'coach@example.com' } as Person) },
+        },
         { provide: AttendeeService, useValue: attendees },
         { provide: TournamentRefereeRankingService, useValue: rankings },
         { provide: RefereesRankingService, useValue: individual },
@@ -176,9 +184,7 @@ describe('tournament ranking page shell', () => {
     expect(button.disabled).toBeTrue();
     expect(page.computeDisabledReason()).toContain('0/2 ready');
     expect(page.computeDisabledReason()).toContain('Fill and lock');
-    expect(button.closest('span[tabindex="0"]')?.getAttribute('aria-label')).toContain(
-      'Coach Ranking',
-    );
+    expect(button.closest('span[tabindex="0"]')?.getAttribute('aria-label')).toContain('Coach Ranking');
     page.computePanel();
     expect(rankings.compute).not.toHaveBeenCalled();
     page.coachRankings.set([

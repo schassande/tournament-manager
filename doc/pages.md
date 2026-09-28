@@ -73,31 +73,17 @@ Comportements notables :
 - crée automatiquement une fiche `Person` si l’adresse Google n’existe pas encore
 - affiche un message générique en cas d’échec de la connexion Google
 - le lien "Forgotten password" est un placeholder
-- le lien de creation de compte pointe vers `/signup`, alors que la route declaree est `/user/create`
+- account creation links to `/user/create`
 
 ## `/user/create`
 
-Composant : `UserCreateComponent`
+Component: `UserCreateComponent`. Email/password registration first creates the Authentication identity and sends a verification email. No Person or connected application user is created before verification. The page explains how to follow the link and resubmit to finish registration. A pending profile draft is stored in sessionStorage by UID without passwords; verified login also resumes registration/linking. If the draft is unavailable on another browser, Authentication display information and the existing default region/country are used, and the profile can be edited afterward.
 
-Fonction :
+The verified account calls `createPerson`, which validates ownership, enforces normalized email uniqueness, and links all matching attendees across tournaments. A partial failure does not delete the new Authentication account; retry reuses its Person and resumes linking. Google login and restored sessions use the same verified identity checks.
 
-- creation d'un compte Firebase Auth
-- creation du document `Person` correspondant via la callable function `createPerson`
+## `/user/:id`
 
-Champs principaux :
-
-- photo URL
-- prenom / nom / short name
-- email / mot de passe
-- pays
-- genre
-
-Comportements notables :
-
-- le compte Auth est cree cote client
-- la fiche `Person` est ensuite creee cote serveur dans une transaction Firestore
-- l'email est verifie comme unique avant creation de la personne
-- en cas d'email deja attribue dans `person`, la creation de la fiche est refusee et le compte Auth nouvellement cree est supprime pour eviter un compte orphelin
+Component: `UserProfilePage`, available through My Account and guarded by authentication. Displays the immutable email and editable first name, last name, short name, and phone. Saves require the account owner or a platform administrator; ownership/email cannot be changed. Account deletion requires an explicit checkbox and calls the server workflow. The account is deleted while all attendees and tournament/email indexes remain unchanged. Success returns to the public home page. If deletion fails after removing the Authentication account, a platform administrator may need to finish the cleanup.
 
 ## `/tournament`
 
@@ -210,6 +196,18 @@ Comportements notables :
 ## `/tournament/:tournamentId/coach`
 
 Composant : `TournamentRefereeCoachComponent`
+
+Les modifications inline du prénom, du nom et du nom court sont enregistrées après 500 ms sans
+nouvelle frappe, avec un délai indépendant par coach. Quitter le champ ou la page déclenche
+immédiatement la sauvegarde en attente. Ce choix de debounce a été validé pour éviter un appel
+serveur à chaque lettre. Les sauvegardes utilisent une copie des données pour qu'une réponse
+tardive ne remplace pas une saisie plus récente. Le niveau et la fenêtre d'édition conservent
+leur sauvegarde immédiate ; supprimer un coach annule sa sauvegarde différée en attente.
+
+La création transmet le rôle `Coach` : le serveur déduit `isRefereeCoach` des rôles,
+et ce rôle est nécessaire pour retrouver le coach au rechargement. Une modification d'un
+ancien coach sans rôle de coaching ajoute `Coach` en conservant ses autres rôles ; les rôles
+combinés de coaching existants sont préservés.
 
 Protection :
 
@@ -340,7 +338,7 @@ La page est accessible a tout utilisateur pouvant consulter le tournoi. Les ongl
 
 Certaines entrees de menu existent sans page pleinement implemente dans ce depot :
 
-- "My Account" dans le menu utilisateur pointe vers `/user/:id`, route absente
+- "My Account" opens the implemented `/user/:id` profile and account-deletion page
 - la home application et la home tournoi sont encore tres peu remplies
 
 ## Resume

@@ -13,6 +13,9 @@ import {
   CommonRefereeAllocationStatistics} from './persistent-data-model';
 import {byId, byIdRequired, create, dateToEpoch, deleteById, save} from './common-persistence';
 import {DataCache} from './data-cache';
+import { HttpsError } from 'firebase-functions/v2/https';
+import { authorizeStatistics } from './identity/statistics-authorization';
+import { normalizeIdentityEmail } from './persistent-data-model';
 
 
 
@@ -36,35 +39,48 @@ export const allocationStatisticsRouter = express.Router(); // eslint-disable-li
  *     }[]
  * }
  */
-allocationStatisticsRouter.get('/compute', async function getReferee(req: express.Request, res: express.Response) {
-  // if (!tool.ensureApiKey(req, res)) return;
-      console.log('Incoming request=' + req.method
-        + ', headers=' + JSON.stringify(req.headers)
-        + ', body=' + JSON.stringify(req.body),
-        + ', process.APP_API_KEY='+process.env.APP_API_KEY!);
+allocationStatisticsRouter.get('/compute', async function getReferee(req: express.Request, res: express.Response): Promise<void> {
+  try {
+    const bearer = req.get('Authorization');
+    if (!bearer?.startsWith('Bearer ')) throw new HttpsError('unauthenticated', 'Sign in first.');
+    let token: admin.auth.DecodedIdToken;
+    try { token = await admin.auth().verifyIdToken(bearer.slice(7), true); }
+    catch { throw new HttpsError('unauthenticated', 'A valid session is required.'); }
+    if (!token.email_verified || typeof token.email !== 'string') {
+      throw new HttpsError('permission-denied', 'A verified email is required.');
+    }
 
-  const tournamentAllocationId = queryString(req.query.tournamentAllocationId);
-  const fragmentAllocationId = queryString(req.query.fragmentAllocationId);
-  const refereeAttendeeIds = queryString(req.query.refereeAttendeeIds)
-    .split(',')
-    .filter((id) => id.length > 0);
-  const gameId = queryString(req.query.gameId);
-  const firestore: admin.firestore.Firestore = admin.firestore();
+    const tournamentAllocationId = queryString(req.query.tournamentAllocationId);
+    const fragmentAllocationId = queryString(req.query.fragmentAllocationId);
+    const refereeAttendeeIds = queryString(req.query.refereeAttendeeIds)
+      .split(',')
+      .filter((id) => id.length > 0);
+    const gameId = queryString(req.query.gameId);
+    const firestore: admin.firestore.Firestore = admin.firestore();
+    const identity = { uid: token.uid, email: normalizeIdentityEmail(token.email) };
+    await authorizeStatistics(identity, tournamentAllocationId, fragmentAllocationId, refereeAttendeeIds, gameId);
 
-  if (gameId) {
-    const game: Game = await byIdRequired(colGame, gameId, firestore);
-    logger.debug('Game', JSON.stringify(game));
+    if (gameId) {
+      const game: Game = await byIdRequired(colGame, gameId, firestore);
+      logger.debug('Game', JSON.stringify(game));
 
-    const attendedReferees: GameAttendeeAllocation[] = await getGameReferees(fragmentAllocationId, gameId, firestore);
-    attendedReferees.map(a => refereeAttendeeIds.push(a.attendeeId));
+      const attendedReferees: GameAttendeeAllocation[] = await getGameReferees(fragmentAllocationId, gameId, firestore);
+      attendedReferees.map(a => refereeAttendeeIds.push(a.attendeeId));
+    }
+
+    await authorizeStatistics(identity, tournamentAllocationId, fragmentAllocationId, refereeAttendeeIds, gameId);
+    const allocStats = await computeRefereeStatistics(tournamentAllocationId, fragmentAllocationId, refereeAttendeeIds, firestore);
+    res.status(200).send({
+      tournamentAllocationId,
+      fragmentAllocationId,
+      refereeAllocationStatistics: allocStats
+    });
+  } catch (error: unknown) {
+    const status = error instanceof HttpsError
+      ? ({ unauthenticated: 401, 'permission-denied': 403, 'invalid-argument': 400,
+        'not-found': 404, 'failed-precondition': 409 } as Record<string, number>)[error.code] || 500 : 500;
+    res.status(status).send({ error: status === 500 ? 'Statistics could not be computed.' : (error as Error).message });
   }
-
-  const allocStats = await computeRefereeStatistics(tournamentAllocationId, fragmentAllocationId, refereeAttendeeIds, firestore);
-  res.status(200).send({
-    tournamentAllocationId,
-    fragmentAllocationId,
-    refereeAllocationStatistics: allocStats
-  });
 });
 
 /**
