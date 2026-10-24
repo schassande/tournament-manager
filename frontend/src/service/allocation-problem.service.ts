@@ -15,6 +15,7 @@ export type AllocationProblemKind =
   | 'missing-referee'
   | 'referee-unavailable'
   | 'referee-consecutive-time'
+  | 'referee-consecutive-field'
   | 'referee-daily-time'
   | 'referee-same-timeslot'
   | 'coach-unavailable'
@@ -82,8 +83,8 @@ export function isCoachEligible(
   if (isSlotUnavailable(dayUnavailability, target.game.timeslotId)) reasons.push('coach-unavailable');
 
   const assignments = coachAssignments(coach, games, target.game.id);
-  const sameSlotCount = assignments.filter(({ game }) =>
-    game.game.dayId === target.game.dayId && game.game.timeslotId === target.game.timeslotId,
+  const sameSlotCount = assignments.filter(
+    ({ game }) => game.game.dayId === target.game.dayId && game.game.timeslotId === target.game.timeslotId,
   ).length;
   const sameSlotLimit = configuration.refereeCoachTwoField ? 2 : 1;
   if (sameSlotCount >= sameSlotLimit) reasons.push('coach-same-timeslot');
@@ -109,6 +110,7 @@ export function buildAllocationProblems(
     addAvailabilityProblems(problems, referee.attendee.unavailabilities, assignments, 'Referee');
     addSameTimeslotProblem(problems, assignments, 'Referee', 1);
     addConsecutiveProblem(problems, assignments, 'Referee', configuration.maxGameInRowForReferee);
+    addConsecutiveFieldProblem(problems, assignments);
     addDailyTimeProblem(problems, assignments, configuration.maxRefereeGameTimePerDay);
   }
   for (const coach of coaches.filter(isDefined)) {
@@ -126,13 +128,13 @@ export function problemsForAttendee(
   gameId: string,
   attendeeId: string,
 ): AllocationProblem[] {
-  return problems.filter(problem => problem.locations.some(location =>
-    location.gameId === gameId && location.attendeeId === attendeeId,
-  ));
+  return problems.filter((problem) =>
+    problem.locations.some((location) => location.gameId === gameId && location.attendeeId === attendeeId),
+  );
 }
 
 function addMissingRefereeProblems(problems: AllocationProblem[], game: GameView): void {
-  const count = game.referees.filter(allocation => allocation.referee?.attendee.isReferee).length;
+  const count = game.referees.filter((allocation) => allocation.referee?.attendee.isReferee).length;
   if (count >= REFEREE_POSITIONS_PER_GAME) return;
   const location = gameLocation(game);
   problems.push({
@@ -169,7 +171,7 @@ function addSameTimeslotProblem(
   limit: number,
 ): void {
   const groups = new Map<string, Assignment[]>();
-  assignments.forEach(assignment => {
+  assignments.forEach((assignment) => {
     const key = `${assignment.game.game.dayId}:${assignment.game.game.timeslotId}`;
     groups.set(key, [...(groups.get(key) ?? []), assignment]);
   });
@@ -181,7 +183,7 @@ function addSameTimeslotProblem(
       id: `${kind}:${attendeeId}:${slot}`,
       kind,
       message: `${role} is allocated to ${group.length} matches in the same timeslot (maximum ${limit}).`,
-      locations: group.map(assignment => assignmentLocation(assignment, role)),
+      locations: group.map((assignment) => assignmentLocation(assignment, role)),
     });
   }
 }
@@ -196,16 +198,48 @@ function addConsecutiveProblem(
   if (!run.length) return;
   const kind = role === 'Coach' ? 'coach-consecutive-time' : 'referee-consecutive-time';
   problems.push({
-    id: `${kind}:${run[0].attendeeId}:${run.map(assignment => assignment.game.game.id).sort().join(',')}`,
+    id: `${kind}:${run[0].attendeeId}:${run
+      .map((assignment) => assignment.game.game.id)
+      .sort()
+      .join(',')}`,
     kind,
     message: `${role} exceeds the configured consecutive game-time limit of ${limit} minutes.`,
-    locations: run.map(assignment => assignmentLocation(assignment, role)),
+    locations: run.map((assignment) => assignmentLocation(assignment, role)),
   });
+}
+
+/** Adds an error when consecutive referee matches are allocated on different fields. */
+function addConsecutiveFieldProblem(problems: AllocationProblem[], assignments: Assignment[]): void {
+  const sorted = assignments
+    .filter((assignment) => assignment.game.timeslot !== undefined)
+    .sort((left, right) => left.game.timeslot!.start - right.game.timeslot!.start);
+
+  for (let index = 1; index < sorted.length; index++) {
+    const previous = sorted[index - 1];
+    const current = sorted[index];
+    const previousTimeslot = previous.game.timeslot!;
+    const currentTimeslot = current.game.timeslot!;
+    if (
+      previous.game.game.dayId !== current.game.game.dayId ||
+      currentTimeslot.start !== previousTimeslot.end ||
+      previous.game.game.fieldId === current.game.game.fieldId
+    ) {
+      continue;
+    }
+
+    const kind = 'referee-consecutive-field';
+    problems.push({
+      id: `${kind}:${previous.attendeeId}:${previous.game.game.id}:${current.game.game.id}`,
+      kind,
+      message: 'Referee has two consecutive matches on different fields.',
+      locations: [assignmentLocation(previous, 'Referee'), assignmentLocation(current, 'Referee')],
+    });
+  }
 }
 
 function addDailyTimeProblem(problems: AllocationProblem[], assignments: Assignment[], limit: number): void {
   const byDay = new Map<string, Assignment[]>();
-  assignments.forEach(assignment => {
+  assignments.forEach((assignment) => {
     const day = assignment.game.game.dayId;
     byDay.set(day, [...(byDay.get(day) ?? []), assignment]);
   });
@@ -217,7 +251,7 @@ function addDailyTimeProblem(problems: AllocationProblem[], assignments: Assignm
       id: `referee-daily-time:${attendeeId}:${dayId}`,
       kind: 'referee-daily-time',
       message: `Referee exceeds the configured daily game-time limit of ${limit} minutes (${total} minutes).`,
-      locations: dayAssignments.map(assignment => assignmentLocation(assignment, 'Referee')),
+      locations: dayAssignments.map((assignment) => assignmentLocation(assignment, 'Referee')),
     });
   }
 }
@@ -229,16 +263,16 @@ interface Assignment {
 
 function refereeAssignments(referee: Referee, games: GameView[], excludedGameId?: string): Assignment[] {
   return games
-    .filter(game => game.game.id !== excludedGameId)
-    .filter(game => game.referees.some(allocation => allocation.attendeeAlloc.attendeeId === referee.attendee.id))
-    .map(game => ({ game, attendeeId: referee.attendee.id }));
+    .filter((game) => game.game.id !== excludedGameId)
+    .filter((game) => game.referees.some((allocation) => allocation.attendeeAlloc.attendeeId === referee.attendee.id))
+    .map((game) => ({ game, attendeeId: referee.attendee.id }));
 }
 
 function coachAssignments(coach: RefereeCoach, games: GameView[], excludedGameId?: string): Assignment[] {
   return games
-    .filter(game => game.game.id !== excludedGameId)
-    .filter(game => game.coaches.some(allocation => allocation.attendeeAlloc.attendeeId === coach.attendee.id))
-    .map(game => ({ game, attendeeId: coach.attendee.id }));
+    .filter((game) => game.game.id !== excludedGameId)
+    .filter((game) => game.coaches.some((allocation) => allocation.attendeeAlloc.attendeeId === coach.attendee.id))
+    .map((game) => ({ game, attendeeId: coach.attendee.id }));
 }
 
 function hasConsecutiveLimitViolation(assignments: Assignment[], limit: number): boolean {
@@ -247,7 +281,7 @@ function hasConsecutiveLimitViolation(assignments: Assignment[], limit: number):
 
 function consecutiveViolationRun(assignments: Assignment[], limit: number): Assignment[] {
   const sorted = assignments
-    .filter(assignment => assignment.game.timeslot !== undefined)
+    .filter((assignment) => assignment.game.timeslot !== undefined)
     .sort((left, right) => left.game.timeslot!.start - right.game.timeslot!.start);
   let run: Assignment[] = [];
   let previousEnd: number | undefined;

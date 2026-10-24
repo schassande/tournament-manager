@@ -154,9 +154,10 @@ Each card contains the referee name prefixed by `<level><category><upgrade>` wit
 Display a sortable table for the selected or filtered referees. Columns:
 
 - Referee level prefix `<level><category><upgrade>` followed by a space and the referee first name and last name; no parentheses or `L` prefix are used.
+- `Games`, the same total number of refereed games as displayed by the `Games` column in the General tab.
 - `averageCoachingLevel`, the average level of the coaches who coached the referee.
 - Total number of games with at least one coach.
-- One column per coach; each cell contains the number of times that coach saw the referee.
+- One column per coach, labeled with the coach `shortName` when it is defined; otherwise, use the coach first name and last name. Each cell contains the number of times that coach saw the referee.
 
 All columns must be sortable using PrimeNG table functionality. Clicking a column header selects that column; clicking the same header again toggles ascending and descending order.
 

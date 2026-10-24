@@ -1,9 +1,4 @@
 # TODO list du projet Tournament Maager
-- Allocation
-  - Bug de double allocation: le meme referee 2 fois sur le meme match. Pas visible dans Allocation mais visible dans le planning
-  - Drawer : onglet coach, ajouter en première colonne le nombre de match
-  - game cell: afficher le what
-  - check 2 games à la suite doivent etre sur le meme terrain
 - Water carrier
   - pour impression
   - pour remplissage en ligne
@@ -97,10 +92,17 @@
   - Drawer : onglet timeslot, mettre en gris les timeslot non playing
   - Water carrier pour impression
 
+- 2026/10/24: Allocation 
+  - Drawer : onglet coach, ajouter en première colonne le nombre de match
+  - game cell: afficher le what
+  - check 2 games à la suite doivent etre sur le meme terrain
+
 
 ## Bugs non reproduis
 - Referees : bug teams sauvegarde ou chargement de teams
 - Page Referees : bug 
   - Pb d'édition dans la popup edit
+- Allocation
+  - Bug de double allocation: le meme referee 2 fois sur le meme match. Pas visible dans Allocation mais visible dans le planning
 
 

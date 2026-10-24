@@ -1,17 +1,12 @@
 import { GameView } from '../allocation-data-model';
-import {
-  buildAllocationProblems,
-  defaultAllocationConfiguration,
-  isCoachEligible,
-} from './allocation-problem.service';
+import { buildAllocationProblems, defaultAllocationConfiguration, isCoachEligible } from './allocation-problem.service';
 
 describe('allocation problem service', () => {
   it('rejects an unavailable coach', () => {
     const coach = testCoach('coach-1', [{ dayId: 'day-1', unavailability: 'PARTIAL', unavailableSlotIds: ['slot-2'] }]);
     const target = testGame('game-2', 'slot-2', 50, [], []);
 
-    expect(isCoachEligible(coach, target, [], defaultAllocationConfiguration()).reasons)
-      .toContain('coach-unavailable');
+    expect(isCoachEligible(coach, target, [], defaultAllocationConfiguration()).reasons).toContain('coach-unavailable');
   });
 
   it('allows one coach on two fields when configured', () => {
@@ -31,9 +26,9 @@ describe('allocation problem service', () => {
     ];
 
     const problems = buildAllocationProblems(games, [referee], [], defaultAllocationConfiguration());
-    const sameSlot = problems.find(problem => problem.kind === 'referee-same-timeslot');
+    const sameSlot = problems.find((problem) => problem.kind === 'referee-same-timeslot');
 
-    expect(sameSlot?.locations.map(location => location.gameId)).toEqual(['game-1', 'game-2']);
+    expect(sameSlot?.locations.map((location) => location.gameId)).toEqual(['game-1', 'game-2']);
   });
 
   it('reports all assignments contributing to a coach consecutive-time violation', () => {
@@ -44,9 +39,35 @@ describe('allocation problem service', () => {
     ];
 
     const problems = buildAllocationProblems(games, [], [coach], defaultAllocationConfiguration());
-    const consecutive = problems.find(problem => problem.kind === 'coach-consecutive-time');
+    const consecutive = problems.find((problem) => problem.kind === 'coach-consecutive-time');
 
-    expect(consecutive?.locations.map(location => location.gameId)).toEqual(['game-1', 'game-2']);
+    expect(consecutive?.locations.map((location) => location.gameId)).toEqual(['game-1', 'game-2']);
+  });
+
+  it('reports consecutive referee matches allocated on different fields', () => {
+    const referee = testReferee('referee-1');
+    const games = [
+      testGame('game-1', 'slot-1', 50, [], [{ attendeeId: referee.attendee.id }]),
+      testGame('game-2', 'slot-2', 50, [], [{ attendeeId: referee.attendee.id }]),
+    ];
+
+    const problems = buildAllocationProblems(games, [referee], [], defaultAllocationConfiguration());
+    const consecutiveField = problems.find((problem) => problem.kind === 'referee-consecutive-field');
+
+    expect(consecutiveField?.locations.map((location) => location.gameId)).toEqual(['game-1', 'game-2']);
+  });
+
+  it('allows consecutive referee matches on the same field', () => {
+    const referee = testReferee('referee-1');
+    const games = [
+      testGame('game-1', 'slot-1', 50, [], [{ attendeeId: referee.attendee.id }]),
+      testGame('game-2', 'slot-2', 50, [], [{ attendeeId: referee.attendee.id }]),
+    ];
+    games[1].game.fieldId = games[0].game.fieldId;
+
+    const problems = buildAllocationProblems(games, [referee], [], defaultAllocationConfiguration());
+
+    expect(problems.some((problem) => problem.kind === 'referee-consecutive-field')).toBeFalse();
   });
 });
 
@@ -67,8 +88,8 @@ function testGame(
 ): GameView {
   const timeslot = {
     id: timeslotId,
-    start: timeslotId === 'slot-2' ? 100 : 0,
-    end: timeslotId === 'slot-2' ? 100 + playTime : playTime,
+    start: timeslotId === 'slot-2' ? 50 : 0,
+    end: timeslotId === 'slot-2' ? 50 + playTime : playTime,
     duration: playTime,
     playingSlot: true,
     slotType: { playTime },
@@ -78,7 +99,7 @@ function testGame(
     timeslot,
     timeslotStr: '10:00',
     field: { id: `field-${id}`, name: `Field ${id}` } as GameView['field'],
-    coaches: coaches.map(allocation => ({ attendeeAlloc: allocation as any })),
-    referees: referees.map(allocation => ({ attendeeAlloc: allocation as any })),
+    coaches: coaches.map((allocation) => ({ attendeeAlloc: allocation as any })),
+    referees: referees.map((allocation) => ({ attendeeAlloc: allocation as any })),
   };
 }

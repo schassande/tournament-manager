@@ -389,6 +389,11 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
         break;
       case 'SetReferee':
         action.attendeeIds.forEach((attendeeId, i) => {
+          const pos = action.inCellPosition + i;
+          if (this.isRefereeAlreadyAssignedOnGame(attendeeId, pos)) {
+            console.warn('Ignoring duplicate referee assignment on game', attendeeId, this.game().game.id);
+            return;
+          }
           console.log(
             'Action on cell',
             'timeSlot:',
@@ -397,9 +402,8 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
             this.game().field?.name,
             'SetReferee',
             attendeeId,
-            action.inCellPosition + i,
+            pos,
           );
-          const pos = action.inCellPosition + i;
           this._gameRefereeIds[pos] = attendeeId;
           this.refereeSelected(attendeeId, pos);
         });
@@ -451,6 +455,10 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
   }
   /** Persists the referee assigned to one position and refreshes its statistics. */
   refereeSelected(refereeAttendeeId: string, idx: number) {
+    if (this.isRefereeAlreadyAssignedOnGame(refereeAttendeeId, idx)) {
+      console.warn('Ignoring duplicate referee assignment on game', refereeAttendeeId, this.game().game.id);
+      return;
+    }
     const existingIdx = this.game().referees.findIndex((r) => r.attendeeAlloc.attendeePosition === idx);
     const rav: GameAttendeeAllocationView | undefined =
       existingIdx >= 0 ? this.game().referees[existingIdx] : undefined;
@@ -513,6 +521,19 @@ export class GameRefereeAllocatorComponent implements OnInit, OnDestroy {
       }
     }
     this.lastRefereeChange.set(this.lastRefereeChange() + 1);
+  }
+
+  /** Returns whether an attendee is already assigned to another referee position of this match. */
+  private isRefereeAlreadyAssignedOnGame(attendeeId: string, position: number): boolean {
+    const pendingDuplicate = this._gameRefereeIds.some(
+      (assignedId, assignedPosition) => assignedPosition !== position && assignedId === attendeeId,
+    );
+    const persistedDuplicate = this.game().referees.some(
+      (allocation) =>
+        allocation.attendeeAlloc.attendeeId === attendeeId &&
+        allocation.attendeeAlloc.attendeePosition !== position,
+    );
+    return pendingDuplicate || persistedDuplicate;
   }
 
   /** Deletes all referee allocations at one position and refreshes affected statistics. */

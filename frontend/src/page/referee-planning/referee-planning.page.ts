@@ -122,7 +122,7 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
       }
       if (tournament)
         untracked(() => {
-          this.tab.set(this.waterEnabled() ? 'water' : 'referees');
+          this.tab.set(this.userService.currentUser$() || !this.waterEnabled() ? 'referees' : 'water');
           this.selectedScopeId.set('');
           this.waterPlanning.set(null);
           this.load();

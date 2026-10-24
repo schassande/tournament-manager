@@ -328,6 +328,8 @@ Comportements notables :
 - support clavier avance via `SelectionService`
 - raccourcis de navigation dans la grille
 - copy / cut / paste des allocations
+- lors du collage d'un arbitre, un doublon sur le même match est refusé ; les affectations acceptées déclenchent ensuite le contrôle standard des contraintes d'allocation et affichent les erreurs détectées
+- une erreur est affichée lorsqu'un arbitre est affecté à deux matchs consécutifs sur des terrains différents
 - suppression clavier d'une affectation
 - le selecteur de jour permet d'ouvrir l'allocation existante ou de demander la creation d'une allocation manquante
 - la confirmation cree une allocation `Full day` et ouvre son edition
@@ -348,7 +350,7 @@ Fonction :
 - filtres de recherche, niveau, categorie, genre, player referee et upgrade dans la liste des arbitres
 - export PDF via la boite d'impression du navigateur et export Excel du contenu affiche dans chaque onglet
 
-L'onglet `Water Carrier` est chargé par une API publique qui vérifie la visibilité du fragment et son appartenance au `TournamentRefereeAllocation` ayant `current === true`. Il est l'onglet initial lorsque l'un des modules Water Carrier est actif ; les visiteurs non connectés utilisent cet onglet sans lecture directe des collections Firestore protégées. Les autres onglets conservent leur chargement Firestore authentifié ; `Coaches` est réservé aux coaches du tournoi. Sans allocation courante ou fragment visible, le message d'absence d'allocation est affiché, sans repli sur une autre allocation.
+L'onglet `Referees Planning` est sélectionné par défaut pour les utilisateurs connectés ou lorsque Water Carrier n'est pas activé. Pour un visiteur non connecté avec Water Carrier activé, `Water Carrier` reste l'onglet initial afin d'utiliser son API publique sans lecture directe des collections Firestore protégées. Cette API vérifie la visibilité du fragment et son appartenance au `TournamentRefereeAllocation` ayant `current === true`. Les autres onglets conservent leur chargement Firestore authentifié ; `Coaches` est réservé aux coaches du tournoi. Sans allocation courante ou fragment visible, le message d'absence d'allocation est affiché, sans repli sur une autre allocation.
 
 Avec `ONLINE_WATER_CARRIER`, chacun peut lire la grille. Un attendee authentifié, lié à un compte et possédant le rôle `Referee` peut ajouter ou retirer sa propre affectation. La grille montre les arbitres et Water Carriers, sans coaches, et distingue les affectations personnelles. Les conflits et indisponibilités sont bloqués dans l'interface à partir des données chargées ; ce contrôle ne garantit pas l'absence de conflits entre sessions simultanées. Le bouton `Refresh` recharge les données, ainsi que chaque modification personnelle réussie. Aucun rafraîchissement périodique n'est effectué.
 

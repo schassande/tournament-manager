@@ -43,6 +43,7 @@ const KEY_STATISTICS_DRAWER_WIDTH = 'tournament-referee-allocation.statistics-dr
 interface CoachStatisticsRow {
   refereeAttendeeId: string;
   refereeName: string;
+  games: number;
   averageLevel: number;
   coachedGames: number;
   [field: string]: string | number;
@@ -70,8 +71,7 @@ interface CoachStatisticsRow {
       [visible]="visible()"
       (visibleChange)="visibleChange.emit($event)"
       position="right"
-      [style]="drawerStyle()"
-    >
+      [style]="drawerStyle()">
       <ng-template #header
         ><span>Allocation statistics</span>
         <div
@@ -87,8 +87,7 @@ interface CoachStatisticsRow {
           (pointermove)="onResize($event)"
           (pointerup)="stopResize()"
           (pointercancel)="stopResize()"
-          (keydown)="resizeWithKeyboard($event)"
-        ></div
+          (keydown)="resizeWithKeyboard($event)"></div
       ></ng-template>
       <div class="statistics-filters">
         <div class="statistics-search-row">
@@ -98,15 +97,13 @@ interface CoachStatisticsRow {
               type="text"
               placeholder="Search referee"
               [ngModel]="search()"
-              (ngModelChange)="search.set($event)"
-            />
+              (ngModelChange)="search.set($event)" />
             @if (search()) {
               <button
                 type="button"
                 class="p-inputicon pi pi-times statistics-search-clear"
                 aria-label="Clear referee search"
-                (click)="clearSearch()"
-              ></button>
+                (click)="clearSearch()"></button>
             }
           </p-iconfield>
           <div class="statistics-filter-field statistics-scope-field">
@@ -116,8 +113,7 @@ interface CoachStatisticsRow {
               [ngModel]="scope()"
               (ngModelChange)="scope.set($event ?? 'fragment')"
               optionLabel="label"
-              optionValue="value"
-            />
+              optionValue="value" />
           </div>
           <p-button
             label="Force refresh"
@@ -125,8 +121,7 @@ interface CoachStatisticsRow {
             severity="warn"
             [loading]="refreshing()"
             [disabled]="refreshing()"
-            (onClick)="refreshAll()"
-          />
+            (onClick)="refreshAll()" />
         </div>
         <div class="statistics-options-row">
           <div class="statistics-filter-field">
@@ -134,8 +129,7 @@ interface CoachStatisticsRow {
               [options]="levels"
               [ngModel]="level()"
               (ngModelChange)="level.set($event ?? 'All levels')"
-              [showClear]="true"
-            />
+              [showClear]="true" />
           </div>
           <div class="statistics-filter-field">
             <p-select
@@ -144,8 +138,7 @@ interface CoachStatisticsRow {
               (ngModelChange)="category.set($event ?? 'All')"
               optionLabel="label"
               optionValue="value"
-              [showClear]="true"
-            />
+              [showClear]="true" />
           </div>
           <div class="statistics-filter-field">
             <p-select
@@ -154,8 +147,7 @@ interface CoachStatisticsRow {
               (ngModelChange)="gender.set($event ?? 'All')"
               optionLabel="label"
               optionValue="value"
-              [showClear]="true"
-            />
+              [showClear]="true" />
           </div>
           <label class="statistics-checkbox"
             ><p-checkbox [ngModel]="upgradeOnly()" (ngModelChange)="upgradeOnly.set($event)" [binary]="true" />
@@ -179,8 +171,7 @@ interface CoachStatisticsRow {
           [games]="timeSlotGames()"
           [scopeLabel]="scopeLabel()"
           [showExports]="false"
-          (cellSelected)="gameSelected.emit($event)"
-        />
+          (cellSelected)="gameSelected.emit($event)" />
       } @else if (activeTab() === 'General') {
         <p-table class="statistics-table" [value]="generalRows()" sortMode="single"
           ><ng-template #header
@@ -230,22 +221,19 @@ interface CoachStatisticsRow {
             value="asc"
             inputId="games-asc"
             [ngModel]="gamesSort()"
-            (ngModelChange)="gamesSort.set($event)"
-          /><label for="games-asc">Games ascending</label
+            (ngModelChange)="gamesSort.set($event)" /><label for="games-asc">Games ascending</label
           ><p-radiobutton
             name="games-sort"
             value="desc"
             inputId="games-desc"
             [ngModel]="gamesSort()"
-            (ngModelChange)="gamesSort.set($event)"
-          /><label for="games-desc">Games descending</label
+            (ngModelChange)="gamesSort.set($event)" /><label for="games-desc">Games descending</label
           ><p-radiobutton
             name="games-sort"
             value="name"
             inputId="games-name"
             [ngModel]="gamesSort()"
-            (ngModelChange)="gamesSort.set($event)"
-          /><label for="games-name">Referee name</label>
+            (ngModelChange)="gamesSort.set($event)" /><label for="games-name">Referee name</label>
         </div>
         @for (stat of sortedGames(); track stat.id) {
           <div class="statistics-card">
@@ -269,8 +257,7 @@ interface CoachStatisticsRow {
                 (keydown.enter)="gameSelected.emit({ gameId: game.gameId, refereeAttendeeId: stat.refereeAttendeeId })"
                 (keydown.space)="gameSelected.emit({ gameId: game.gameId, refereeAttendeeId: stat.refereeAttendeeId })"
                 role="button"
-                tabindex="0"
-              >
+                tabindex="0">
                 @if (details.day) {
                   {{ details.day }}
                 }
@@ -302,22 +289,19 @@ interface CoachStatisticsRow {
             value="asc"
             inputId="buddies-asc"
             [ngModel]="buddiesSort()"
-            (ngModelChange)="buddiesSort.set($event)"
-          /><label for="buddies-asc">Games ascending</label
+            (ngModelChange)="buddiesSort.set($event)" /><label for="buddies-asc">Games ascending</label
           ><p-radiobutton
             name="buddies-sort"
             value="desc"
             inputId="buddies-desc"
             [ngModel]="buddiesSort()"
-            (ngModelChange)="buddiesSort.set($event)"
-          /><label for="buddies-desc">Games descending</label
+            (ngModelChange)="buddiesSort.set($event)" /><label for="buddies-desc">Games descending</label
           ><p-radiobutton
             name="buddies-sort"
             value="name"
             inputId="buddies-name"
             [ngModel]="buddiesSort()"
-            (ngModelChange)="buddiesSort.set($event)"
-          /><label for="buddies-name">Referee name</label>
+            (ngModelChange)="buddiesSort.set($event)" /><label for="buddies-name">Referee name</label>
         </div>
         @for (stat of sortedBuddies(); track stat.id) {
           <div class="statistics-card">
@@ -389,6 +373,7 @@ interface CoachStatisticsRow {
           ><ng-template #header
             ><tr>
               <th pSortableColumn="refereeName">Referee <p-sortIcon field="refereeName" /></th>
+              <th pSortableColumn="games">Games <p-sortIcon field="games" /></th>
               <th pSortableColumn="averageLevel">Average level <p-sortIcon field="averageLevel" /></th>
               <th pSortableColumn="coachedGames">Coached games <p-sortIcon field="coachedGames" /></th>
               @for (coachId of coachIds(); track coachId) {
@@ -411,6 +396,7 @@ interface CoachStatisticsRow {
                   <span class="statistics-referee-name">{{ row.refereeName }}</span>
                 </div>
               </td>
+              <td>{{ row.games }}</td>
               <td>
                 @if (row.coachedGames > 0) {
                   {{ row.averageLevel }}
@@ -423,7 +409,7 @@ interface CoachStatisticsRow {
             </tr></ng-template
           ><ng-template #emptymessage
             ><tr>
-              <td [attr.colspan]="3 + coachIds().length">No statistics available</td>
+              <td [attr.colspan]="4 + coachIds().length">No statistics available</td>
             </tr></ng-template
           ></p-table
         >
@@ -436,8 +422,7 @@ interface CoachStatisticsRow {
             type="number"
             min="0"
             [ngModel]="minimumTeamGames()"
-            (ngModelChange)="minimumTeamGames.set(+$event || 0)"
-          />
+            (ngModelChange)="minimumTeamGames.set(+$event || 0)" />
         </div>
         <p-table class="statistics-table" [value]="teamRows()" sortMode="single" sortField="games" [sortOrder]="-1"
           ><ng-template #header
@@ -847,6 +832,7 @@ export class AllocationStatisticsDrawerComponent {
       const row: CoachStatisticsRow = {
         refereeAttendeeId: stat.refereeAttendeeId,
         refereeName: this.refereeName(stat.refereeAttendeeId),
+        games: stat.gameIds.length,
         averageLevel: stat.coaching.averageCoachingLevel,
         coachedGames: stat.coaching.nbCoachedGames,
       };
@@ -979,7 +965,11 @@ export class AllocationStatisticsDrawerComponent {
   /** Returns identifiers of referees available for the displayed allocation period. */
   private periodRefereeIds(): string[] {
     return [
-      ...new Set(this.referees().filter((referee): referee is Referee => referee !== undefined).map((referee) => referee.attendee.id)),
+      ...new Set(
+        this.referees()
+          .filter((referee): referee is Referee => referee !== undefined)
+          .map((referee) => referee.attendee.id),
+      ),
     ];
   }
 
@@ -1111,9 +1101,10 @@ export class AllocationStatisticsDrawerComponent {
         ?.parts.flatMap((item) => item.timeslots) ?? [];
     return slots.length > 0 && index === slots.length - 1;
   }
+  /** Returns a coach short name when available, otherwise the coach's first and last name. */
   coachName(id: string): string {
     const person = this.coaches().find((item) => item?.attendee.id === id)?.attendee.person;
-    return person ? `${person.firstName} ${person.lastName}`.trim() : id;
+    return person?.shortName?.trim() || (person ? `${person.firstName} ${person.lastName}`.trim() : id);
   }
   /** Returns the stable row field used for a dynamic coach column. */
   coachField(id: string): string {
