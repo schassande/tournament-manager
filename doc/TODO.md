@@ -4,7 +4,6 @@
     - authentification ? necessite que chaque arbitre ait un compte donc son email affecté dans la liste des arbitres
     - traçabilité des actions
     - compatibilité avec le planning d'un arbitre
-    - statistiques
 - Scorecard papier
   - Responsables d'une équipe (email)
   - Les responsables d'équipe peuvent entrer les noms des joueurs et leur numéro
@@ -95,6 +94,7 @@
   - game cell: afficher le what
   - check 2 games à la suite doivent etre sur le meme terrain
 - 2026/10/24: amélioration de l'impression Water carrier
+- 2026/10/24: Water carrier statistiques
 
 
 ## Bugs non reproduis

@@ -360,6 +360,8 @@ Sources : `frontend/src/page/referee-planning/`, `frontend/src/component/water-c
 
 Un lien direct résout le tournoi indiqué dans l'URL via son document public ; aucune sélection préalable dans le navigateur n'est nécessaire.
 
+The `Water carriers stats` tab is available to participating referees and referee coaches when `ONLINE_WATER_CARRIER` is active. It uses the selected planning period, the `Referees List` filters, and the same loading conventions. It displays allocation-statistics referee match counts, Water Carrier match counts matched by `attendeeId` and `fragmentRefereeAllocationId`, and the calculated ratio; an undefined ratio is shown as `—`. `Refresh` reloads the data.
+
 ## Pages indirectement presentes dans l'UX
 
 Certaines entrees de menu existent sans page pleinement implemente dans ce depot :

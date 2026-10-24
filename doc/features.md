@@ -245,6 +245,8 @@ Dans `Referee > Planning`, l'onglet `Water Carrier` utilise uniquement les fragm
 
 `PRINTED_WATER_CARRIER` permet aux gestionnaires et coaches du tournoi de télécharger le planning en PDF A4 paysage avec les arbitres et quatre lignes pour écrire les noms. Les deux modules peuvent être activés indépendamment. Les affectations sont liées au match et au fragment ; changer de version d'allocation n'en copie pas les données. La réinitialisation des affectations d'arbitres/coaches les conserve.
 
+The `Water carriers stats` tab compares allocation-statistics referee matches with Water Carrier matches for the selected period. It uses exact `attendeeId` and fragment matching, the `Referees List` filters, and a `Refresh` action.
+
 ## Extensions possibles
 
 Le code montre deja plusieurs extensions possibles :

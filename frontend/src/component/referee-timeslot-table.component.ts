@@ -98,7 +98,7 @@ import {
     `
       .planning-table-wrapper {
         overflow: auto;
-        max-height: calc(100vh - 260px);
+        max-height: calc(100vh - 160px);
       }
       .planning-table {
         border-collapse: collapse;

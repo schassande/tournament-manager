@@ -1,0 +1,30 @@
+.filters {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.filters > div {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+label {
+  white-space: nowrap;
+}
+
+.stats-table-wrapper {
+  max-height: calc(100vh - 160px);
+  max-width: 100%;
+  overflow: auto;
+}
+
+.stats-table-wrapper :global(.p-datatable-table) {
+  width: max-content;
+}
+
+.numeric-column {
+  text-align: center;
+}

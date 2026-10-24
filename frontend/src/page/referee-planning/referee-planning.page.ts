@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  Injector,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
@@ -13,6 +22,7 @@ import {
   FragmentRefereeAllocation,
   Game,
   GameAttendeeAllocation,
+  FragmentRefereeAllocationStatistics,
   RefereeBadgeColors,
   isReferee,
   isRefereeCoach,
@@ -20,6 +30,7 @@ import {
   WaterCarrierPlanning,
 } from '@tournament-manager/persistent-data-model';
 import { WaterCarrierComponent } from '../../component/water-carrier/water-carrier.component';
+import { WaterCarrierStatsComponent } from '../../component/water-carrier-stats.component';
 import { WaterCarrierService } from '../../service/water-carrier.service';
 import { CoachesPlanningComponent } from '../../component/coaches-planning.component';
 import { RefereesListComponent } from '../../component/referees-list.component';
@@ -31,6 +42,7 @@ import { GameAttendeeAllocationService } from '../../service/game-attendee-alloc
 import { GameService } from '../../service/game.service';
 import { attendeeName, isAvailable, PlanningGame, PlanningScope } from '../../service/referee-planning-model';
 import { TournamentRefereeAllocationService } from '../../service/tournament-referee-allocation.service';
+import { FragmentRefereeAllocationStatisticsService } from '../../service/fragment-referee-allocation-statistics.service';
 import { UserService } from '../../service/user.service';
 
 /** Displays published referee/coach planning and water-carrier self-allocation. */
@@ -45,6 +57,7 @@ import { UserService } from '../../service/user.service';
     SelectModule,
     SelectButtonModule,
     WaterCarrierComponent,
+    WaterCarrierStatsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './referee-planning.page.html',
@@ -53,6 +66,7 @@ import { UserService } from '../../service/user.service';
 export class RefereePlanningComponent extends AbstractTournamentPage {
   private readonly attendeeService = inject(AttendeeService);
   private readonly fragmentService = inject(FragmentRefereeAllocationService);
+  private readonly injector = inject(Injector);
   private readonly gameService = inject(GameService);
   private readonly allocationService = inject(GameAttendeeAllocationService);
   private readonly tournamentAllocationService = inject(TournamentRefereeAllocationService);
@@ -72,7 +86,7 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
   );
   readonly loading = signal(false);
   readonly error = signal('');
-  readonly tab = signal<'referees' | 'list' | 'coaches' | 'water'>('referees');
+  readonly tab = signal<'referees' | 'list' | 'coaches' | 'water' | 'waterStats'>('referees');
   readonly tabOptions = computed(() => [
     ...(this.userService.currentUser$() || !this.waterEnabled()
       ? [
@@ -82,6 +96,7 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
       : []),
     ...(this.canAccessCoaches() ? [{ label: 'Coaches', value: 'coaches' as const }] : []),
     ...(this.waterEnabled() ? [{ label: 'Water Carrier', value: 'water' as const }] : []),
+    ...(this.canAccessWaterStats() ? [{ label: 'Water carriers stats', value: 'waterStats' as const }] : []),
   ]);
   readonly scopes = signal<PlanningScope[]>([]);
   readonly selectedScopeId = signal('');
@@ -89,6 +104,17 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
   private readonly loadedAttendees = signal<Attendee[]>([]);
   readonly availableCoaches = signal<Attendee[]>([]);
   readonly games = signal<PlanningGame[]>([]);
+  readonly fragmentStatistics = signal<FragmentRefereeAllocationStatistics[]>([]);
+  readonly waterStatsAllocations = signal<GameAttendeeAllocation[]>([]);
+  readonly waterStatsReferees = computed(() => this.loadedAttendees().filter((attendee) => attendee.isReferee));
+  readonly canAccessWaterStats = computed(() => {
+    const user = this.userService.currentUser$();
+    return !!user && this.loadedAttendees().some(
+      (attendee) =>
+        attendee.person?.email?.trim().toLowerCase() === user.email?.trim().toLowerCase() &&
+        (attendee.isReferee || attendee.isRefereeCoach),
+    );
+  });
   readonly attendeeNames = signal<Record<string, string>>({});
   readonly attendeeLevels = signal<Record<string, string>>({});
   readonly attendeeBadgeColors = signal<Record<string, { backgroundColor: string; color: string }>>({});
@@ -156,6 +182,10 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
       fragments: this.fragmentService.byTournament(tournament.id).pipe(take(1)),
       games: this.gameService.byTournament(tournament.id).pipe(take(1)),
       allocations: this.allocationService.byTournament(tournament.id).pipe(take(1)),
+      fragmentStatistics: this.injector
+        .get(FragmentRefereeAllocationStatisticsService)
+        .byTournament(tournament.id)
+        .pipe(take(1)),
       tournamentAllocations: this.tournamentAllocationService.byTournament(tournament.id).pipe(take(1)),
     }).subscribe({
       next: (data) => {
@@ -167,6 +197,7 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
           data.fragments,
           data.games,
           data.allocations,
+          data.fragmentStatistics,
           data.tournamentAllocations,
         );
       },
@@ -215,7 +246,7 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
   }
 
   /** Changes data sources only when moving between public water planning and existing views. */
-  selectTab(tab: 'referees' | 'list' | 'coaches' | 'water' | null): void {
+  selectTab(tab: 'referees' | 'list' | 'coaches' | 'water' | 'waterStats' | null): void {
     if (!tab) return;
     const previous = this.tab();
     this.tab.set(tab);
@@ -256,6 +287,7 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
     fragments: FragmentRefereeAllocation[],
     games: Game[],
     allocations: GameAttendeeAllocation[],
+    fragmentStatistics: FragmentRefereeAllocationStatistics[],
     tournamentAllocations: TournamentRefereeAllocation[],
   ): void {
     const tournamentAllocation = tournamentAllocations.find((allocation) => allocation.current === true);
@@ -268,9 +300,12 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
       fragments: visibleFragments,
       games,
       allocations,
+      fragmentStatistics,
       tournamentAllocation,
     };
     this.loadedAttendees.set(attendees);
+    this.fragmentStatistics.set(fragmentStatistics);
+    this.waterStatsAllocations.set(allocations);
     this.attendeeNames.set(Object.fromEntries(attendees.map((attendee) => [attendee.id, attendeeName(attendee)])));
     this.attendeeLevels.set(
       Object.fromEntries(attendees.map((attendee) => [attendee.id, this.attendeeLevel(attendee)])),
@@ -292,6 +327,7 @@ export class RefereePlanningComponent extends AbstractTournamentPage {
     fragments: [],
     games: [],
     allocations: [],
+    fragmentStatistics: [],
   };
 
   /** Converts one persisted fragment into the display scope used by the tabs. */
@@ -400,5 +436,6 @@ interface PlanningSource {
   fragments: FragmentRefereeAllocation[];
   games: Game[];
   allocations: GameAttendeeAllocation[];
+  fragmentStatistics: FragmentRefereeAllocationStatistics[];
   tournamentAllocation?: TournamentRefereeAllocation;
 }

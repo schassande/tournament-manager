@@ -1,64 +1,63 @@
 @if (loading()) {
-  <div class="planning-status">Loading planning…</div>
-}
-@if (error(); as message) {
-  <div class="planning-status error" role="alert">{{ message }} <p-button label="Retry" (click)="load()" /></div>
-}
-@if (!loading() && !error() && scopes().length === 0) {
-  <div class="planning-status">Referees have not yet been allocated.</div>
-}
-@if (!loading() && !error() && scopes().length > 0) {
-  @if (selectedScope(); as scope) {
-    <div class="planning-page">
-      <div class="planning-toolbar">
-        <div class="scope-form">
-          <p-select
-            inputId="planning-scope"
-            [options]="scopes()"
-            optionLabel="label"
-            optionValue="id"
-            [ngModel]="scope.id"
-            (ngModelChange)="selectScope($event)"
-            ariaLabel="Planning scope" />
-        </div>
-        <nav class="planning-tabs" aria-label="Planning views">
-          <p-selectbutton
-            [options]="tabOptions()"
-            optionLabel="label"
-            optionValue="value"
-            [ngModel]="tab()"
-            (ngModelChange)="selectTab($event)" />
-        </nav>
-      </div>
-      @if (tab() === 'water' && waterPlanning(); as planning) {
-        <app-water-carrier [planning]="planning" [refreshing]="loading()" (refresh)="load()" (changed)="load()" />
-      }
-      @if (tab() === 'referees') {
-        <app-referees-planning
-          [fields]="scope.fields"
-          [timeslots]="scope.timeslots"
-          [games]="games()"
-          [attendeeNames]="attendeeNames()"
-          [scopeLabel]="scope.label" />
-      }
-      @if (tab() === 'list') {
-        <app-referees-list
-          [referees]="availableReferees()"
-          [timeslots]="scope.timeslots"
-          [games]="games()"
-          [scopeLabel]="scope.label"
-          [allowPlayerReferees]="tournament()?.allowPlayerReferees ?? false" />
-      }
-      @if (tab() === 'coaches') {
-        <app-coaches-planning
-          [coaches]="availableCoaches()"
-          [timeslots]="scope.timeslots"
-          [games]="games()"
-          [attendeeNames]="attendeeNames()"
-          [attendeeLevels]="attendeeLevels()"
-          [attendeeBadgeColors]="attendeeBadgeColors()"
-          [scopeLabel]="scope.label" />
-      }
+<div class="planning-status">Loading planning…</div>
+} @if (error(); as message) {
+<div class="planning-status error" role="alert">{{ message }} <p-button label="Retry" (click)="load()" /></div>
+} @if (!loading() && !error() && scopes().length === 0) {
+<div class="planning-status">Referees have not yet been allocated.</div>
+} @if (!loading() && !error() && scopes().length > 0) { @if (selectedScope(); as scope) {
+<div class="planning-page">
+  <div class="planning-toolbar">
+    <div class="scope-form">
+      <p-select
+        inputId="planning-scope"
+        [options]="scopes()"
+        optionLabel="label"
+        optionValue="id"
+        [ngModel]="scope.id"
+        (ngModelChange)="selectScope($event)"
+        ariaLabel="Planning scope" />
     </div>
+    <nav class="planning-tabs" aria-label="Planning views">
+      <p-selectbutton
+        [options]="tabOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="tab()"
+        (ngModelChange)="selectTab($event)" />
+    </nav>
+  </div>
+  @if (tab() === 'water' && waterPlanning(); as planning) {
+  <app-water-carrier [planning]="planning" [refreshing]="loading()" (refresh)="load()" (changed)="load()" />
+  } @if (tab() === 'waterStats') {
+  <app-water-carrier-stats
+    [referees]="waterStatsReferees()"
+    [statistics]="fragmentStatistics()"
+    [allocations]="waterStatsAllocations()"
+    [scopeId]="scope.id"
+    (refresh)="load()" />
+  } @if (tab() === 'referees') {
+  <app-referees-planning
+    [fields]="scope.fields"
+    [timeslots]="scope.timeslots"
+    [games]="games()"
+    [attendeeNames]="attendeeNames()"
+    [scopeLabel]="scope.label" />
+  } @if (tab() === 'list') {
+  <app-referees-list
+    [referees]="availableReferees()"
+    [timeslots]="scope.timeslots"
+    [games]="games()"
+    [scopeLabel]="scope.label"
+    [allowPlayerReferees]="tournament()?.allowPlayerReferees ?? false" />
+  } @if (tab() === 'coaches') {
+  <app-coaches-planning
+    [coaches]="availableCoaches()"
+    [timeslots]="scope.timeslots"
+    [games]="games()"
+    [attendeeNames]="attendeeNames()"
+    [attendeeLevels]="attendeeLevels()"
+    [attendeeBadgeColors]="attendeeBadgeColors()"
+    [scopeLabel]="scope.label" />
   }
-}
+</div>
+} }

@@ -4,17 +4,22 @@
   flex-direction: column;
   min-height: 0;
 }
+.planning-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.25rem 0;
+}
 .actions {
   display: flex;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  margin: 0.5rem 0;
+  margin-left: auto;
 }
 .error {
   color: #a61b1b;
 }
 .legend {
-  margin: 0.5rem 0;
+  margin: 0;
 }
 .referee-key,
 .my-referee {

@@ -65,6 +65,16 @@ describe('WaterCarrierComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Open - Final');
     expect(fixture.nativeElement.textContent).not.toContain('Assign myself');
     expect(fixture.nativeElement.textContent).not.toContain('Download PDF');
+    expect(fixture.nativeElement.textContent).toContain('Read-only planning.');
+    expect(fixture.nativeElement.textContent).not.toContain('Your assignments:');
+  });
+
+  it('shows assignment information only to an authenticated referee', () => {
+    const fixture = TestBed.createComponent(WaterCarrierComponent);
+    fixture.componentRef.setInput('planning', planning());
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Your assignments:');
+    expect(fixture.nativeElement.textContent).not.toContain('Read-only planning.');
   });
 
   it('emits a reload only after a successful write and prevents double clicks while pending', async () => {

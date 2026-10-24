@@ -1,22 +1,26 @@
-<div class="actions">
-  <p-button label="Refresh" icon="pi pi-refresh" [disabled]="pending() || refreshing()" (onClick)="refresh.emit()" />
-  @if (planning().printedEnabled && planning().actor?.canPrint) {
-    <p-button
-      label="Download PDF"
-      icon="pi pi-file-pdf"
-      [loading]="exporting()"
-      [disabled]="refreshing()"
-      (onClick)="download()" />
+<div class="planning-summary">
+  @if (planning().actor?.canAllocate) {
+    <p class="legend">
+      Your assignments: <span class="referee-key">Referee</span> <span class="carrier-key">Water Carrier</span>
+    </p>
   }
+  <div class="actions">
+    <p-button label="Refresh" icon="pi pi-refresh" [disabled]="pending() || refreshing()" (onClick)="refresh.emit()" />
+    @if (planning().printedEnabled && planning().actor?.canPrint) {
+      <p-button
+        label="Download PDF"
+        icon="pi pi-file-pdf"
+        [loading]="exporting()"
+        [disabled]="refreshing()"
+        (onClick)="download()" />
+    }
+  </div>
 </div>
 @if (error()) {
   <p role="alert" class="error">{{ error() }}</p>
 }
 @if (planning().onlineEnabled) {
-  <p class="legend">
-    Your assignments: <span class="referee-key">Referee</span> <span class="carrier-key">Water Carrier</span>
-  </p>
-  @if (!planning().actor?.canAllocate) {
+  @if (!planning().actor) {
     <p>Read-only planning. A linked Referee account is required to assign yourself.</p>
   }
   @if (planning().matches.length === 0) {

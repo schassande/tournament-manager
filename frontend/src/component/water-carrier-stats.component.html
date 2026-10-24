@@ -1,0 +1,79 @@
+<div class="filters">
+  <div>
+    <p-autocomplete
+      aria-label="Search referees"
+      placeholder="Search"
+      [ngModel]="search()"
+      (ngModelChange)="search.set($event ?? '')"
+      [suggestions]="[]"
+      [dropdown]="false"
+      [showClear]="true" />
+    <p-select
+      [options]="levelOptions"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="level()"
+      (ngModelChange)="level.set($event)"
+      ariaLabel="Filter by level" />
+    <p-select
+      [options]="categoryOptions"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="category()"
+      (ngModelChange)="category.set($event)"
+      ariaLabel="Filter by category" />
+    <p-select
+      [options]="genderOptions"
+      optionLabel="label"
+      optionValue="value"
+      [ngModel]="gender()"
+      (ngModelChange)="gender.set($event)"
+      ariaLabel="Filter by gender" />
+    <label
+      ><p-checkbox
+        [ngModel]="upgradeOnly()"
+        (ngModelChange)="upgradeOnly.set($event)"
+        [binary]="true"
+        inputId="water-carrier-upgrade-only" />
+      Upgrade only</label
+    >
+    <label
+      ><p-checkbox
+        [ngModel]="playerReferees()"
+        (ngModelChange)="playerReferees.set($event)"
+        [binary]="true"
+        inputId="water-carrier-player-referees" />
+      Player Referee</label
+    >
+    <p-button label="Refresh" icon="pi pi-refresh" (click)="requestRefresh()" />
+  </div>
+</div>
+<div class="stats-table-wrapper">
+  <p-table
+    [value]="rows()"
+    sortMode="single"
+    sortField="name"
+    [sortOrder]="1"
+    stripedRows
+    showGridlines
+    [tableStyle]="{ width: 'max-content' }">
+    <ng-template #header>
+      <tr>
+        <th pSortableColumn="name">Referee <p-sortIcon field="name" /></th>
+        <th class="numeric-column" pSortableColumn="matchesRefereed">Games <p-sortIcon field="matchesRefereed" /></th>
+        <th class="numeric-column" pSortableColumn="waterCarrierMatches">
+          Water carrier <p-sortIcon field="waterCarrierMatches" />
+        </th>
+        <th class="numeric-column" pSortableColumn="ratio">Ratio <p-sortIcon field="ratio" /></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-row>
+      <tr>
+        <td>{{ row.name }}</td>
+        <td class="numeric-column">{{ row.matchesRefereed }}</td>
+        <td class="numeric-column">{{ row.waterCarrierMatches }}</td>
+        <td class="numeric-column">{{ formatRatio(row.ratio) }}</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
