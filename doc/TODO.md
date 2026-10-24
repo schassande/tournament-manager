@@ -1,6 +1,5 @@
 # TODO list du projet Tournament Maager
 - Water carrier
-  - pour impression
   - pour remplissage en ligne
     - authentification ? necessite que chaque arbitre ait un compte donc son email affecté dans la liste des arbitres
     - traçabilité des actions
@@ -91,11 +90,11 @@
   - Config timeslot: ajouter 1x20min + 5 in 30min slot
   - Drawer : onglet timeslot, mettre en gris les timeslot non playing
   - Water carrier pour impression
-
 - 2026/10/24: Allocation 
   - Drawer : onglet coach, ajouter en première colonne le nombre de match
   - game cell: afficher le what
   - check 2 games à la suite doivent etre sur le meme terrain
+- 2026/10/24: amélioration de l'impression Water carrier
 
 
 ## Bugs non reproduis
