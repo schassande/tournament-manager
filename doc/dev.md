@@ -1,5 +1,26 @@
 # Documentation technique
 
+## Water Carrier rollout (2026-09-28)
+
+Release the updated `api` Function and Firestore rules before the frontend. No production deployment is performed by local validation. The 2026-09-29 simplification removes scope-proof attributes from allocations and API DTOs; the initial design was not deployed, so no production migration is needed. Direct writes validate identity, ownership and same-tournament references, while publication/current-allocation and module restrictions remain in the API/UI. The existing `attendee-index` must be maintained by the identity workflows below. Both feature modules remain opt-in.
+
+From the repository root:
+
+```powershell
+npm --prefix functions run build
+firebase emulators:exec --only "firestore,auth" --project demo-ranking-stage1 --config firebase.identity-test.json "node --test tests/firestore/water-carrier.test.cjs"
+node --test tests/pdf/water-carrier.test.cjs
+```
+
+From `frontend`:
+
+```powershell
+node node_modules/@angular/cli/bin/ng.js build --configuration=production
+node node_modules/@angular/cli/bin/ng.js test --watch=false --include=src/component/water-carrier/water-carrier.component.spec.ts --include=src/page/referee-planning/referee-planning.page.spec.ts
+```
+
+The PDF test writes `tmp/pdfs/water-carrier.pdf` for visual inspection (seven fields, eight timeslots, accented names, horizontal and vertical pagination). `jspdf` is loaded only when exporting. The bundled Noto Sans font is licensed under SIL OFL; keep `frontend/public/fonts/OFL.txt` with the font. Refresh is manual; frontend conflict checks are snapshot-based and are not concurrency guarantees. Tests use local demo emulators and refuse production database access.
+
 ## Attendee identity rollout (2026-09-14)
 
 This revision replaces managerEmails/Person-link authorization with verified-email attendee indexes. Old clients writing attendees directly become incompatible when the new rules are enabled. Production data has not been migrated or deployed by this implementation.
@@ -31,6 +52,10 @@ A la racine on trouve aussi :
 - `.firebaserc` : projet Firebase cible `tournament-manager-90045`.
 - `firestore.rules` et `firestore.indexes.json` : securite et index Firestore.
 - `doc/` : documentation projet.
+
+## Timeslot start-time editing
+
+`TournamentDayTimeslotEditComponent` binds the PrimeNG time picker to a `Date | null` value, separate from the read-only `HH:mm` label. On a valid change, `DateService.setTime` applies the selected local hours and minutes to the existing slot day and emits a Unix timestamp in seconds. Empty or invalid input does not emit a change. `DateService.fromTime` remains reserved for string inputs.
 
 ## Organisation du code
 

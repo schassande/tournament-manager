@@ -159,6 +159,8 @@ Comportements notables :
 - mise a jour de `countryId` et `regionId` a partir du pays choisi
 - les sections d'edition sont organisees en onglets PrimeNG
 - l'onglet actif est conserve dans le parametre d'URL `tab` (`general`, `fields`, `days` ou `divisions`)
+- les cellules de nom et de nom court des equipes gardent une reference stable vers l'equipe pendant la saisie, pour eviter de relancer l'edition PrimeNG a chaque caractere
+- le collage sur une equipe existante ne genere aucun identifiant ; l'ajout d'equipes accepte aussi les identifiants de division non numeriques et evite les collisions avec les equipes du tournoi
 
 ## `/tournament/:tournamentId/referee`
 
@@ -242,12 +244,26 @@ Fonctionnalites principales :
 - choix du jour
 - affichage par partie de journee
 - table des matchs par slot et terrain
+- colonne `Result Required?` apres le type de match : `Yes` pour vrai, `No` pour faux, tiret si non renseigne
 - edition inline du slot, terrain, division, libelle, equipe A, equipe B
 - ajout et suppression d'un match
 
 Comportements notables :
 
-- l'ajout essaye de reutiliser intelligemment le dernier slot / terrain disponible
+- l'ajout utilise le premier couple slot / terrain libre ; aucun match n'est ajoute si la partie est pleine
+- les changements de slot ou terrain refusent un couple deja occupe
+- `Ctrl+V` directement sur la page importe les lignes de tableur separees par des tabulations pour la journee selectionnee, sans zone ni bouton de collage
+- des le debut du collage, un spinner dans une modale non fermable bloque les interactions et le defilement jusqu'au bilan, y compris en cas d'erreur
+- une popup affiche le nombre de matchs effectivement ajoutes, le nombre de matchs mis a jour et les lignes ignorees avec leur numero et leur motif ; le collage simple dans un editeur de texte conserve son comportement habituel
+- ordre fixe : `Slot`, `Field`, `Division`, `Game type`, `Result Required?`, `Team 1`, `Team 2` ; la cinquieme colonne renseigne `Game.resultRequired` (booleen optionnel) : `Yes/No`, `Oui/Non`, `true/false` ou `1/0`, sans distinction de casse ; vide ou absente, elle laisse le champ non renseigne ; toute autre valeur est signalee comme invalide dans le bilan
+- 2 a 7 colonnes sont acceptees, avec colonnes finales facultatives et cellules vides conservees ; slot et terrain sont obligatoires ; division obligatoire sauf si le tournoi n'en a qu'une
+- slot : heure au format strict `HH:MM`, recherche parmi les creneaux de jeu de toutes les parties de la journee selectionnee ; les heures inconnues ou ambigues et les terrains indisponibles dans la partie correspondante sont refuses ; terrain : identifiant ou nom ; division et equipes : identifiant, nom ou nom court (sans distinction de casse, correspondance unique)
+- une ligne d'en-tete `Slot` / `Field` est acceptee ; les lignes vides sont ignorees ; equipes et type absents restent vides
+- toutes les lignes sont validees avant la premiere sauvegarde : references inconnues, ambigues ou indisponibles et doublons slot / terrain dans le collage ou plusieurs matchs existants pour le meme couple refusent tout le collage avec les numeros de ligne
+- au collage, un match existant pour le meme tournoi / jour / slot / terrain est mis a jour en conservant exactement son `id` (`gameId`) ; aucun nouveau match n'est cree pour ce couple
+- les champs importes remplacent les anciennes valeurs (y compris les cellules vides) ; les autres donnees du match, dont les references de planning, les scores et la reference FIT, sont conservees ; les allocations liees au `gameId` restent rattachees
+- la verification relit les matchs sauvegardes avant ajout, deplacement ou collage ; elle ne constitue pas un verrou serveur entre utilisateurs simultanes
+- une erreur de sauvegarde peut laisser une partie des matchs importes ; la page recharge les matchs et affiche un message explicite
 - l'ordre d'affichage suit le debut du slot puis l'ordre du terrain
 
 ## `/tournament/:tournamentId/allocation`
@@ -328,11 +344,19 @@ Fonction :
 
 - affichage en lecture seule du planning des arbitres et coaches pour les fragments d'allocation visibles de l'allocation tournoi courante
 - selection d'un scope `Day` ou `PartDay`
-- onglets `Referees Planning`, `Referees List` et `Coaches` (l'onglet `Coaches` est visible uniquement pour l'attendee connecte dont `isRefereeCoach` vaut `true`)
+- onglets `Referees Planning`, `Referees List`, `Coaches` et `Water Carrier` (ce dernier est activé par `ONLINE_WATER_CARRIER` ou `PRINTED_WATER_CARRIER`)
 - filtres de recherche, niveau, categorie, genre, player referee et upgrade dans la liste des arbitres
 - export PDF via la boite d'impression du navigateur et export Excel du contenu affiche dans chaque onglet
 
-La page est accessible a tout utilisateur pouvant consulter le tournoi. Les onglets `Referees Planning` et `Referees List` restent visibles par tous ; l'onglet `Coaches` est reserve a l'attendee connecte dont `isRefereeCoach` vaut `true`. Si aucun fragment visible n'est disponible, seul le message d'absence d'allocation est affiche. En cas d'echec de chargement, un message et une action `Retry` sont proposes.
+L'onglet `Water Carrier` est chargé par une API publique qui vérifie la visibilité du fragment et son appartenance au `TournamentRefereeAllocation` ayant `current === true`. Il est l'onglet initial lorsque l'un des modules Water Carrier est actif ; les visiteurs non connectés utilisent cet onglet sans lecture directe des collections Firestore protégées. Les autres onglets conservent leur chargement Firestore authentifié ; `Coaches` est réservé aux coaches du tournoi. Sans allocation courante ou fragment visible, le message d'absence d'allocation est affiché, sans repli sur une autre allocation.
+
+Avec `ONLINE_WATER_CARRIER`, chacun peut lire la grille. Un attendee authentifié, lié à un compte et possédant le rôle `Referee` peut ajouter ou retirer sa propre affectation. La grille montre les arbitres et Water Carriers, sans coaches, et distingue les affectations personnelles. Les conflits et indisponibilités sont bloqués dans l'interface à partir des données chargées ; ce contrôle ne garantit pas l'absence de conflits entre sessions simultanées. Le bouton `Refresh` recharge les données, ainsi que chaque modification personnelle réussie. Aucun rafraîchissement périodique n'est effectué.
+
+Avec `PRINTED_WATER_CARRIER`, les Tournament Managers et coaches peuvent télécharger un PDF A4 paysage généré dans le navigateur. La pagination conserve quatre lignes d'écriture par match ; les autres exports Planning continuent d'utiliser la boîte d'impression du navigateur. En cas d'échec du rechargement après une écriture réussie, le message précise que l'affectation reste enregistrée et propose `Retry`.
+
+Sources : `frontend/src/page/referee-planning/`, `frontend/src/component/water-carrier/` et `doc/changes/water-carrier.md`.
+
+Un lien direct résout le tournoi indiqué dans l'URL via son document public ; aucune sélection préalable dans le navigateur n'est nécessaire.
 
 ## Pages indirectement presentes dans l'UX
 

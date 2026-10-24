@@ -335,12 +335,48 @@ service cloud.firestore {
       allow delete: if canManageTournament(resource.data.tournamentId);
     }
 
+    // Resolve authority from the server-owned tournament/email index, never the proposed attendeeId.
+    function waterCarrierActor(data) {
+      let id = actorId(data.tournamentId);
+      let attendee = get(/databases/$(database)/documents/attendee/$(id)).data;
+      let person = get(/databases/$(database)/documents/person/$(attendee.person.personId)).data;
+      return id == data.attendeeId && validActor(attendee, data.tournamentId)
+        && 'Referee' in attendee.roles && person.userAuthId == request.auth.uid
+        && normalizedEmail(person.email) == normalizedEmail(request.auth.token.email);
+    }
+
+    // Publication/current-period checks belong to the read API; writes only check tournament boundaries.
+    function waterCarrierReferences(data) {
+      let fragment = get(/databases/$(database)/documents/fragment-referee-allocation/$(data.fragmentRefereeAllocationId)).data;
+      let game = get(/databases/$(database)/documents/game/$(data.gameId)).data;
+      return fragment.tournamentId == data.tournamentId && game.tournamentId == data.tournamentId;
+    }
+
+    function validWaterCarrier(documentId, data) {
+      return verifiedIdentity() && data.attendeeRole == 'WaterCarrier'
+        && data.keys().hasOnly(['id', 'lastChange', 'tournamentId', 'fragmentRefereeAllocationId',
+          'gameId', 'attendeeId', 'attendeeRole', 'attendeePosition', 'half'])
+        && data.id == documentId && data.lastChange is number && data.attendeePosition == 0 && data.half == 0
+        && documentId == 'WaterCarrier:' + identityComponent(data.tournamentId) + ':'
+          + identityComponent(data.fragmentRefereeAllocationId) + ':' + identityComponent(data.gameId)
+          + ':' + identityComponent(data.attendeeId)
+        && waterCarrierActor(data) && waterCarrierReferences(data);
+    }
+
     match /game-attendee-allocation/{documentId} {
       allow read: if signedIn();
-      allow create: if canManageTournament(request.resource.data.tournamentId);
-      allow update: if request.resource.data.tournamentId == resource.data.tournamentId
-        && canManageTournament(resource.data.tournamentId);
-      allow delete: if canManageTournament(resource.data.tournamentId);
+      allow create: if request.resource.data.attendeeRole == 'WaterCarrier'
+        ? validWaterCarrier(documentId, request.resource.data)
+        : canManageTournament(request.resource.data.tournamentId);
+      allow update: if resource.data.attendeeRole == 'WaterCarrier'
+        ? validWaterCarrier(documentId, request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastChange'])
+        : request.resource.data.attendeeRole != 'WaterCarrier'
+          && request.resource.data.tournamentId == resource.data.tournamentId
+          && canManageTournament(resource.data.tournamentId);
+      allow delete: if resource.data.attendeeRole == 'WaterCarrier'
+        ? validWaterCarrier(documentId, resource.data)
+        : canManageTournament(resource.data.tournamentId);
     }
 
     match /tournament-referee-allocation/{documentId} {

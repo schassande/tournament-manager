@@ -1,0 +1,94 @@
+<div class="actions">
+  <p-button label="Refresh" icon="pi pi-refresh" [disabled]="pending() || refreshing()" (onClick)="refresh.emit()" />
+  @if (planning().printedEnabled && planning().actor?.canPrint) {
+    <p-button
+      label="Download PDF"
+      icon="pi pi-file-pdf"
+      [loading]="exporting()"
+      [disabled]="refreshing()"
+      (onClick)="download()" />
+  }
+</div>
+@if (error()) {
+  <p role="alert" class="error">{{ error() }}</p>
+}
+@if (planning().onlineEnabled) {
+  <p class="legend">
+    Your assignments: <span class="referee-key">Referee</span> <span class="carrier-key">Water Carrier</span>
+  </p>
+  @if (!planning().actor?.canAllocate) {
+    <p>Read-only planning. A linked Referee account is required to assign yourself.</p>
+  }
+  @if (planning().matches.length === 0) {
+    <p>No matches in this period.</p>
+  } @else {
+    <div class="grid-wrapper" tabindex="0" aria-label="Water carrier planning">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Time</th>
+            @for (field of planning().fields; track field.id) {
+              <th scope="col">{{ field.name }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (slot of planning().timeslots; track slot.id) {
+            <tr>
+              <th scope="row">{{ time(slot.start) }}</th>
+              @for (field of planning().fields; track field.id) {
+                <td>
+                  @if (match(slot.id, field.id); as game) {
+                    <div
+                      class="match-title"
+                      [style.background-color]="game.backgroundColor"
+                      [style.color]="game.fontColor">
+                      {{ game.description }}
+                    </div>
+                    <div class="referees" [class.my-referee]="refereeing(game)">
+                      @for (referee of game.referees; track $index) {
+                        <div>{{ referee.name }}</div>
+                      }
+                      @if (refereeing(game)) {
+                        <strong>Your referee assignment</strong>
+                      }
+                    </div>
+                    @if (planning().actor?.canAllocate) {
+                      <button
+                        class="carriers carrier-control"
+                        type="button"
+                        [class.my-carrier]="assigned(game)"
+                        [disabled]="pending() || refreshing() || !!blocked(game)"
+                        [attr.aria-pressed]="assigned(game)"
+                        (click)="toggle(game)">
+                        <strong>Water Carriers</strong>
+                        @for (carrier of game.waterCarriers; track carrier.attendeeId) {
+                          <span class="carrier-name">{{ carrier.name }}</span>
+                        }
+                        <span class="assignment-action">{{
+                          assigned(game) ? 'Remove my assignment' : 'Assign myself'
+                        }}</span>
+                        @if (blocked(game); as reason) {
+                          <small>{{ reason }}</small>
+                        }
+                      </button>
+                    } @else {
+                      <div class="carriers">
+                        <strong>Water Carriers</strong>
+                        @for (carrier of game.waterCarriers; track carrier.attendeeId) {
+                          <div>{{ carrier.name }}</div>
+                        }
+                      </div>
+                    }
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+} @else if (!planning().actor?.canPrint) {
+  <p>The paper planning is available to tournament managers and coaches.</p>
+}

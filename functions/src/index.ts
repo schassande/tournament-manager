@@ -7,6 +7,7 @@ import { allocationStatisticsRouter } from './allocation-statistics';
 import { createPerson } from './person/create-person';
 import { fitImportRouter } from './fit-import';
 import { tournamentHomeRouter } from './tournament-home';
+import { waterCarrierRouter } from './water-carrier/read-planning';
 
 /**
  * Import function triggers from their respective submodules:
@@ -25,6 +26,7 @@ app.use(corsTrue);
 app.use('/refereeAllocationStatistics', allocationStatisticsRouter);
 app.use('/fitImport', fitImportRouter);
 app.use('/tournamentHome', tournamentHomeRouter);
+app.use('/waterCarrier', waterCarrierRouter);
 
 export const api = onRequest({ secrets }, app);
 export { createPerson };

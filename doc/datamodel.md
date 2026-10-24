@@ -190,6 +190,7 @@ Champs principaux :
 - `dayId`, `timeslotId`, `fieldId`
 - `homeTeamId`, `awayTeamId`
 - `what` : type ou libellé du match, par exemple `Pool`
+- `resultRequired?: boolean` : resultat requis pour ce match ; absent si non renseigne. Importe depuis la cinquieme colonne du collage et affiche dans la page des matchs. Les matchs existants restent valides sans migration.
 - `score`
 - `scheduleInfo`
 
@@ -211,6 +212,12 @@ Champs principaux :
 - `attendeeRole`
 - `attendeePosition`
 - `half`
+
+Pour `WaterCarrier`, `fragmentRefereeAllocationId` est obligatoire, `half` et `attendeePosition` valent `0`. L'identifiant déterministe est `WaterCarrier:<tournamentId>:<fragmentId>:<gameId>:<attendeeId>`, avec chaque composant encodé par `identityKeyComponent`. Il garantit une seule affectation par match, fragment et attendee. Le rôle reste un rôle d'affectation : il n'est pas ajouté aux rôles d'inscription d'un attendee et n'entre pas dans les statistiques des arbitres/coaches.
+
+Aucun attribut supplémentaire de coordonnées de contrôle n'est nécessaire. Les règles vérifient que le match et le fragment existent et appartiennent au tournoi de l'attendee. Elles ne contrôlent pas la visibilité, l'allocation courante ou la correspondance de période entre match et fragment ; ces restrictions relèvent de l'API de lecture et du parcours utilisateur. La suppression personnelle ne nécessite aucune mise à jour préparatoire. Masquer un fragment, changer d'allocation courante ou réinitialiser ses arbitres/coaches conserve les Water Carriers. La suppression complète du tournoi continue de nettoyer cette collection côté serveur.
+
+L'autorisation Water Carrier résout exclusivement l'acteur via `attendee-index/<tournamentId encodé>:<email authentifié normalisé et encodé>`, puis vérifie `Referee` dans les rôles de cet attendee, son lien de compte et l'égalité avec `GameAttendeeAllocation.attendeeId`. Les droits gestionnaire ne permettent pas de contourner cette restriction personnelle.
 
 Attention :
 

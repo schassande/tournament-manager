@@ -6,13 +6,25 @@ Le backend Firebase actuel est tres concentre :
 
 - Exported functions: `api`, `createPerson`, `deletePerson`, `saveAttendee`, `deleteAttendee`, `createTournament`, `deleteTournament`, `removeRankingReferees`, `repairRefereeRanking`, `deleteRefereeRanking`.
 - `api` encapsule une application Express
-- trois routers metier sont branches : `/refereeAllocationStatistics`, `/fitImport` et `/tournamentHome`
+- quatre routers métier sont branchés : `/refereeAllocationStatistics`, `/fitImport`, `/tournamentHome` et `/waterCarrier`
 
 Profile updates and other permitted business writes still use Firestore directly. Identity, attendee, and tournament lifecycle writes use the callables below.
 
 Les collections `referee-upgrade-coach-vote` et `referee-upgrade-panel-vote` sont validees par les regles Firestore : valeurs de vote autorisees, arbitre eligible, identite du referee coach pour les votes individuels et invariants d'identite lors des mises a jour. Les votes ne sont pas supprimables afin de conserver l'historique.
 
-## Initialisation
+## Lecture du planning Water Carrier
+
+`GET /api/waterCarrier/planning?tournamentId=<id>&fragmentRefereeAllocationId=<id optionnel>` charge les données du planning en une transaction de lecture. Source : `functions/src/water-carrier/read-planning.ts` ; projection et conflits : `functions/src/water-carrier/planning.ts`.
+
+- Sans fragment explicite, choisit le premier fragment visible de l'allocation courante, ou renvoie une liste vide. Aucun repli sur une allocation non courante. Plusieurs allocations courantes provoquent une erreur de cohérence.
+- Vérifie l'activation d'au moins un module Water Carrier et la visibilité/appartenance du fragment explicitement demandé. Un fragment masqué ou hors allocation courante est refusé.
+- Réponse `WaterCarrierPlanning` : tournoi, fuseau, modules, périodes disponibles, période sélectionnée, terrains, créneaux, matches et noms des arbitres/Water Carriers. Aucune adresse email, téléphone ou fiche Person n'est publiée.
+- Lecture anonyme avec `ONLINE_WATER_CARRIER`. Si seul le module papier est actif, les données des matches sont fournies seulement aux gestionnaires/coaches authentifiés ; les autres lecteurs reçoivent les périodes sans grille.
+- Un Bearer token facultatif, validé et non révoqué, permet de résoudre l'acteur via l'index tournoi/email et son compte Person. La réponse contient alors un contexte privé : attendee ID, droits `canAllocate`/`canPrint`, statut coach et motifs de conflit par match, sans révéler les détails des fragments non publiés. Un token fourni mais invalide est refusé.
+- Réponses non cachables (`Cache-Control: private, no-store`). Codes : 400 paramètres invalides, 401 session invalide, 403 accès/période/module refusé, 404 tournoi absent, 409 plusieurs allocations courantes, 500 erreur interne sans détail sensible.
+- Les écritures ne passent pas par cette API : elles utilisent Firestore, avec vérification de l'acteur indexé, du rôle `Referee`, de la propriété de l'affectation `WaterCarrier`, des références match/fragment dans le même tournoi et de l'identifiant déterministe. Aucun attribut de coordonnées de contrôle n'est utilisé. Depuis la simplification du 2026-09-29, les écritures directes ne vérifient ni modules, ni visibilité/allocation courante, ni correspondance de période entre match et fragment ; un arbitre peut donc contourner ces restrictions pour ses propres affectations du même tournoi. Les conflits d'horaire restent un contrôle d'interface sur un instantané.
+
+## Initialisation de l'application Express
 
 Fichier : `functions/src/index.ts`
 

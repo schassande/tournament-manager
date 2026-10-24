@@ -66,6 +66,7 @@ import {
                 @if (gameForCell(referee.id, slot.id); as game) {
                   <td
                     class="populated-cell"
+                    [class.non-playing-timeslot]="!slot.playingSlot"
                     [class.timeslot-highlight]="selectedTimeslotId() === slot.id"
                     [class.video-field]="game.field.video"
                     [class.bad-field]="game.field.quality === 1"
@@ -81,7 +82,10 @@ import {
                     }
                   </td>
                 } @else {
-                  <td [class.timeslot-highlight]="selectedTimeslotId() === slot.id"></td>
+                  <td
+                    [class.non-playing-timeslot]="!slot.playingSlot"
+                    [class.timeslot-highlight]="selectedTimeslotId() === slot.id"
+                  ></td>
                 }
               }
             </tr>
@@ -141,6 +145,9 @@ import {
       .bad-field {
         display: block;
         background: #f8d7da;
+      }
+      .planning-table .non-playing-timeslot {
+        background: lightgrey;
       }
       .export-icon {
         cursor: pointer;

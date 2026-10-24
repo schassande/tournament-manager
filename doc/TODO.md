@@ -1,4 +1,9 @@
 # TODO list du projet Tournament Maager
+- Allocation
+  - Bug de double allocation: le meme referee 2 fois sur le meme match. Pas visible dans Allocation mais visible dans le planning
+  - Drawer : onglet coach, ajouter en première colonne le nombre de match
+  - game cell: afficher le what
+  - check 2 games à la suite doivent etre sur le meme terrain
 - Water carrier
   - pour impression
   - pour remplissage en ligne
@@ -86,6 +91,11 @@
 - 2026/09/11: Page Referees : bug graphique/scroll : on ne voit pas la fin du tableau
 - 2026/09/13: Ranking method NZ
 - 2026/09/28: indexation des attendee <tournamentId>:<email>=>attendee.id pour permettre l'application des droits en fonction des roles définis dans l'attendee
+- 2026/09/30: Config timeslot 
+  - Config timeslot: ajouter les break de 35, 45, 55, 65, 75 ...
+  - Config timeslot: ajouter 1x20min + 5 in 30min slot
+  - Drawer : onglet timeslot, mettre en gris les timeslot non playing
+  - Water carrier pour impression
 
 
 ## Bugs non reproduis

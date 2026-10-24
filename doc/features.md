@@ -239,7 +239,13 @@ L'application embarque un referentiel geographique de regions et de pays, utilis
 - le parametrage des tournois
 - le systeme de badges arbitres selon le pays
 
-## Ce qui est deja pret pour la suite
+## Affecter les Water Carriers
+
+Dans `Referee > Planning`, l'onglet `Water Carrier` utilise uniquement les fragments visibles de l'allocation tournoi courante. `ONLINE_WATER_CARRIER` permet la lecture publique et l'auto-affectation des attendees authentifiés ayant le rôle `Referee` et un compte lié. Un clic sur `Assign myself` ou `Remove my assignment` modifie seulement l'affectation personnelle. Les conflits d'arbitrage, de Water Carrier et les indisponibilités sont bloqués par l'interface ; le nombre de Water Carriers par match est illimité. Les changements des autres utilisateurs apparaissent avec `Refresh` ou après une modification personnelle.
+
+`PRINTED_WATER_CARRIER` permet aux gestionnaires et coaches du tournoi de télécharger le planning en PDF A4 paysage avec les arbitres et quatre lignes pour écrire les noms. Les deux modules peuvent être activés indépendamment. Les affectations sont liées au match et au fragment ; changer de version d'allocation n'en copie pas les données. La réinitialisation des affectations d'arbitres/coaches les conserve.
+
+## Extensions possibles
 
 Le code montre deja plusieurs extensions possibles :
 

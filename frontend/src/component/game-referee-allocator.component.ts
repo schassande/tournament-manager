@@ -48,7 +48,13 @@ import { TooltipModule } from 'primeng/tooltip';
       [pTooltip]="gameProblemMessage()"
       tooltipPosition="top"
       style="{{ teamsCellStyle() }}">
-      {{ game().division!.shortName }}: {{ game().homeTeam?.shortName }} - {{ game().awayTeam?.shortName }}
+      {{ game().division!.shortName }}: 
+      @if (game().game.what) {
+        <span>{{ game().game.what }}:</span>
+      }
+      @if (game().homeTeam || game().awayTeam) {
+        <span>{{ game().homeTeam?.shortName }} - {{ game().awayTeam?.shortName }}</span>
+      }
     </div>
     @if (showCoaches() && coaches()) {
       <div class="coaches {{ coachCellSelected() ? 'selectable' : '' }}">

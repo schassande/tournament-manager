@@ -1,0 +1,110 @@
+:host {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+.error {
+  color: #a61b1b;
+}
+.legend {
+  margin: 0.5rem 0;
+}
+.referee-key,
+.my-referee {
+  background: #e0edff;
+  color: #173f72;
+}
+.carrier-key,
+.my-carrier {
+  background: #daf5e6;
+  color: #145533;
+}
+.legend span {
+  padding: 0.2rem 0.5rem;
+}
+.grid-wrapper {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+}
+th,
+td {
+  border-right: 1px solid #999;
+  border-bottom: 1px solid #999;
+  vertical-align: top;
+  text-align: center;
+  min-width: 190px;
+  max-width: 280px;
+  padding: 0;
+}
+th {
+  background: #f5f5f5;
+  color: #222;
+  padding: 0.5rem;
+}
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+tbody th,
+thead th:first-child {
+  position: sticky;
+  left: 0;
+  min-width: 65px;
+}
+thead th:first-child {
+  z-index: 3;
+}
+.match-title,
+.referees,
+.carriers {
+  padding: 0.4rem;
+}
+.match-title,
+.referees {
+  border-bottom: 1px solid #aaa;
+}
+button {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.carrier-name,
+.assignment-action {
+  display: block;
+}
+.assignment-action {
+  margin: 0.5rem 0;
+  text-decoration: underline;
+}
+button:disabled {
+  cursor: default;
+}
+button:focus-visible,
+.grid-wrapper:focus-visible {
+  outline: 2px solid #173f72;
+  outline-offset: 2px;
+}
+small {
+  display: block;
+}

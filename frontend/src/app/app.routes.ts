@@ -112,7 +112,7 @@ export const routes: Routes = [
   {
     path: 'tournament/:tournamentId/game',
     loadComponent: () =>
-      import('../page/tournament-games.page').then(
+      import('../page/tournament-games/tournament-games.page').then(
         (m) => m.TournamentGamesComponent,
       ),
     data: { title: 'Tournament games' },
@@ -139,7 +139,7 @@ export const routes: Routes = [
   {
     path: 'tournament/:tournamentId/referee-planning',
     loadComponent: () =>
-      import('../page/referee-planning.page').then(
+      import('../page/referee-planning/referee-planning.page').then(
         (m) => m.RefereePlanningComponent,
       ),
     data: { title: 'Referee planning' },

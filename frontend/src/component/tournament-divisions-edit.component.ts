@@ -2,7 +2,7 @@ import { Component, computed, effect, model, output, signal } from '@angular/cor
 import { Tournament, BasicDivision, BasicDivisions } from '@tournament-manager/persistent-data-model';
 import { Division } from '@tournament-manager/persistent-data-model';
 import { CardModule } from 'primeng/card';
-import { TournamentDivisionEditComponent } from './tournament-division-edit.component';
+import { TournamentDivisionEditComponent } from './tournament-division-edit/tournament-division-edit.component';
 
 @Component({
   selector: 'app-tournament-divisions-edit',

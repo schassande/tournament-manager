@@ -1,0 +1,35 @@
+.planning-page {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: calc(100vh - 76px);
+  max-height: calc(100vh - 76px);
+  overflow: hidden;
+}
+.planning-status {
+  margin: 2rem auto;
+  max-width: 42rem;
+  text-align: center;
+}
+.planning-status.error {
+  color: #a61b1b;
+}
+.planning-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+.scope-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.scope-form select {
+  min-width: 18rem;
+  padding: 0.4rem;
+}
+.planning-tabs {
+  display: flex;
+}

@@ -30,7 +30,9 @@ export interface Person extends PersistentObject {
   referee? : RefereeInfo;
   refereeCoach? : RefereeCoachInfo;
 }
+/** Tournament roles and match-assignment roles; WaterCarrier is assignment-only. */
 export type AttendeeRole = 'Referee' 
+  | 'WaterCarrier' // match assignment only; not a tournament membership role
   | 'Player' // player in a team
   | 'PlayerCoach' // Player and coach of a team
   | 'PlayerReferee' // Player and Referee

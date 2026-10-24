@@ -1,0 +1,235 @@
+<div>
+  @for (error of pasteErrors(); track $index) {
+  <p role="alert">{{ error }}</p>
+  }
+
+  <p-selectbutton
+    [options]="days()"
+    [disabled]="savingPaste()"
+    [(ngModel)]="selectedDay"
+    optionLabel="label"
+    (ngModelChange)="selectedDayChanged()" />
+  <div class="chapterSection">
+    @for (part of parts(); track part.part.id) {
+    <div>Part {{ part.part.id }}</div>
+    <p-table [value]="part.games" showGridlines [size]="'small'" tableLayout="fixed">
+      <ng-template #header>
+        <tr class="tableRowTitle">
+          <th style="width: 10%">Time slot</th>
+          <th style="width: 10%">Field</th>
+          <th style="width: 10%" *ngIf="showDivision()">Division</th>
+          <th style="width: 10%">What</th>
+          <th style="width: 10%">Result Required?</th>
+          <th style="width: 20%">Team A</th>
+          <th style="width: 20%">Team B</th>
+          <th style="width: 10%">Action</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-game let-ri="rowIndex">
+        <tr class="tableRowItem  tableRowItem-{{ game.timeslot!.id % 2 }}">
+          <td [pEditableColumn]="game.game.timeslotId" pEditableColumnField="timeslot" style="text-align: center">
+            <p-cellEditor>
+              <ng-template #input>
+                <p-select
+                  id="timeslot"
+                  size="small"
+                  [options]="part.playingTimeSlots"
+                  [ngModel]="game.game.timeslotId"
+                  [disabled]="savingPaste()"
+                  optionLabel="startStr"
+                  optionValue="id"
+                  appendTo="body"
+                  placeholder="time slot"
+                  (onChange)="timeSlotSelected(part, game, $event.value)">
+                  <ng-template let-timeslot #item #selectedItem>
+                    <div class="flex items-center gap-2">
+                      <div>{{ timeslot.startStr }}</div>
+                    </div>
+                  </ng-template>
+                </p-select>
+              </ng-template>
+              <ng-template #output>{{ game.timeslotStr }}</ng-template>
+            </p-cellEditor>
+          </td>
+          <td [pEditableColumn]="game.field" pEditableColumnField="field" style="text-align: center">
+            <p-cellEditor>
+              <ng-template #input>
+                <p-select
+                  id="field"
+                  size="small"
+                  [options]="part.fields"
+                  [ngModel]="game.game.fieldId"
+                  [disabled]="savingPaste()"
+                  optionLabel="name"
+                  optionValue="id"
+                  appendTo="body"
+                  placeholder="Field"
+                  (onChange)="fieldSelected(part, game, $event.value)">
+                  <ng-template let-field #item #selectedItem>
+                    <div class="flex items-center gap-2">
+                      <div>{{ field.name }}</div>
+                    </div>
+                  </ng-template>
+                </p-select>
+              </ng-template>
+              <ng-template #output>{{ game.field?.name }}</ng-template>
+            </p-cellEditor>
+          </td>
+          @if (showDivision()) {
+          <td [pEditableColumn]="game.division" pEditableColumnField="division" style="text-align: center">
+            <p-cellEditor>
+              <ng-template #input>
+                <p-select
+                  id="division"
+                  size="small"
+                  [options]="tournament()!.divisions"
+                  [(ngModel)]="game.division"
+                  optionLabel="name"
+                  optionValue="id"
+                  appendTo="body"
+                  placeholder="Division"
+                  (onChange)="divisionSelected(game, $event.value)">
+                  <ng-template let-division #item #selectedItem>
+                    <div class="flex items-center gap-2">
+                      <div>{{ division.shortName }}</div>
+                    </div>
+                  </ng-template>
+                </p-select>
+              </ng-template>
+              <ng-template #output>{{ game.division?.shortName }}</ng-template>
+            </p-cellEditor>
+          </td>
+          }
+          <td [pEditableColumn]="game.game.what" pEditableColumnField="what" style="text-align: center">
+            <p-cellEditor>
+              <ng-template #input
+                ><input pInputText type="text" [(ngModel)]="game.game.what" (blur)="gameWhatChanged(game)"
+              /></ng-template>
+              <ng-template #output>{{ game.game.what }}</ng-template>
+            </p-cellEditor>
+          </td>
+
+          <td style="text-align: center">
+            {{ game.game.resultRequired === true ? 'Yes' : game.game.resultRequired === false ? 'No' : '—' }}
+          </td>
+          <td [pEditableColumn]="game.homeTeam" pEditableColumnField="homeTeam" style="text-align: center">
+            <p-cellEditor>
+              <ng-template #input>
+                <p-select
+                  id="homeTeam"
+                  size="small"
+                  [options]="game.division?.teams ?? []"
+                  [(ngModel)]="game.homeTeam"
+                  optionLabel="name"
+                  optionValue="id"
+                  appendTo="body"
+                  placeholder="Team"
+                  (onChange)="teamSelected(game, true, $event.value)">
+                  <ng-template let-team #item #selectedItem>
+                    <div class="flex items-center gap-2">
+                      <div>{{ team.shortName }}</div>
+                    </div>
+                  </ng-template>
+                </p-select>
+              </ng-template>
+              <ng-template #output>{{ game.homeTeam?.shortName }}</ng-template>
+            </p-cellEditor>
+          </td>
+          <td [pEditableColumn]="game.awayTeam" pEditableColumnField="awayTeam" style="text-align: center">
+            <p-cellEditor>
+              <ng-template #input>
+                <p-select
+                  id="awayTeam"
+                  size="small"
+                  [options]="game.division?.teams ?? []"
+                  [(ngModel)]="game.awayTeam"
+                  optionLabel="name"
+                  optionValue="id"
+                  appendTo="body"
+                  placeholder="Team"
+                  (onChange)="teamSelected(game, false, $event.value)">
+                  <ng-template let-team #item #selectedItem>
+                    <div class="flex items-center gap-2">
+                      <div>{{ team.shortName }}</div>
+                    </div>
+                  </ng-template>
+                </p-select>
+              </ng-template>
+              <ng-template #output>{{ game.awayTeam?.shortName }}</ng-template>
+            </p-cellEditor>
+          </td>
+          <td style="text-align: center">
+            <i class="pi pi-trash action action-remove" aria-label="remove referee" (click)="removeGame(game)"></i>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+    <div class="buttonPanel">
+      <p-button
+        (click)="addGame(part)"
+        icon="pi pi-add"
+        label="Add a game"
+        [disabled]="savingPaste() || deletingPartDayId() !== null"></p-button>
+      @if (deletePartDayId() === part.part.id) {
+      <p-button
+        label="Confirm delete all games"
+        icon="pi pi-check"
+        severity="danger"
+        (click)="deleteAllGames(part)"
+        [loading]="deletingPartDayId() === part.part.id" />
+      <p-button
+        label="Cancel"
+        severity="secondary"
+        (click)="cancelDeleteAllGames()"
+        [disabled]="savingPaste() || deletingPartDayId() !== null" />
+      } @else {
+      <p-button
+        label="Delete all games"
+        icon="pi pi-trash"
+        severity="danger"
+        (click)="requestDeleteAllGames(part)"
+        [disabled]="savingPaste() || deletingPartDayId() !== null || !part.games.length" />
+      }
+    </div>
+    }
+  </div>
+</div>
+
+<p-dialog
+  header="Importing games"
+  [visible]="pasteInProgress()"
+  [modal]="true"
+  [closable]="false"
+  [closeOnEscape]="false"
+  [dismissableMask]="false"
+  [draggable]="false"
+  [resizable]="false"
+  [blockScroll]="true"
+  appendTo="body">
+  <div class="paste-progress" role="status" aria-live="polite" aria-busy="true" tabindex="0">
+    <p-progress-spinner ariaLabel="Importing games" />
+    <p>Please wait while the games are imported.</p>
+  </div>
+</p-dialog>
+
+<p-dialog
+  header="Paste summary"
+  [(visible)]="pasteSummaryVisible"
+  [modal]="true"
+  [style]="{ width: '40rem', maxWidth: '95vw' }">
+  <p>Games added: {{ pastedGameCount() }}</p>
+  <p>Games updated: {{ updatedGameCount() }}</p>
+  <p>Ignored lines:</p>
+  @if (ignoredPasteLines().length) {
+  <ul>
+    @for (line of ignoredPasteLines(); track $index) {
+    <li>{{ line }}</li>
+    }
+  </ul>
+  } @else {
+  <p>None</p>
+  }
+  <ng-template #footer>
+    <p-button label="Close" (click)="pasteSummaryVisible = false" />
+  </ng-template>
+</p-dialog>

@@ -1,6 +1,8 @@
 # Referee planning
 
-Last updated: 2026-08-27
+Last updated: 2026-09-28
+
+Implementation extension: [Water carrier](water-carrier.md) adds a module-controlled tab, public aggregate API loading, self-allocation, and a browser-generated PDF. The original three tabs retain their existing export behavior and authenticated Firestore loading. Planning now uses only visible fragments of a strictly current tournament allocation, without falling back to the first allocation. The page sources are grouped under `frontend/src/page/referee-planning/`. The original read-only scope below describes the three original tabs; the water-carrier specification governs their extension.
 
 ## Objective
 
@@ -65,6 +67,7 @@ Select controls do not display separate text labels. Their default options are `
 The table:
 
 - Displays one column per timeslot in the selected scope, ordered according to the data model.
+- Uses a light grey background for non-playing timeslot body cells (`playingSlot: false`), keeping the header background unchanged; the selected-column highlight takes precedence.
 - Displays one row per referee available in the selected scope, ordered alphabetically.
 - Displays the referee name as `First name Last name`, without the referee level.
 - Displays the field name in each cell.

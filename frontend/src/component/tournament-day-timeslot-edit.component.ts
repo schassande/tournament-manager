@@ -17,8 +17,8 @@ import { SlotType } from '@tournament-manager/persistent-data-model';
       @if (timeslotStartReadOnly()) {
         <div style="text-align: center;">{{startTimeStr}}</div>
       } @else {
-        <p-datepicker type="time" shape="round" [(ngModel)]="startTimeStr"
-          (ionChange)="timeSlotStartChanged()" [timeOnly]="true">
+        <p-datepicker type="time" shape="round" [(ngModel)]="startTime"
+          (ngModelChange)="timeSlotStartChanged($event)" [timeOnly]="true">
         </p-datepicker>
       }
     </div>
@@ -81,17 +81,24 @@ export class TournamentDayTimeslotEditComponent {
 
   /** Start time of the slot as string for display */
   startTimeStr: string = '';
+  /** Local date value used by the PrimeNG time picker. */
+  startTime: Date | null = null;
   slotTypes = defaultSloTypes;
 
   constructor() {
     effect(() => {
       this.startTimeStr = this.dateService.toTime(this.timeslotStart());
+      this.startTime = this.dateService.epochToDate(this.timeslotStart());
     })
   }
 
-  timeSlotStartChanged() {
-    const start:number = this.dateService.fromTime(this.timeslotStart(), this.startTimeStr);
-    console.log('timeSlotStartChanged', this.startTimeStr, start);
+  /** Emits the selected local time on the existing slot day; ignores empty or invalid input. */
+  timeSlotStartChanged(time: Date | null): void {
+    if (!(time instanceof Date) || Number.isNaN(time.getTime())) {
+      return;
+    }
+
+    const start = this.dateService.setTime(this.timeslotStart(), time.getHours(), time.getMinutes());
     this.onTimeSlotStartChange.emit(start);
   }
   timslotTypeChanged(id: string) {

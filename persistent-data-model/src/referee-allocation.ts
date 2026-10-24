@@ -1,6 +1,7 @@
 import { PersistentObject, WithId } from "./persistence";
 import { AttendeeRole } from "./person";
 
+/** An attendee assigned to a match and allocation fragment; WaterCarrier writes are restricted to their owner. */
 export interface GameAttendeeAllocation extends PersistentObject {
   tournamentId: string; // identifier of the tournament
   fragmentRefereeAllocationId?: string; // identifier of the fragment referee allocation

@@ -202,6 +202,8 @@ export interface Game extends PersistentObject {
   awayTeamId: string; // unique identifier of the away team
   /** Displayed game type, for example Pool or a knockout round. */
   what: string;
+  /** Whether a result is required for this game; absent when unspecified. */
+  resultRequired?: boolean;
   score?: {
     homeTeamScore: number; // score of the home team
     awayTeamScore: number; // score of the away team

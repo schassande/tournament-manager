@@ -3,6 +3,7 @@ export * from "./referee-availability";
 export * from "./referee-upgrade";
 export * from './referee-ranking';
 export * from './attendee-index';
+export * from './water-carrier';
 export * from "./constants";
 export * from "./persistence";
 export * from "./person";

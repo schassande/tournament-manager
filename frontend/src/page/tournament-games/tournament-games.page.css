@@ -1,0 +1,33 @@
+.tableRowTitle th {
+  text-align: center;
+}
+.tableRowItem-0 {
+}
+.tableRowItem-1 {
+  background-color: #eeeeee;
+}
+.action {
+  font-size: 1.3rem;
+}
+.action-remove {
+  margin-right: 10px;
+  color: red;
+}
+.action-edit {
+  margin-right: 10px;
+  color: blue;
+}
+.buttonPanel {
+  text-align: right;
+  margin: 10px 0;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+.table-buttons {
+  margin: 0 10px;
+}
+.paste-progress {
+  text-align: center;
+}
