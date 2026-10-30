@@ -4,47 +4,45 @@ import { AuthGuard } from './auth-guard';
 export const routes: Routes = [
   {
     path: 'home',
-    loadComponent: () =>
-      import('../page/home.page').then((m) => m.HomeComponent),
+    loadComponent: () => import('../page/home.page').then((m) => m.HomeComponent),
     data: { title: 'Touch Tournament Manager' },
     pathMatch: 'full',
   },
 
   {
     path: 'user/login',
-    loadComponent: () =>
-      import('../page/user-login.page').then((m) => m.UserLoginComponent),
+    loadComponent: () => import('../page/user-login.page').then((m) => m.UserLoginComponent),
     data: { title: 'Login' },
     pathMatch: 'full',
   },
   {
     path: 'user/create',
-    loadComponent: () =>
-      import('../page/user-create.page').then((m) => m.default),
+    loadComponent: () => import('../page/user-create.page').then((m) => m.default),
     data: { title: 'Create an account' },
+    pathMatch: 'full',
+  },
+  {
+    path: 'user/account-validation-required',
+    loadComponent: () =>
+      import('../page/account-validation-required.page').then((m) => m.AccountValidationRequiredComponent),
+    data: { title: 'Account validation required' },
     pathMatch: 'full',
   },
 
   {
     path: 'user/:id',
-    loadComponent: () => import('../page/user-profile/user-profile.page').then(m => m.UserProfilePage),
+    loadComponent: () => import('../page/user-profile/user-profile.page').then((m) => m.UserProfilePage),
     data: { title: 'User profile' },
     canActivate: [AuthGuard],
   },
   {
     path: 'tournament',
-    loadComponent: () =>
-      import('../page/tournament-list.page').then(
-        (m) => m.TournamentListComponent,
-      ),
+    loadComponent: () => import('../page/tournament-list.page').then((m) => m.TournamentListComponent),
     data: { title: 'List of tournaments' },
   },
   {
     path: 'tournament/create',
-    loadComponent: () =>
-      import('../page/tournament-wizard.page').then(
-        (m) => m.TournamentWizardComponent,
-      ),
+    loadComponent: () => import('../page/tournament-wizard.page').then((m) => m.TournamentWizardComponent),
     data: { title: 'Create tournament' },
     canActivate: [AuthGuard],
   },
@@ -59,27 +57,18 @@ export const routes: Routes = [
   },
   {
     path: 'tournament/:tournamentId/home',
-    loadComponent: () =>
-      import('../page/tournament-home/tournament-home.page').then(
-        (m) => m.TournamentHomeComponent,
-      ),
+    loadComponent: () => import('../page/tournament-home/tournament-home.page').then((m) => m.TournamentHomeComponent),
     data: { title: 'Tournament home' },
   },
   {
     path: 'tournament/:tournamentId/edit',
-    loadComponent: () =>
-      import('../page/tournament-edit.page').then(
-        (m) => m.TournamentEditComponent,
-      ),
+    loadComponent: () => import('../page/tournament-edit.page').then((m) => m.TournamentEditComponent),
     data: { title: 'Edit tournament' },
     canActivate: [AuthGuard],
   },
   {
     path: 'tournament/:tournamentId/referee',
-    loadComponent: () =>
-      import('../page/tournament-referee.page').then(
-        (m) => m.TournamentRefereeComponent,
-      ),
+    loadComponent: () => import('../page/tournament-referee.page').then((m) => m.TournamentRefereeComponent),
     data: { title: 'Referees of the tournament' },
     canActivate: [AuthGuard],
     pathMatch: 'full',
@@ -96,60 +85,49 @@ export const routes: Routes = [
   {
     path: 'tournament/:tournamentId/referee-upgrade',
     loadComponent: () =>
-      import('../page/tournament-referee-upgrade.page').then(
-        (m) => m.TournamentRefereeUpgradeComponent,
-      ),
+      import('../page/tournament-referee-upgrade.page').then((m) => m.TournamentRefereeUpgradeComponent),
     data: { title: 'Referee upgrade' },
     canActivate: [AuthGuard],
   },
   {
     path: 'tournament/:tournamentId/basic-ranking',
     loadComponent: () =>
-      import('../page/tournament-referee-ranking/tournament-referee-ranking.page').then((m) => m.TournamentRefereeRankingComponent),
+      import('../page/tournament-referee-ranking/tournament-referee-ranking.page').then(
+        (m) => m.TournamentRefereeRankingComponent,
+      ),
     data: { title: 'Referee ranking' },
     canActivate: [AuthGuard],
   },
   {
     path: 'tournament/:tournamentId/game',
     loadComponent: () =>
-      import('../page/tournament-games/tournament-games.page').then(
-        (m) => m.TournamentGamesComponent,
-      ),
+      import('../page/tournament-games/tournament-games.page').then((m) => m.TournamentGamesComponent),
     data: { title: 'Tournament games' },
     canActivate: [AuthGuard],
   },
   {
     path: 'tournament/:tournamentId/fit-import',
-    loadComponent: () =>
-      import('../page/tournament-fit-import.page').then(
-        (m) => m.TournamentFitImportComponent,
-      ),
+    loadComponent: () => import('../page/tournament-fit-import.page').then((m) => m.TournamentFitImportComponent),
     data: { title: 'FIT import' },
     canActivate: [AuthGuard],
   },
   {
     path: 'tournament/:tournamentId/allocation',
     loadComponent: () =>
-      import('../page/tournament-referees-allocations.page').then(
-        (m) => m.TournamentRefereesAllocationsComponent,
-      ),
+      import('../page/tournament-referees-allocations.page').then((m) => m.TournamentRefereesAllocationsComponent),
     data: { title: 'Referees & Coaches Allocations' },
     canActivate: [AuthGuard],
   },
   {
     path: 'tournament/:tournamentId/referee-planning',
     loadComponent: () =>
-      import('../page/referee-planning/referee-planning.page').then(
-        (m) => m.RefereePlanningComponent,
-      ),
+      import('../page/referee-planning/referee-planning.page').then((m) => m.RefereePlanningComponent),
     data: { title: 'Referee planning' },
   },
   {
     path: 'tournament/:tournamentId/allocation/:tournamentAllocationId/fragment/:fragmentAllocationId',
     loadComponent: () =>
-      import('../page/tournament-referees-allocation.page').then(
-        (m) => m.TournamentRefereesAllocationComponent,
-      ),
+      import('../page/tournament-referees-allocation.page').then((m) => m.TournamentRefereesAllocationComponent),
     data: { title: 'Referees & Coaches Allocation' },
     canActivate: [AuthGuard],
   },

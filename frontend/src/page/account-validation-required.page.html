@@ -1,0 +1,14 @@
+<main class="validation-page">
+  <p-card class="validation-card">
+    <ng-template pTemplate="header">
+      <div class="validation-header">
+        <i class="pi pi-envelope" aria-hidden="true"></i>
+        <h1>Account validation required</h1>
+      </div>
+    </ng-template>
+
+    <p role="status">A verification email has been sent. Follow its link to validate your account before logging in.</p>
+
+    <button pButton type="button" label="Go to login" icon="pi pi-sign-in" (click)="goToLogin()"></button>
+  </p-card>
+</main>

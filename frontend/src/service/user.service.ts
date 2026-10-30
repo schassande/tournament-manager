@@ -54,6 +54,31 @@ export class UserService {
     );
   }
 
+  /** Authenticates with Google and leaves profile completion to the registration form. */
+  public startGoogleRegistration(): Observable<User> {
+    return from(signInWithPopup(this.authService, new GoogleAuthProvider())).pipe(
+      switchMap(async (credential) => {
+        this.currentCredential = credential;
+        await this.requireVerifiedUser(credential.user);
+        return credential.user;
+      }),
+    );
+  }
+
+  /** Completes a Google registration with the profile fields entered by the user. */
+  public createGoogleUser(person: Person): Observable<Person> {
+    const user = this.authService.currentUser;
+    if (!user) {
+      throw new Error('Authenticate with Google before completing registration.');
+    }
+
+    sessionStorage.setItem(
+      `registration:${user.uid}`,
+      JSON.stringify({ ...person, userAuthId: user.uid, email: normalizeIdentityEmail(user.email || person.email) }),
+    );
+    return this.finishLogin(user);
+  }
+
   /** Clears the application profile and signs out the Firebase session. */
   public logout() {
     this.currentUser$.set(null);

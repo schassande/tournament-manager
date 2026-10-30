@@ -1,17 +1,19 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { colRegion, Country, Region } from '@tournament-manager/persistent-data-model';
 import { AbstractPersistentDataService } from './abstract-persistent-data.service';
 import { map, mergeMap, of } from 'rxjs';
 import { defaultRegions } from './regions.default';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
-export class RegionService extends AbstractPersistentDataService<Region>{
-
-  protected override getCollectionName(): string { return colRegion; }
+export class RegionService extends AbstractPersistentDataService<Region> {
+  protected override getCollectionName(): string {
+    return colRegion;
+  }
   public readonly regions: Region[] = [];
   public readonly countries: Country[] = [];
+  public readonly countriesLoaded = signal(false);
 
   constructor() {
     super();
@@ -19,34 +21,37 @@ export class RegionService extends AbstractPersistentDataService<Region>{
     this.loadRegions();
   }
   private loadRegions() {
-    this.all().pipe(
-      map((regions: Region[]) => {
-        this.regions.splice(0, this.regions.length);
-        this.regions.push(...regions);
+    this.all()
+      .pipe(
+        map((regions: Region[]) => {
+          this.regions.splice(0, this.regions.length);
+          this.regions.push(...regions);
 
-        this.countries.splice(0, this.countries.length);
-        this.regions.forEach(region => this.countries.push(...region.countries));
-        this.countries.sort((country1, country2) => country1.name.localeCompare(country2.name));
-      })
-    ).subscribe();
+          this.countries.splice(0, this.countries.length);
+          this.regions.forEach((region) => this.countries.push(...region.countries));
+          this.countries.sort((country1, country2) => country1.name.localeCompare(country2.name));
+          this.countriesLoaded.set(true);
+        }),
+      )
+      .subscribe();
   }
 
   protected init() {
     console.log('Initialize regions');
-    defaultRegions.forEach(region => {
-      this.byId(region.id).pipe(
-        mergeMap(r => !r ? this.save(region) : of(r) ),
-      ).subscribe();
+    defaultRegions.forEach((region) => {
+      this.byId(region.id)
+        .pipe(mergeMap((r) => (!r ? this.save(region) : of(r))))
+        .subscribe();
     });
   }
 
-  public regionById(id: string): Region|undefined {
-    return this.regions.find(region => region.id === id);
+  public regionById(id: string): Region | undefined {
+    return this.regions.find((region) => region.id === id);
   }
 
-  public countryById(id: string): Country|undefined {
+  public countryById(id: string): Country | undefined {
     for (const region of this.regions) {
-      const country = region.countries.find(country => country.id === id);
+      const country = region.countries.find((country) => country.id === id);
       if (country) {
         return country;
       }
@@ -54,9 +59,9 @@ export class RegionService extends AbstractPersistentDataService<Region>{
     return undefined;
   }
 
-  public regionByCountryId(countryId: string): Region|undefined {
+  public regionByCountryId(countryId: string): Region | undefined {
     for (const region of this.regions) {
-      const country = region.countries.find(country => country.id === countryId);
+      const country = region.countries.find((country) => country.id === countryId);
       if (country) {
         return region;
       }

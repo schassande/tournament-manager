@@ -1,205 +1,168 @@
-import { UserService } from '../service/user.service';
-import { firstValueFrom } from 'rxjs';
-import { RegionService } from '../service/region.service';
-import { Country, Person } from '@tournament-manager/persistent-data-model';
-
-
-import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-
-import { InputTextModule } from 'primeng/inputtext';
-import { ListboxModule } from 'primeng/listbox';
+import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
-import { DividerModule } from 'primeng/divider';
+import { InputTextModule } from 'primeng/inputtext';
 import { RadioButtonModule } from 'primeng/radiobutton';
+import { SelectModule } from 'primeng/select';
+import { Country, Gender, Person } from '@tournament-manager/persistent-data-model';
+import { RegionService } from '../service/region.service';
+import { UserService } from '../service/user.service';
 
+type RegistrationMode = 'google' | 'password';
+
+/** Provides the responsive self-registration form for Google and email/password accounts. */
 @Component({
   selector: 'app-user-create',
   imports: [
     CommonModule,
+    FormsModule,
     ReactiveFormsModule,
-    InputTextModule,
-    ListboxModule,
     ButtonModule,
     CardModule,
-    DividerModule,
-    RadioButtonModule
+    InputTextModule,
+    RadioButtonModule,
+    SelectModule,
   ],
-  template: `
-    <div class="min-h-screen flex justify-center items-center bg-surface-50 p-4">
-      <p-card class="w-full max-w-2xl shadow-2">
-        <ng-template pTemplate="header">
-          <div class="flex items-center gap-2">
-            <i class="pi pi-user-plus text-xl"></i>
-            <span class="text-lg font-semibold">Créer un utilisateur</span>
-          </div>
-        </ng-template>
-
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
-
-          <div>
-            <label class="font-medium">Photo (URL)</label>
-            <input pInputText formControlName="photoUrl" placeholder="https://exemple.com/photo.jpg" class="w-full" />
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-medium">First Name</label>
-              <input pInputText formControlName="firstName" placeholder="Prénom" class="w-full" />
-            </div>
-            <div>
-              <label class="font-medium">Last Name</label>
-              <input pInputText formControlName="lastName" placeholder="Nom" class="w-full" />
-            </div>
-          </div>
-
-          <!-- Surnom -->
-          <div>
-            <label class="font-medium">Short name</label>
-            <input pInputText formControlName="shortName" placeholder="Surnom ou nom d'affichage" class="w-full" />
-          </div>
-
-          <!-- Email -->
-          <div>
-            <label class="font-medium">Email</label>
-            <input pInputText type="email" formControlName="email" placeholder="ex: user@mail.com" class="w-full" />
-          </div>
-
-          <div>
-            <label class="font-medium">Pasword</label>
-            <input pInputText type="password" formControlName="password" class="w-full" />
-          </div>
-
-          <!-- Country -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="font-medium">Country</label>
-              <p-listbox
-                [options]="countries"
-                optionLabel="name"
-                optionValue="id"
-                formControlName="countryId"
-                placeholder="Selection country">
-                [disabled]="!form.value.regionId">
-              </p-listbox>
-            </div>
-          </div>
-
-          <!-- Gender -->
-          <div>
-            <label class="font-medium">Genre</label>
-            <div class="flex gap-4 mt-2">
-              <div class="flex items-center gap-2">
-                <p-radioButton name="gender" value="M" formControlName="gender"></p-radioButton>
-                <label>Male</label>
-              </div>
-              <div class="flex items-center gap-2">
-                <p-radioButton name="gender" value="F" formControlName="gender"></p-radioButton>
-                <label>Female</label>
-              </div>
-            </div>
-          </div>
-
-          @if (verificationPending()) {
-            <p role="status">A verification email has been sent. Follow its link, then submit this form again to finish registration.</p>
-          }
-          <!-- Erreur -->
-          @if(error()) {
-          <div  class="p-2 border-round bg-red-50 text-red-700 border-1 border-red-200">
-            <i class="pi pi-exclamation-triangle mr-2"></i>{{ error() }}
-          </div>
-          }
-          <button pButton type="submit" label="Créer l'utilisateur" class="w-full" [disabled]="loading()"></button>
-        </form>
-
-      </p-card>
-    </div>
-  `,
-  styles: [`
-    .min-h-screen { min-height: 100vh; }
-    .bg-surface-50 { background: var(--surface-50, #f8f9fa); }
-    .border-round { border-radius: 0.75rem; }
-    .w-full { width: 100%; }
-    .max-w-2xl { max-width: 42rem; }
-    .shadow-2 { box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1); }
-    .font-medium { font-weight: 500; }
-    .text-lg { font-size: 1.125rem; }
-    .text-xl { font-size: 1.25rem; }
-    .font-semibold { font-weight: 600; }
-    .gap-2 { gap: .5rem; }
-    .gap-4 { gap: 1rem; }
-    .p-2 { padding: .5rem; }
-    .mr-2 { margin-right: .5rem; }
-    .flex { display: flex; }
-    .items-center { align-items: center; }
-    .justify-center { justify-content: center; }
-    .grid { display: grid; }
-    .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-    .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .p-error { color: var(--red-600, #dc2626); }
-  `]
+  templateUrl: './user-create.page.html',
+  styleUrl: './user-create.page.css',
 })
 export default class UserCreateComponent {
-  private fb = inject(FormBuilder);
-  private router = inject(Router, { optional: true });
-  private regionService = inject(RegionService);
-  private userService = inject(UserService);
+  private readonly formBuilder = inject(FormBuilder);
+  private readonly router = inject(Router, { optional: true });
+  private readonly regionService = inject(RegionService);
+  private readonly userService = inject(UserService);
 
-  loading = signal(false);
-  verificationPending = signal(false);
-  error = signal<string | null>(null);
+  readonly countries: Country[] = this.regionService.countries;
+  readonly mode = signal<RegistrationMode>('password');
+  readonly loading = signal(false);
+  readonly googleAuthenticated = signal(false);
+  readonly error = signal<string | null>(null);
+  country: Country | undefined;
 
-  // Exemple de données (à remplacer par API ou Firestore)
-  countries: Country[] = this.regionService.countries;
-
-  form = this.fb.group({
-    photoUrl: [''],
+  readonly form = this.formBuilder.group({
     firstName: ['', Validators.required],
     lastName: ['', Validators.required],
-    shortName: [''],
-    password: ['', [Validators.required, Validators.minLength(3)]],
     email: ['', [Validators.required, Validators.email]],
-    countryId: [null, Validators.required],
-    gender: [null, Validators.required],
+    password: ['', [Validators.required, Validators.minLength(3)]],
+    country: [null as Country | null, Validators.required],
+    gender: ['M', Validators.required],
+    shortName: [''],
   });
 
-  /** Starts email validation, then completes registration with the verified account. */
-  async onSubmit() {
-    this.error.set(null);
-    if (this.form.invalid) {
-      this.error.set('Reuiqred field are missing.');
-      return;
+  private readonly countrySuggestion = effect(() => {
+    if (this.regionService.countriesLoaded() && !this.country) {
+      const language = typeof navigator === 'undefined' ? '' : navigator.language;
+      const regionCode = language.split('-')[1]?.toUpperCase();
+      const countryName = new Intl.DisplayNames([language], { type: 'region' }).of(regionCode)?.toLowerCase();
+      const c = this.countries.find((country) => country.name.toLowerCase() === countryName) ?? undefined;
+      console.log('effect auto set country', countryName, c);
+      this.setCountry(c);
     }
-    try {
-      this.loading.set(true);
-      const newUser = this.form.getRawValue();
-      if (!newUser || !newUser.firstName || !newUser.lastName  || !newUser.email || !newUser.password || !newUser.countryId ) {
-        console.error('Champ(s) incomplet(s)');
-        return;
-      }
-      const user: Person = {
-        firstName: newUser.firstName.trim(),
-        lastName: newUser.lastName.trim(),
-        shortName: newUser.shortName?.trim() || `${newUser.firstName.trim().charAt(0)}${newUser.lastName.trim().charAt(0)}${newUser.lastName.trim().charAt(newUser.lastName.trim().length-1)}`.toUpperCase(),
-        email: newUser.email.trim(),
-        countryId: newUser.countryId,
-        photoUrl: newUser.photoUrl?.trim(),
-        userAuthId: newUser.email,
-        id:'',
-        lastChange: new Date().getTime(),
-        regionId: this.regionService.regionByCountryId(newUser.countryId)!.id,
-      };
+  });
 
-      const created = await firstValueFrom(this.userService.createUser(user, newUser.password));
-      this.verificationPending.set(!created);
-      if (created) this.router?.navigateByUrl('/');
-    } catch (e) {
-      this.error.set(e instanceof Error ? e.message : 'Error during user creation.');
+  /** Selects a registration mode and resets transient state. */
+  selectMode(mode: RegistrationMode): void {
+    this.mode.set(mode);
+    this.error.set(null);
+    if (mode === 'password') {
+      this.googleAuthenticated.set(false);
+      this.form.controls.email.enable();
+      this.form.controls.password.enable();
+      this.form.controls.firstName.enable();
+      this.form.controls.lastName.enable();
+    } else {
+      this.googleAuthenticated.set(false);
+      this.form.patchValue({ firstName: '', lastName: '', email: '' });
+      this.form.controls.firstName.disable();
+      this.form.controls.lastName.disable();
+      this.form.controls.email.disable();
+      this.form.controls.password.disable();
+    }
+  }
+
+  /** Keeps the PrimeNG country selection and the reactive form value synchronized. */
+  countryChanged(country: Country | undefined): void {
+    this.setCountry(country);
+  }
+
+  /** Stores the selected country in both component state and the form. */
+  private setCountry(country: Country | undefined): void {
+    this.country = country;
+    this.form.controls.country.setValue(country ?? null);
+  }
+
+  /** Authenticates with Google and prefills the identity fields. */
+  async authenticateWithGoogle(): Promise<void> {
+    this.error.set(null);
+    this.loading.set(true);
+    try {
+      const user = await firstValueFrom(this.userService.startGoogleRegistration());
+      const [firstName = 'User', ...lastNameParts] = (user.displayName ?? 'User').trim().split(/\s+/);
+      this.form.patchValue({
+        firstName,
+        lastName: lastNameParts.join(' ') || firstName,
+        email: user.email ?? '',
+      });
+      this.form.controls.firstName.disable();
+      this.form.controls.lastName.disable();
+      this.form.controls.email.disable();
+      this.form.controls.password.disable();
+      this.googleAuthenticated.set(true);
+    } catch (error: unknown) {
+      this.error.set(error instanceof Error ? error.message : 'Google authentication failed.');
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Validates and submits the selected registration workflow. */
+  async onSubmit(): Promise<void> {
+    this.error.set(null);
+    if (this.mode() === 'google' && !this.googleAuthenticated()) {
+      await this.authenticateWithGoogle();
+    }
+    if (this.form.invalid || (this.mode() === 'google' && !this.googleAuthenticated())) {
+      this.form.markAllAsTouched();
+      this.error.set('Please complete the required fields.');
+      return;
+    }
+
+    this.loading.set(true);
+    try {
+      const values = this.form.getRawValue();
+      const person = this.toPerson(values);
+      const created =
+        this.mode() === 'google'
+          ? await firstValueFrom(this.userService.createGoogleUser(person))
+          : await firstValueFrom(this.userService.createUser(person, values.password!));
+      await this.router?.navigateByUrl(created ? '/' : '/user/account-validation-required');
+    } catch (error: unknown) {
+      this.error.set(error instanceof Error ? error.message : 'Error during user creation.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /** Maps validated form values to the existing Person contract. */
+  private toPerson(values: ReturnType<typeof this.form.getRawValue>): Person {
+    const firstName = values.firstName!.trim();
+    const lastName = values.lastName!.trim();
+    const country = values.country!;
+    return {
+      id: '',
+      lastChange: Date.now(),
+      userAuthId: values.email!,
+      firstName,
+      lastName,
+      shortName: values.shortName?.trim() || `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase(),
+      email: values.email!.trim(),
+      countryId: country?.id,
+      regionId: this.regionService.regionByCountryId(country?.id)?.id ?? '',
+      gender: (values.gender ?? 'M') as Gender,
+    };
   }
 }
