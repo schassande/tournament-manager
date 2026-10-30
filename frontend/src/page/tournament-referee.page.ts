@@ -31,6 +31,15 @@ import { RefereeService } from '../service/referee.service';
         <p-toggleswitch [(ngModel)]="tournament()!.allowPlayerReferees" (onChange)="onAllowPlayerRefereesChanged()" class="pr-toggle-switch"></p-toggleswitch>
         <label for="name">Do you use Player Referees?</label>
       </div>
+      <div class="referee-toggle-group">
+        <p-toggleswitch [(ngModel)]="showEmails"></p-toggleswitch>
+        <label for="show-emails">Show emails</label>
+        @if (showEmails) {
+          <span class="email-statistic" aria-label="referees with linked accounts">
+            <i class="pi pi-user linked-account-icon" aria-hidden="true"></i> {{ linkedEmailPercentage() }}%
+          </span>
+        }
+      </div>
         @if (tournament()!.allowPlayerReferees) {
           <p-button (click)="addAllTeamPR()" severity="info" icon="pi pi-add" label="Add a player referee for each team" class="table-buttons"></p-button>
           <p-button (click)="addTeamReferee()" severity="info" icon="pi pi-add" label="Add a player referee" class="table-buttons"></p-button>
@@ -59,6 +68,9 @@ import { RefereeService } from '../service/referee.service';
             <th style="width:10%">Category</th>
             <th style="width:7%">Up to</th>
             <th style="width:7%">Gender</th>
+            @if (showEmails) {
+              <th style="width:15%">Email</th>
+            }
             <th style="width:10%">Action</th>
           </tr>
       </ng-template>
@@ -195,6 +207,24 @@ import { RefereeService } from '../service/referee.service';
                 </p-cellEditor>
               }
             </td>
+            @if (showEmails) {
+              <td [pEditableColumn]="emailValue(referee)" pEditableColumnField="email" style="text-align: left;">
+                <p-cellEditor>
+                  <ng-template #input>
+                    <input pInputText type="email" [ngModel]="emailValue(referee)"
+                      (ngModelChange)="emailDraftChanged(referee, $event)"
+                      [disabled]="referee.isPR" maxlength="254" style="width: 15rem;"
+                      aria-label="Referee email" />
+                  </ng-template>
+                  <ng-template #output>
+                    @if (referee.attendee.person?.personId && emailValue(referee)) {
+                      <i class="pi pi-user linked-account-icon" aria-label="Email linked to an application account"></i>
+                    }
+                    {{ emailValue(referee) }}
+                  </ng-template>
+                </p-cellEditor>
+              </td>
+            }
             <td style="text-align: center;">
               <i class="pi pi-trash action action-remove" aria-label="remove referee" (click)="removeReferee(referee)"></i>
               <i class="pi pi-pencil action action-edit" aria-label="edit referee" (click)="editReferee(referee)"></i>
@@ -229,6 +259,13 @@ import { RefereeService } from '../service/referee.service';
     .referee-table {
       flex: 1 1 auto;
       min-height: 0;
+    }
+    .linked-account-icon {
+      color: var(--p-green-500, #22c55e);
+      background: transparent;
+    }
+    .email-statistic {
+      margin-left: 10px;
     }
     .referee-toggle-group,
     .referee-actions {
@@ -295,6 +332,9 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
   readonly genders: Gender[] = ['M', 'F'];
   referees = signal<Referee[]>([]);
   teams = signal<Team[]>([]);
+  showEmails = false;
+  private readonly emailDrafts = new WeakMap<Referee, string>();
+  private readonly emailSaveTimers = new WeakMap<Referee, ReturnType<typeof setTimeout>>();
 
   constructor() {
     super();
@@ -332,6 +372,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
         });
         // complete the referee attributes when it is player referee
         referees.forEach(referee => {
+          this.emailDrafts.set(referee, referee.attendee.person?.email ?? '');
           if (referee.attendee.player && referee.attendee.player.teamId) {
             //console.log('loading: teamId=', referee.attendee.player.teamId, 'for referee', referee);
             // fetch the team for the referee
@@ -351,6 +392,8 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
         });
         this.sortReferees(referees);
         this.referees.set(referees);
+        this.showEmails = referees.some((referee) =>
+          Boolean(referee.attendee.person?.email?.trim() && referee.attendee.person?.personId));
       }),
     ).subscribe()
   }
@@ -845,6 +888,41 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
   }
   categoryChanged(referee: Referee) {
     this.attendeeChanged(referee);
+  }
+  /** Returns the transient email value shown by the referee table. */
+  emailValue(referee: Referee): string {
+    return this.emailDrafts.get(referee) ?? referee.attendee.person?.email ?? '';
+  }
+  /** Debounces email persistence so typing does not issue one request per character. */
+  emailDraftChanged(referee: Referee, email: string) {
+    this.emailDrafts.set(referee, email);
+    const previousTimer = this.emailSaveTimers.get(referee);
+    if (previousTimer) clearTimeout(previousTimer);
+    this.emailSaveTimers.set(referee, setTimeout(() => this.saveEmail(referee, email), 1000));
+  }
+  /** Applies the final debounced email value and persists the attendee. */
+  private saveEmail(referee: Referee, email: string) {
+    email = email.trim().toLowerCase();
+    this.emailDrafts.set(referee, email);
+    if (!referee.attendee.person && email.trim()) {
+      referee.attendee.person = {
+        firstName: '', lastName: '', shortName: '', email,
+        regionId: this.tournament()!.regionId, countryId: this.tournament()!.countryId
+      };
+    } else if (referee.attendee.person) {
+      referee.attendee.person.email = email;
+    }
+    if (referee.attendee.person) this.attendeeChanged(referee);
+  }
+  /** Computes the live percentage of full-time referees linked to accounts. */
+  linkedEmailPercentage(): number {
+    const fullTime = this.referees().filter((referee) => !referee.isPR);
+    if (fullTime.length === 0) return 0;
+    const linked = fullTime.filter((referee) => {
+      const person = referee.attendee.person;
+      return Boolean(this.emailValue(referee).trim() && person?.personId);
+    }).length;
+    return Math.round((linked / fullTime.length) * 100);
   }
   toPrintedRefereeCategory(category: RefereeCategory) {
     switch(category) {
