@@ -1,6 +1,6 @@
 import { ListboxModule } from 'primeng/listbox';
 import { RegionService } from '../service/region.service';
-import { Gender, Referee, RefereeBadgeSystem, RefereeCategory, Team, TeamDivision} from '@tournament-manager/persistent-data-model';
+import { Gender, normalizeIdentityEmail, Referee, RefereeBadgeSystem, RefereeCategory, Team, TeamDivision} from '@tournament-manager/persistent-data-model';
 import { Component, effect, inject, signal } from '@angular/core';
 import { firstValueFrom, forkJoin, last, map, mergeMap, Observable, of, take, tap } from 'rxjs';
 import { Attendee, Person } from '@tournament-manager/persistent-data-model';
@@ -21,6 +21,7 @@ import { SelectModule } from 'primeng/select';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ref } from 'firebase/storage';
 import { RefereeService } from '../service/referee.service';
+import { UserService } from '../service/user.service';
 
 @Component({
   selector: 'app-tournament-referee',
@@ -208,7 +209,8 @@ import { RefereeService } from '../service/referee.service';
               }
             </td>
             @if (showEmails) {
-              <td [pEditableColumn]="emailValue(referee)" pEditableColumnField="email" style="text-align: left;">
+              <td [pEditableColumn]="emailValue(referee)" pEditableColumnField="email"
+                [pEditableColumnDisabled]="isCurrentUserEmail(emailValue(referee))" style="text-align: left;">
                 <p-cellEditor>
                   <ng-template #input>
                     <input pInputText type="email" [ngModel]="emailValue(referee)"
@@ -221,6 +223,9 @@ import { RefereeService } from '../service/referee.service';
                       <i class="pi pi-user linked-account-icon" aria-label="Email linked to an application account"></i>
                     }
                     {{ emailValue(referee) }}
+                    @if (isCurrentUserEmail(emailValue(referee))) {
+                      <i class="pi pi-lock current-user-lock" aria-label="Your email cannot be edited"></i>
+                    }
                   </ng-template>
                 </p-cellEditor>
               </td>
@@ -263,6 +268,11 @@ import { RefereeService } from '../service/referee.service';
     .linked-account-icon {
       color: var(--p-green-500, #22c55e);
       background: transparent;
+    }
+    .current-user-lock {
+      color: #4b5563;
+      background: transparent;
+      margin-left: 4px;
     }
     .email-statistic {
       margin-left: 10px;
@@ -327,6 +337,7 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
   regionService = inject(RegionService);
   confirmationService = inject(ConfirmationService);
   dialogService = inject(DialogService);
+  readonly userService = inject(UserService);
 
   readonly refereeCategories : RefereeCategory[] = ['J', 'O', 'S', 'M'];
   readonly genders: Gender[] = ['M', 'F'];
@@ -923,6 +934,12 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
       return Boolean(this.emailValue(referee).trim() && person?.personId);
     }).length;
     return Math.round((linked / fullTime.length) * 100);
+  }
+  /** Returns whether an email belongs to the currently authenticated user. */
+  isCurrentUserEmail(email: string): boolean {
+    const currentEmail = this.userService.currentUser$()?.email;
+    return Boolean(email.trim() && currentEmail
+      && normalizeIdentityEmail(email) === normalizeIdentityEmail(currentEmail));
   }
   toPrintedRefereeCategory(category: RefereeCategory) {
     switch(category) {

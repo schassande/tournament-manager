@@ -5,7 +5,7 @@ import { AbstractTournamentPage } from '../../component/tournament-abstract.page
 import { AttendeeService } from '../../service/attendee.service';
 import { PersonService } from '../../service/person.service';
 import { RegionService } from '../../service/region.service';
-import { Attendee, attendeeCoachRoles, Person, RefereeBadgeSystem, RefereeCoach, RefereeCoachBadgeSystem } from '@tournament-manager/persistent-data-model';
+import { Attendee, attendeeCoachRoles, normalizeIdentityEmail, Person, RefereeBadgeSystem, RefereeCoach, RefereeCoachBadgeSystem } from '@tournament-manager/persistent-data-model';
 import { TournamentRefereeCoachEditComponent } from '../../component/tournament-referee-coach-edit.component';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
@@ -13,13 +13,24 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { DialogService } from 'primeng/dynamicdialog';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { UserService } from '../../service/user.service';
 
 @Component({
   selector: 'app-tournament-referee-coach',
-  imports: [ButtonModule, CommonModule, ConfirmDialogModule, FormsModule, TableModule],
+  imports: [ButtonModule, CommonModule, ConfirmDialogModule, FormsModule, TableModule, ToggleSwitchModule],
   template: `
   @if (tournament() && refereeCoaches()) {
     <div class="buttonPanel">
+      <span class="email-toggle">
+        <p-toggleswitch [(ngModel)]="showEmails"></p-toggleswitch>
+        <label for="show-coach-emails">Show emails</label>
+        @if (showEmails) {
+          <span class="email-statistic" aria-label="referee coaches with linked accounts">
+            <i class="pi pi-user linked-account-icon" aria-hidden="true"></i> {{ linkedEmailPercentage() }}%
+          </span>
+        }
+      </span>
       <p-button (click)="addRefereeCoach()" icon="pi pi-add" label="Add a referee coach"></p-button>
     </div>
     <p-table [value]="refereeCoaches()" stripedRows showGridlines [size]="'small'" tableLayout="fixed">
@@ -30,6 +41,9 @@ import { DialogService } from 'primeng/dynamicdialog';
             <th style="width:10%">Short Name</th>
             <th style="width:10%">Level</th>
             <th style="width:10%">Upgrade to</th>
+            @if (showEmails) {
+              <th style="width:20%; text-align: left">Email</th>
+            }
             <th style="width:10%">Action</th>
           </tr>
       </ng-template>
@@ -99,6 +113,27 @@ import { DialogService } from 'primeng/dynamicdialog';
                 </ng-template>
               </p-cellEditor>
             </td>
+            @if (showEmails) {
+              <td [pEditableColumn]="emailValue(coach)" pEditableColumnField="email"
+                [pEditableColumnDisabled]="isCurrentUserEmail(emailValue(coach))" style="text-align: left;">
+                <p-cellEditor>
+                  <ng-template #input>
+                    <input pInputText type="email" [ngModel]="emailValue(coach)"
+                      (ngModelChange)="emailDraftChanged(coach, $event)"
+                      maxlength="254" style="width: 15rem;" aria-label="Referee coach email" />
+                  </ng-template>
+                  <ng-template #output>
+                    @if (coach.attendee.person?.personId && emailValue(coach)) {
+                      <i class="pi pi-user linked-account-icon" aria-label="Email linked to an application account"></i>
+                    }
+                    {{ emailValue(coach) }}
+                    @if (isCurrentUserEmail(emailValue(coach))) {
+                      <i class="pi pi-lock current-user-lock" aria-label="Your email cannot be edited"></i>
+                    }
+                  </ng-template>
+                </p-cellEditor>
+              </td>
+            }
             <td style="text-align: center;">
               <i class="pi pi-trash action action-remove" aria-label="remove referee" (click)="removeRefereeCoach(coach)"></i>
               <i class="pi pi-pencil action action-edit" aria-label="edit referee" (click)="editRefereeCoach(coach)"></i>
@@ -114,8 +149,13 @@ import { DialogService } from 'primeng/dynamicdialog';
     .action { font-size: 1.3rem}
     .action-remove { margin-right: 10px; color: red;}
     .action-edit { margin-right: 10px; color: blue;}
-    .buttonPanel { text-align: right; margin: 10px 0;}
+    .buttonPanel { display: flex; align-items: center; margin: 10px 0;}
+    .buttonPanel > p-button { margin-left: auto; }
     .table-buttons { margin: 0 10px;}
+    .email-toggle { display: inline-flex; align-items: center; margin-left: 10px; gap: 10px; }
+    .email-statistic { margin-left: 10px; }
+    .linked-account-icon { color: var(--p-green-500, #22c55e); background: transparent; }
+    .current-user-lock { color: #4b5563; background: transparent; margin-left: 4px; }
   `],
   standalone: true
 })
@@ -126,9 +166,13 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentPage {
   regionService = inject(RegionService);
   confirmationService = inject(ConfirmationService);
   dialogService = inject(DialogService);
+  readonly userService = inject(UserService);
 
   refereeCoaches = signal<RefereeCoach[]>([]);
   private readonly pendingSaves = new Map<string, { coach: RefereeCoach; timer: ReturnType<typeof setTimeout> }>();
+  showEmails = false;
+  private readonly emailDrafts = new WeakMap<RefereeCoach, string>();
+  private readonly emailSaveTimers = new WeakMap<RefereeCoach, ReturnType<typeof setTimeout>>();
 
   constructor() {
     super();
@@ -165,6 +209,8 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentPage {
         });
         this.sortReferees(refereeCoaches);
         this.refereeCoaches.set([...refereeCoaches]);
+        this.showEmails = refereeCoaches.some((coach) =>
+          Boolean(coach.attendee.person?.email?.trim() && coach.attendee.person?.personId));
       }),
     ).subscribe()
   }
@@ -279,6 +325,42 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentPage {
     }
     // Save a snapshot so a late response cannot replace newer typing.
     this.attendeeService.save(structuredClone(coach.attendee)).subscribe();
+  }
+
+  /** Returns the transient email value displayed by the coach table. */
+  emailValue(coach: RefereeCoach): string {
+    return this.emailDrafts.get(coach) ?? coach.attendee.person?.email ?? '';
+  }
+
+  /** Debounces coach email persistence while the user is typing. */
+  emailDraftChanged(coach: RefereeCoach, email: string): void {
+    this.emailDrafts.set(coach, email);
+    const previousTimer = this.emailSaveTimers.get(coach);
+    if (previousTimer) clearTimeout(previousTimer);
+    this.emailSaveTimers.set(coach, setTimeout(() => this.saveEmail(coach, email), 1000));
+  }
+
+  /** Normalizes and persists the final coach email value. */
+  private saveEmail(coach: RefereeCoach, email: string): void {
+    email = email.trim().toLowerCase();
+    this.emailDrafts.set(coach, email);
+    if (coach.attendee.person) coach.attendee.person.email = email;
+    this.attendeeChanged(coach);
+  }
+
+  /** Computes the live percentage of referee coaches linked to application accounts. */
+  linkedEmailPercentage(): number {
+    const coaches = this.refereeCoaches();
+    if (coaches.length === 0) return 0;
+    const linked = coaches.filter((coach) =>
+      Boolean(this.emailValue(coach).trim() && coach.attendee.person?.personId)).length;
+    return Math.round((linked / coaches.length) * 100);
+  }
+  /** Returns whether an email belongs to the currently authenticated user. */
+  isCurrentUserEmail(email: string): boolean {
+    const currentEmail = this.userService.currentUser$()?.email;
+    return Boolean(email.trim() && currentEmail
+      && normalizeIdentityEmail(email) === normalizeIdentityEmail(currentEmail));
   }
 
   /** Saves identity edits after 500 ms without typing, independently for each coach. */
