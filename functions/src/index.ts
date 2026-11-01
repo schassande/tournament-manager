@@ -33,6 +33,7 @@ export { createPerson };
 export { deletePerson } from './person/delete-person';
 export { saveAttendee } from './attendee/save-attendee';
 export { deleteAttendee } from './attendee/delete-attendee';
+export { mergeAttendees } from './attendee/merge-attendees';
 export { createTournament } from './tournament/create-tournament';
 export { deleteTournament } from './tournament/delete-tournament';
 export { removeRankingReferees } from './referee-ranking/remove-ranking-referees';

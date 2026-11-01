@@ -340,12 +340,100 @@ export class TournamentRefereeCoachComponent  extends AbstractTournamentPage {
     this.emailSaveTimers.set(coach, setTimeout(() => this.saveEmail(coach, email), 1000));
   }
 
-  /** Normalizes and persists the final coach email value. */
-  private saveEmail(coach: RefereeCoach, email: string): void {
+  /** Checks referee-coach and attendee collisions before saving the normalized email. */
+  private async saveEmail(coach: RefereeCoach, email: string): Promise<void> {
     email = email.trim().toLowerCase();
+    const tournament = this.tournament();
+    const previousEmail = coach.attendee.person?.email ?? '';
+    if (!tournament) return;
+    if (!email) {
+      this.persistRefereeCoachEmail(coach, email);
+      return;
+    }
+
+    const refereeCoachDuplicate = this.refereeCoaches().find((candidate) => candidate !== coach
+      && normalizeIdentityEmail(candidate.attendee.person?.email ?? '') === email);
+    if (refereeCoachDuplicate) {
+      this.rejectRefereeCoachEmail(coach, previousEmail, email);
+      return;
+    }
+
+    try {
+      const attendees = await firstValueFrom(this.attendeeService.findByEmail(tournament.id, email).pipe(take(1)));
+      const duplicates = attendees.filter((attendee) => attendee.id !== coach.attendee.id);
+      if (duplicates.some((attendee) => attendee.isRefereeCoach)) {
+        this.rejectRefereeCoachEmail(coach, previousEmail, email);
+        return;
+      }
+      const duplicateAttendee = duplicates[0];
+      if (duplicateAttendee) {
+        this.confirmationService.confirm({
+          header: 'Duplicate attendee email',
+          message: `This email belongs to ${duplicateAttendee.person?.firstName ?? ''} ${duplicateAttendee.person?.lastName ?? ''} (${duplicateAttendee.roles.join(', ')}). Merge this attendee into the current one?`,
+          rejectLabel: 'Cancel change',
+          acceptLabel: 'Merge attendees',
+          reject: () => this.emailDrafts.set(coach, previousEmail),
+          accept: () => this.attendeeService.merge(tournament.id, coach.attendee.id, duplicateAttendee.id, email)
+            .subscribe({
+              next: (merged) => {
+                Object.assign(coach.attendee, merged);
+                this.emailDrafts.set(coach, email);
+                this.editRefereeCoach(coach);
+              },
+              error: () => {
+                this.emailDrafts.set(coach, previousEmail);
+                this.confirmationService.confirm({
+                  header: 'Merge failed',
+                  message: 'The attendees could not be merged. The email change was cancelled.',
+                  acceptLabel: 'OK',
+                  rejectVisible: false,
+                });
+              },
+            }),
+        });
+        return;
+      }
+    } catch {
+      this.emailDrafts.set(coach, previousEmail);
+      this.confirmationService.confirm({
+        header: 'Email not saved',
+        message: 'Attendee email duplicates could not be checked. Please try again.',
+        acceptLabel: 'OK',
+        rejectVisible: false,
+      });
+      return;
+    }
+
+    this.persistRefereeCoachEmail(coach, email);
+  }
+
+  /** Rejects an email already used by another referee coach and restores the previous value. */
+  private rejectRefereeCoachEmail(coach: RefereeCoach, previousEmail: string, email: string): void {
+    this.emailDrafts.set(coach, previousEmail);
+    this.confirmationService.confirm({
+      header: 'Duplicate referee-coach email',
+      message: `Another referee coach already uses ${email}. This email change is not allowed.`,
+      acceptLabel: 'OK',
+      rejectVisible: false,
+    });
+  }
+
+  /** Applies a collision-free email to the attendee and saves it. */
+  private persistRefereeCoachEmail(coach: RefereeCoach, email: string): void {
     this.emailDrafts.set(coach, email);
-    if (coach.attendee.person) coach.attendee.person.email = email;
-    this.attendeeChanged(coach);
+    if (!coach.attendee.person && email) {
+      coach.attendee.person = {
+        firstName: '',
+        lastName: '',
+        shortName: '',
+        email,
+        regionId: this.tournament()!.regionId,
+        countryId: this.tournament()!.countryId,
+      };
+    } else if (coach.attendee.person) {
+      coach.attendee.person.email = email;
+    }
+    if (coach.attendee.person) this.attendeeChanged(coach);
   }
 
   /** Computes the live percentage of referee coaches linked to application accounts. */

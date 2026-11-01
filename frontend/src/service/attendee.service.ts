@@ -39,6 +39,12 @@ export class AttendeeService extends AbstractPersistentDataService<Attendee> {
     );
   }
 
+  /** Merges a duplicate attendee into the selected target through the backend. */
+  public merge(tournamentId: string, targetAttendeeId: string, sourceAttendeeId: string, proposedEmail: string): Observable<Attendee> {
+    const call = httpsCallable<{ tournamentId: string; targetAttendeeId: string; sourceAttendeeId: string; proposedEmail: string }, Attendee>(this.functions, 'mergeAttendees');
+    return from(call({ tournamentId, targetAttendeeId, sourceAttendeeId, proposedEmail })).pipe(map((result) => result.data));
+  }
+
   /** Deletes the participant and its identity index through the server. */
   public override async delete(id: string): Promise<void> {
     await httpsCallable<{ id: string }, void>(this.functions, 'deleteAttendee')({ id });

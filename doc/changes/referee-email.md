@@ -156,10 +156,12 @@ Implementation status: Implemented in `frontend/src/page/tournament-referee.page
 
 ### Functional requirements
 
-- Within one tournament, two attendees must not have the same normalized non-empty email.
-- An email change that collides with another attendee in the same tournament must not be applied automatically.
-- The user shall be warned and offered exactly two choices: cancel the email change, or request a merge of the two attendees.
-- The collision warning shall identify the other attendee using its person information and roles.
+- Within one tournament, an email may belong to at most one referee and at most one referee coach.
+- When a referee changes email, first check the loaded referee list for another referee with that email. If found, reject the change and explain that referee emails must be unique. Do not offer a merge.
+- If the loaded referee list has no match, search all tournament attendees. Reject if the result contains another referee; otherwise offer to cancel or merge a matching attendee into the edited referee.
+- When a referee coach changes email, apply the same sequence to the loaded referee-coach list and then all tournament attendees. Reject if another referee coach has the email; otherwise offer cancel or merge for a matching attendee without that role.
+- The collision warning for an allowed merge shall identify the other attendee using its person information and roles.
+- Ordinary attendee saves continue rejecting any email-index collision. The role-aware page flow must resolve an allowed cross-role collision through the merge callable before saving.
 - The merge shall be executed by a backend callable/function and shall be atomic from the user's perspective.
 
 ### Merge rules
@@ -185,14 +187,15 @@ The backend merge must inspect and handle these persisted fields and derived doc
 
 - `tournament.managerAttendeeIds[]`.
 - `fragment-referee-allocation.refereeAllocatorAttendeeIds[]` and `refereeCoachAllocatorAttendeeIds[]`.
-- `game-attendee-allocation.attendeeId` and its deterministic document ID.
+- `game-attendee-allocation.attendeeId`; Water Carrier assignments in this collection use a deterministic document ID.
 - `tournament-referee-allocation-statistics.refereeAttendeeId`, `tournamentStatistics.buddies[].buddyAttendeeId`, and `tournamentStatistics.games[].refereeCoachAttendeeIds[]`.
 - `fragment-referee-allocation-statistics.refereeAttendeeId`, `buddies[].buddyAttendeeId`, and `games[].refereeCoachAttendeeIds[]`.
 - `referee-upgrade-coach-vote.refereeAttendeeId` and `coachAttendeeId`, including its deterministic document ID.
 - `referee-upgrade-panel-vote.refereeAttendeeId` and `updatedByCoachAttendeeId`, including its deterministic document ID.
 - `tournament-referee-ranking.selectedRefereeAttendeeIds[]`, `selectedCoachAttendeeIds[]`, `updatedByCoachAttendeeId`, and `updatedCoachAttendeeId`.
 - `coach-referees-ranking.coachAttendeeId` and `updatedByCoachAttendeeId`, including its deterministic child document ID; `rankedRefereeAttendeeIds[]` must also be updated.
-- `water-carrier.attendeeId` and its deterministic document ID.
+- Water Carrier references are persisted as `game-attendee-allocation.attendeeId` with `attendeeRole: 'WaterCarrier'`; its deterministic document ID is computed by `waterCarrierAllocationId(tournamentId, fragmentId, gameId, attendeeId)`.
+- `tournament-referee-ranking.panelRefereesRanking.rankedRefereeAttendeeIds[]`.
 - `attendee-index.attendeeId`, whose key is derived from `tournamentId` and normalized email.
 
 The complete implementation must also scan the actual Firestore collection definitions and nested allocation/ranking payloads before coding, so this list is verified against the deployed model rather than treated as an exhaustive assumption.
@@ -202,11 +205,25 @@ The complete implementation must also scan the actual Firestore collection defin
 - Add a dedicated authenticated backend callable for attendee merge; do not implement the merge as a sequence of ordinary frontend attendee saves.
 - The request must include the tournament ID, source attendee ID, retained attendee ID, and a collision/merge confirmation token or equivalent server-verifiable intent.
 - The backend must re-read both attendees, re-check the normalized email collision, verify tournament scope and caller permissions, validate all references, and execute the migration atomically or resumably.
+- The merge callable is authorized only for an indexed attendee of the competition whose roles include `TournamentManager` or one of the referee-coach roles (`Coach`, `CoachReferee`, `PlayerCoach`, or `PlayerCoachReferee`). Platform-admin access alone is not sufficient for this operation.
 - Ordinary attendee saves must continue rejecting duplicate normalized emails without mutating either attendee.
+- The merge callable must reject a merge if both records have the referee role or if both records have the referee-coach role, even when called directly outside the page flow.
+- Reference migration must use explicit field-scoped queries and update only documents containing the exact source attendee ID in a modeled reference field. Recursive replacement of arbitrary string values and substring replacement in document IDs are prohibited.
+- Deterministic document IDs must be recalculated with their model helpers. If the target document already exists, retain the target document and remove only the duplicate source document.
+- All reads and writes remain in one Firestore transaction. The handler must collect reads before applying writes and coalesce mutations by document path. If Firestore transaction limits are exceeded, the transaction must fail without partial changes.
+- The only tournament-scoped collection scan permitted is for allocation statistics fields nested inside arrays of objects that cannot be queried by their nested attendee ID; those documents are written only when the specific modeled reference changes.
+- Ordinary game assignments that would become duplicate logical assignments after attendee replacement are coalesced by retaining the current attendee's assignment and deleting only the source duplicate.
+
+Implementation note: `functions/src/attendee/merge-attendees-v2.ts` is the isolated rewrite candidate. It has a dedicated updater for each persisted reference collection, including separate tournament and fragment statistics, each vote collection, each ranking collection, and attendee-index. In `fragment-referee-allocation`, referee and referee-coach allocator arrays are handled by separate functions; if both change in one document, their field updates are coalesced. The only generic reference mutators replace one scalar ID or one array ID and return whether they changed the record. Collection-specific updaters list their own known fields, and writes are planned only when a modeled reference is found. Deterministic assignment, vote, and ranking IDs are recalculated; an existing destination is retained. Allocation-statistics documents are read by tournament because Firestore cannot query attendee IDs inside arrays of nested objects.
 
 ### Additional acceptance criteria
 
 - A duplicate email save is rejected and leaves both attendees and all indexes unchanged.
+- Editing a referee email that belongs to another referee is rejected, restores the old value, and offers no merge action.
+- Editing a referee email that belongs only to a non-referee attendee offers cancel or merge.
+- Editing a referee-coach email that belongs to another referee coach is rejected, restores the old value, and offers no merge action.
+- Editing a referee-coach email that belongs only to an attendee without the referee-coach role offers cancel or merge.
+- A direct backend merge request is rejected when both attendees are referees or both are referee coaches.
 - The warning displays the other attendee's person information and roles and offers cancel or merge.
 - Cancelling restores the edited email without changing persistence.
 - Choosing a retained attendee merges roles and all listed references, then removes the other attendee and its obsolete index entry.

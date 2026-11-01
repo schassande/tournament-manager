@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 import { CallableRequest, HttpsError } from 'firebase-functions/v2/https';
-import { Attendee, attendeeIndexId, colAttendeeIndex, normalizeIdentityEmail } from '../persistent-data-model';
+import { Attendee, attendeeCoachRoles, attendeeIndexId, colAttendeeIndex, normalizeIdentityEmail } from '../persistent-data-model';
 
 /** Verified caller identity derived exclusively from Firebase Authentication. */
 export interface Identity { uid: string; email: string; }
@@ -53,5 +53,18 @@ export async function authorizeManager(tx: admin.firestore.Transaction, identity
   const actor = isAdmin ? undefined : await indexedAttendee(tx, identity, tournamentId);
   if (!isAdmin && !actor?.roles?.includes('TournamentManager')) {
     throw new HttpsError('permission-denied', 'Tournament manager access is required.');
+  }
+}
+
+/** Authorizes attendee merge for a tournament manager or an eligible referee coach. */
+export async function authorizeAttendeeMerge(tx: admin.firestore.Transaction, identity: Identity,
+  tournamentId: string): Promise<void> {
+  requireDocumentId(tournamentId);
+  const tournament = await tx.get(admin.firestore().collection('tournament').doc(tournamentId));
+  if (!tournament.exists) throw new HttpsError('not-found', 'Tournament not found.');
+  const actor = await indexedAttendee(tx, identity, tournamentId);
+  if (!actor || (!actor.roles.includes('TournamentManager')
+    && !actor.roles.some(role => attendeeCoachRoles.includes(role)))) {
+    throw new HttpsError('permission-denied', 'Tournament manager or referee coach access is required.');
   }
 }

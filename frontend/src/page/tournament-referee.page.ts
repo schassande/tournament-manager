@@ -911,9 +911,86 @@ export class TournamentRefereeComponent extends AbstractTournamentPage {
     if (previousTimer) clearTimeout(previousTimer);
     this.emailSaveTimers.set(referee, setTimeout(() => this.saveEmail(referee, email), 1000));
   }
-  /** Applies the final debounced email value and persists the attendee. */
-  private saveEmail(referee: Referee, email: string) {
+  /** Checks referee and attendee collisions before saving the normalized email. */
+  private async saveEmail(referee: Referee, email: string): Promise<void> {
     email = email.trim().toLowerCase();
+    const tournament = this.tournament();
+    const previousEmail = referee.attendee.person?.email ?? '';
+    if (!tournament) return;
+    if (!email) {
+      this.persistRefereeEmail(referee, email);
+      return;
+    }
+
+    const refereeDuplicate = this.referees().find((candidate) => candidate !== referee
+      && normalizeIdentityEmail(candidate.attendee.person?.email ?? '') === email);
+    if (refereeDuplicate) {
+      this.rejectRefereeEmail(referee, previousEmail, email);
+      return;
+    }
+
+    try {
+      const attendees = await firstValueFrom(this.attendeeService.findByEmail(tournament.id, email).pipe(take(1)));
+      const duplicates = attendees.filter((attendee) => attendee.id !== referee.attendee.id);
+      if (duplicates.some((attendee) => attendee.isReferee)) {
+        this.rejectRefereeEmail(referee, previousEmail, email);
+        return;
+      }
+      const duplicateAttendee = duplicates[0];
+      if (duplicateAttendee) {
+        this.confirmationService.confirm({
+          header: 'Duplicate attendee email',
+          message: `This email belongs to ${duplicateAttendee.person?.firstName ?? ''} ${duplicateAttendee.person?.lastName ?? ''} (${duplicateAttendee.roles.join(', ')}). Merge this attendee into the current one?`,
+          rejectLabel: 'Cancel change',
+          acceptLabel: 'Merge attendees',
+          reject: () => this.emailDrafts.set(referee, previousEmail),
+          accept: () => this.attendeeService.merge(tournament.id, referee.attendee.id, duplicateAttendee.id, email)
+            .subscribe({
+              next: (merged) => {
+                Object.assign(referee.attendee, merged);
+                this.emailDrafts.set(referee, email);
+                this.editReferee(referee);
+              },
+              error: () => {
+                this.emailDrafts.set(referee, previousEmail);
+                this.confirmationService.confirm({
+                  header: 'Merge failed',
+                  message: 'The attendees could not be merged. The email change was cancelled.',
+                  acceptLabel: 'OK',
+                  rejectVisible: false,
+                });
+              },
+            }),
+        });
+        return;
+      }
+    } catch {
+      this.emailDrafts.set(referee, previousEmail);
+      this.confirmationService.confirm({
+        header: 'Email not saved',
+        message: 'Attendee email duplicates could not be checked. Please try again.',
+        acceptLabel: 'OK',
+        rejectVisible: false,
+      });
+      return;
+    }
+
+    this.persistRefereeEmail(referee, email);
+  }
+
+  /** Rejects an email already used by another referee and restores the previous value. */
+  private rejectRefereeEmail(referee: Referee, previousEmail: string, email: string): void {
+    this.emailDrafts.set(referee, previousEmail);
+    this.confirmationService.confirm({
+      header: 'Duplicate referee email',
+      message: `Another referee already uses ${email}. This email change is not allowed.`,
+      acceptLabel: 'OK',
+      rejectVisible: false,
+    });
+  }
+
+  /** Applies a collision-free email to the attendee and saves it. */
+  private persistRefereeEmail(referee: Referee, email: string): void {
     this.emailDrafts.set(referee, email);
     if (!referee.attendee.person && email.trim()) {
       referee.attendee.person = {
