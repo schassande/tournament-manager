@@ -18,8 +18,7 @@ export interface Tournament extends PersistentObject {
   divisions: Division[];
   managerAttendeeIds: string[];
   managerEmails: string[];
-  currentScheduleId?: string;
-  currentDrawId?: string;
+  currentDrawDivisionIds?: string[];
   allowPlayerReferees?: boolean; // true if the tournament has player referees
   /** FIT competition selection and the user's persistent import naming rules. */
   fit?: FitTournamentConfig;
@@ -182,15 +181,6 @@ export interface AttendeeRoleRestriction {
   refereeeCategories?: RefereeCategory[]; // list of limited referee categories. No value means all.
 }
 
-export interface TimeSlotConfig {
-  dayId: string;
-  partDayId: string;
-  startTime: number;
-  endTime: number;
-  slotType: SlotType;
-  slotDuration: number;
-}
-
 export interface Game extends PersistentObject {
   tournamentId: string; // unique identifier of the tournament
   scheduleId: string; // unique identifier of the schedule
@@ -212,8 +202,7 @@ export interface Game extends PersistentObject {
     divisionDrawId: string; // unique identifier of the division draw
     stepId: string; // unique identifier of the step
     groupId: string; // unique identifier of the group
-    roundId: string; // unique identifier of the round
-    roundGameId: string; // unique identifier of the round game
+    drawGameId: string;
   };
   fitGameId?: number;
 }

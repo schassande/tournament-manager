@@ -1,9 +1,7 @@
 # TODO list du projet Tournament Maager
-- Water carrier
-  - pour remplissage en ligne
-    - authentification ? necessite que chaque arbitre ait un compte donc son email affecté dans la liste des arbitres
-    - traçabilité des actions
-    - compatibilité avec le planning d'un arbitre
+- Gestion des matches : creation du draw, resultats, classement
+- My Planning
+- Water carrier : compatibilité avec le planning d'un arbitre
 - Scorecard papier
   - Responsables d'une équipe (email)
   - Les responsables d'équipe peuvent entrer les noms des joueurs et leur numéro
@@ -15,7 +13,6 @@
   - ou Optimiseur: https://docs.timefold.ai/timefold-solver/latest/optimization-algorithms/local-search
   - Avec les coach
   - Avec les water carrier
-- Gestion des matches : creation du draw, resultats, classement
 
 ==> diffusion / communication / POC
 

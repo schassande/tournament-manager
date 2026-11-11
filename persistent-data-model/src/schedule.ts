@@ -1,88 +1,377 @@
 import { PersistentObject, WithId } from "./persistence";
-import { TimeSlotConfig } from "./tournament";
 
-export interface Schedule extends PersistentObject {
-  tournamentId: string; // unique identifier of the tournament
-  drawId: string; // unique identifier of the draw
-  name: string; // name of the schedule
-  authorAttendeeId: string; // unique identifier of the author (Attendee)
-  scheduledGames : ScheduleGame[];
-}
-export interface ScheduleGame {
-  dayId: string;
-  parDayId: string;
-  timeSlotId: string;
-  fieldId: string;
-  gameId: string;
-}
-
-export interface Draw extends PersistentObject{
+/** Definition of a draw for one division of a tournament */
+export interface DivisionDraw extends PersistentObject {
+  /** Identifier of the tournament */
   tournamentId: string;
-  timeSlotconfigs: TimeSlotConfig[];
-  authorId: string;
-  divisionDraws: DivisionDraw[];
-}
-
-export interface DivisionDraw extends WithId {
+  /** name of the draw */
+  name: string;
+  /** id of the division Division.id */
   divisionId: string;
+  /** List of the step composing this draw */
   steps: Step[];
+  /** 
+   * List of Atttendee.id in charge of the manager of this DrawDivision 
+   * in addition to the tournament managers
+   */
+  managerAttendeeIds: string[];
+  /** 
+   * List of point calculation configurations. Can be empty 
+   * if this configuration is not required (no POOL group type).
+   * Can have several configs
+   */
+  pointCalculations: PointCalculation[];
 }
+
+/** Define the point calculation configuration */
+export interface PointCalculation extends WithId {
+  /** Name of the configuration */
+  name: string;
+  /** Number of point when a team wins a game */
+  winPoint: number;
+  /** Number of point when a team loses a game */
+  lostPoint: number;
+  /** Number of point when a game is a draw*/
+  drawPoint: number;
+}
+
+/**
+ * For a given competition and divisions, this class defines a Step of the competition. 
+ * In a step, there are input teams (from previous step, registred team of the competition)
+ * A step produces input teams
+ */
 export interface Step extends WithId {
+  /** Status of the Step */
+  status: 'DRAFT' | 'DRAWED' | 'PLANIFIED' | 'RUNNING' | 'FINISHED' | 'CANCELED';
+  /** Position of the step in the Draw (0 based value) */
   position: number;
+  /** Name of the step */
   name: string;
-  type: StepType;
-  teamSelectionMode: TeamSelectionMode;
+  /** identifier of the DrawLib describing the structure of the draw for this step */
+  drawType: DrawType;
+  /** Define a way the team from the previous step are splited over the groups of the step */
+  spreadTeamsAlgo: SpreadTeamsAlgo;
+  /** Sorted list of the teams as input of the Step. */
+  inputTeamIds: RankedTeam[];
+  /** The list of the groups in this step */
   groups: Group[];
+  /** Sorted list of the teams as output of the Step. */
+  outputTeamIds: RankedTeam[];
 }
 
-export interface StepType {
-  nbteams: number;
-  name: string;
-  nbGames: number;
-  nbGroup: number;
-  groups: StepGroup[];
-}
-
-export interface Group extends WithId {
-  name: string;
-  type: GroupType;
-  inputTeamRankedIds: string[];
-  outputTeamRankedIds: string[];
-  gameIds: string[];
-}
-
-export interface StepGroup {
-  type: GroupType;
-}
-export interface GroupType {
-  /* POOL, POOL_RET, POOL_3,
-    2_WINS, 3_WINS,
-    CUP2_RK2,
-    CUP4_RK2, CUP4_RK4,
-    CUP8_RK2, CUP8_RK4, CUP8_RK8
-    CUP16_RK2, CUP16_RK4, CUP16_RK8, CUP16_RK16, CUP32_RK2,
-    CUP32_RK4, CUP32_RK8, CUP32_RK16, CUP32_RK32
-  */
-  name: string;
-  nbTeams: number;
-  nbGames: number;
-  sourceCode: string;
-  rounds: Round[];
-  nbRankedTeams: number;
-}
-export interface Round extends WithId {
+/** Define an input or an output team of a step */
+export interface RankedTeam {
+  /** Identifier of the team */
+  teamId: string;
+  /** Position/rank of the team */
   rank: number;
-  name?: string;
-  roundGames: RoundGame[];
 }
-export interface RoundGame extends WithId {
-  name: string;
-  teamASourceType: 'GameWinner' | 'GameLoser' | 'InputRank';
-  teamASourceRoundGameId: string
-  teamBSourceType: 'GameWinner' | 'GameLoser' | 'InputRank';
-  teamBSourceRoundGameId: string
-}
-export type DefaultGroupName = 'Cup' | 'Plate' | 'Bowl' | 'Shield' | 'Spoon' | 'Saucer';
-export const defaultGroupNames: DefaultGroupName[] = [ 'Cup', 'Plate', 'Bowl', 'Shield', 'Spoon', 'Saucer'];
 
-export type TeamSelectionMode = 'Random' | 'BestTogether' | 'SpreadBest';
+/** 
+ * Define a group of teams and games in a step. It can 
+ * contain specific data for configuration or for the run.  
+ */
+export interface Group extends WithId {
+  /** Position of the Group in the Step. 0 based value */
+  position: number;
+  /** Type of the group. It defines the structure of the competition for this step and a set of teams */
+  type: GroupType;
+  /** Name of the group */
+  name: string;
+  /** List of the game definition */
+  games: DrawGame[];
+  /** List of the team sorted by the rank */
+  teams: RankedTeam[];
+  /** Additionnal data specific to the GroupType. It can contains configuration items and Running data. */
+  specificData: SpecificData;
+}
+/** Generic type for the specific data */
+export interface SpecificData {}
+/** Generic type for the specific data containing configuration elements */
+export interface SpecificDataForConfig extends SpecificData {}
+/** Generic type for the specific data containing run elements */
+export interface SpecificDataForRun extends SpecificData {}
+/** Define the specific data for configuration when the Group has a GroupType requiring points per team */
+export interface PointCalculationConfig extends SpecificDataForConfig {
+  /** Identifier of PointCalculation defined in the DrawDivision */
+  pointCalculationId: string;
+}
+/** 
+ * Define the specific data when the Group has a GroupType requiring points per team.
+ * It contains configuration and run part.
+ */
+export interface SpecificDataPool extends PointCalculationConfig, SpecificDataForRun {
+  /** Data structure storing the points for each team. */
+  teamsPoints: TeamPoint[];
+}
+/** 
+ * Define a structure for storing data about a team. 
+ * It can be used to manage points and ranking in a Pool draw.
+ */
+export interface TeamPoint {
+  /** Identifier of the team */
+  teamId: string;
+  /** Number of played games by the team */
+  played: number;
+  /** Number of wan games by the team */
+  win: number;
+  /** Number of lost games by the team */
+  lost: number;
+  /** Number of draw games by the team */
+  draw: number;
+  /** Number of points by the team */
+  points: number;
+  /** Cumulated try scored by the team */
+  cumulatedScore: number;
+  /** Cumulated try scored by the opposite team */
+  cumulatedOppositeScore: number;
+  /** Computation = cumulatedScore - cumulatedOppositeScore */
+  goalAverage: number;
+  /** Rank of the team in the group. Several team can have the same rank in the group */
+  rank: number;
+}
+
+/** A game of the DrawGroup */
+export interface DrawGame extends WithId {
+  /** The identifier of the real game  */
+  gameId?: string;
+  /** Round of the game in the Step */
+  round: number;
+  /** description of the game: Pool, Semi final, final, 3rd, 5th .. */
+  what: string;
+  resultRequired: boolean;
+  status: 'DRAWN' // Game is defined in the draw but not already planified
+    | 'PLANIFIED' // allocated on day/slot and fields
+    | 'READY_TO_PLAY' // has teams and referees
+    | 'PLAYING' // Both teams are playing the game
+    | 'FINISHED' // Game is finish and there is a score
+    | 'CANCELED' // game is canceled
+    ;
+  /** The home team of the game */
+  homeTeam: TeamReference;
+  /** The away team of the game */
+  awayTeam: TeamReference;
+}
+
+/** Define a Team involved in a DrawGame. This teams could be unknown from the begining because 
+ * it could depend on the result of a game. */
+export interface TeamReference {
+  teamSelectorType:'RANK' | 'WINNER_OF' | 'LOSER_OF' | 'MANUAL';
+  /** used when teamSelectorType is 'WINNER_OF' | 'LOER_OF' */
+  drawGameId?: string;
+  /** used when teamSelectorType is 'RANK' */
+  rank?: number;
+  /** used when teamSelectorType is 'MANUAL' or when the team is known during the competition. */
+  teamId?: string;
+}
+
+/** 
+ * Define a Draw between teams. Teams are splited in groups. Each group has its draw type. 
+ * The database contains all possible draws supported by the application. 
+ * This class is persistent in the firestore.
+ */
+export interface PDrawType extends DrawType, PersistentObject {
+}
+
+/** 
+ * Define a Draw between teams. Teams are splited in groups. 
+ * Each group has its draw type. 
+ */
+export interface DrawType {
+  /** 
+   * Number of teams managed by the draw type. 
+   * It is the cumulated value of groups.nbTeam
+   */
+  nbTeam: number;
+  /** NAme of the draw type */
+  drawName: string;
+  /** number of sub group in this draw type. It equals groups.length */
+  nbGroup: number;
+  /** 
+   * Number of the game organised by this Draw type. 
+   * It is the cumulated value of groups.nbGames
+   */
+  nbGames : number;
+  /** Flag indicating if the draw type requires PointCalculation config */
+  requirePointCalculationConfig: boolean;
+  /** Sub groups of this drawType */
+  groups: DrawTypeSubGroup[];
+}
+
+/** A Sub group of the Draw Type */
+export interface DrawTypeSubGroup {
+  /** Position of the sub group in the DrawType. 0 based value. */
+  position: number;
+  /** Number of teams managed in this sub group */
+  nbTeams: number;
+  /** Type of the sub group */
+  groupType: GroupType;
+  /** Number of the game organised by this sub group. */
+  nbGames: number;
+}
+
+/**Define the method to spread the teams over several groups */
+export type SpreadTeamsAlgo = 'Random' // randomly
+  | 'Best teams together' // First group contains the best teams, second group contains the next best teams ...
+  | 'Spread best teams' // Allocate like a snake. Rank 1 is in first group, Rank 2 is in second group, Rank 3 in third group ...
+  |' Manual';
+
+/** Define the type of draw for a group of teams */
+export type GroupType = 'NONE' 
+| 'POOL' | 'POOL_RET' | 'POOL_3'
+| '2_WINS'  | '3_WINS' | '4_WINS' | '5_WINS' 
+| 'CUP2_RK2' 
+| 'CUP4_RK2' | 'CUP4_RK4' 
+| 'CUP8_RK2' | 'CUP8_RK4' | 'CUP8_RK8'
+| 'CUP16_RK2' | 'CUP16_RK4' | 'CUP16_RK8' | 'CUP16_RK16' 
+| 'CUP32_RK2' | 'CUP32_RK4' | 'CUP32_RK8' | 'CUP32_RK16' | 'CUP32_RK32'
+| 'CUP64_RK2' | 'CUP64_RK4' | 'CUP64_RK8' | 'CUP64_RK16' | 'CUP64_RK32' | 'CUP64_RK64'
+| 'CUP128_RK2' | 'CUP128_RK4' | 'CUP128_RK8' | 'CUP128_RK16' | 'CUP128_RK32' | 'CUP128_RK64' | 'CUP128_RK128'
+| 'POOL_3';
+
+/** Default DrawType to make persistent. */
+export const default_drawlibs: DrawType[] = [
+  createDrawType(2, '2 teams, Simple',             createDrawTypeGroup(0, 2,	'CUP2_RK2',	1)),
+  createDrawType(2, '2 teams, 2 times final',      createDrawTypeGroup(0, 2,	'POOL_RET',	2)),
+  createDrawType(2, '2 teams, wins',               createDrawTypeGroup(0, 2,	'2_WINS',	3)),
+  createDrawType(2, '2 teams, 3 wins',             createDrawTypeGroup(0, 2,	'3_WINS',	5)),
+  
+  createDrawType(3, '3 teams, 1 pool',             createDrawTypeGroup(0, 3,	'POOL',	3)),
+  createDrawType(3, '3 teams, 1 pool with return', createDrawTypeGroup(0, 3,	'POOL_RET',	6)),
+
+  createDrawType(4, '4 teams, 1 pool',             createDrawTypeGroup(0, 4,	'POOL',	6)),
+  createDrawType(4, '4 teams, 1 pool with return', createDrawTypeGroup(0, 4,	'POOL_RET',	12)),
+  createDrawType(4, '4 teams, cup & ranking',      createDrawTypeGroup(0, 4,	'CUP4_RK2',	12)),
+  createDrawType(4, '4 teams, 1vs2 + 3vs4',        createDrawTypeGroup(0, 2,	'CUP2_RK2',	1),   createDrawTypeGroup(1, 2,	'CUP2_RK2',	1)),
+
+];
+
+/**
+ * Compute a flag indicating if a group requires Point calculation config.
+ * @param groupType a group type
+ * @returns a boolean value indicating if a group requires Point calculation config.
+ */
+function requirePointCalculationConfig(groupType: GroupType): boolean {
+  return groupType === 'POOL'
+    || groupType === 'POOL_RET'
+    || groupType === 'POOL_3'
+    || groupType === '2_WINS'
+    || groupType === '3_WINS'
+    || groupType === '4_WINS'
+    || groupType === '5_WINS'
+    ;
+}
+
+/**
+ * Create a DrawType
+ * @param nbTeam the number of team
+ * @param drawName the name of the draw
+ * @param groups the groups composing the draw type.
+ * @returns a new DrawType
+ */
+function createDrawType(nbTeam: number, drawName: string, ...groups: DrawTypeSubGroup[]): DrawType {
+  return {
+    nbTeam, 
+    drawName, 
+    groups,
+    requirePointCalculationConfig: groups.map(g => requirePointCalculationConfig(g.groupType)).reduce((a,b)=> a||b, false),
+    nbGames: groups.map(g => g.nbGames).reduce((a,b)=> a+b, 0), 
+    nbGroup: groups.length
+  };
+}
+
+/**
+ * Create a Sub Group of a Draw Type
+ * @param position is position of the Sub group inside the draw type
+ * @param nbTeams the number of teams
+ * @param groupType the type of sub group
+ * @param nbGames the number of game in this sub group
+ * @returns a new Sub Group
+ */
+function createDrawTypeGroup(position: number, nbTeams: number, groupType: GroupType, nbGames: number): DrawTypeSubGroup {
+  return { position, nbTeams, groupType, nbGames };
+}
+
+/** List of group name */
+export const GroupNames: GroupName[] = [
+  { position: 0, neutralName: 'A', rankedName: 'Cup'},
+  { position: 1, neutralName: 'B', rankedName: 'Plate'},
+  { position: 2, neutralName: 'C', rankedName: 'Bowl'},
+  { position: 3, neutralName: 'D', rankedName: 'Shield'},
+  { position: 4, neutralName: 'E', rankedName: 'Spoon'},
+  { position: 5, neutralName: 'F', rankedName: 'Saucer'}
+]
+
+/** Define different group names based on the position */
+interface GroupName {
+  /** Position of the group, 0 based */
+  position: number;
+  /** Neutral name of group. Does not mean a rank/position */
+  neutralName: string;
+  /** Name indicating a level/rank */
+  rankedName: string;
+}
+
+/** 
+ * Number of game based on the number of team  
+ * NB_GAMES_POOL[4] => 6 : With a pool of 4 teams, there are 6 games.
+ * Number of games is defined up to 10 teams.
+ */
+export const NB_GAMES_POOL= [0, 0, 1, 3, 6, 10, 15, 21, 28, 36, 45];
+
+/** 
+ * Defines the list of pool games according to the number of teams
+ * GamePoolOptions[3] is an array of GamePool
+ */
+export const GamePoolOptions: GamePool[][] = [
+  [], // 0 team => 0 game
+  [], // 1 team => 0 game
+  [ // 2 teams
+    { gameNb: 1, round: 1, teamHome: 1, teamAway: 2, isReturn: false },
+    { gameNb: 2, round: 2, teamHome: 2, teamAway: 1, isReturn: true },
+  ],
+  [ // 3 teams
+    { gameNb: 1, round: 1, teamHome: 1, teamAway: 2, isReturn: false },
+    { gameNb: 2, round: 1, teamHome: 1, teamAway: 3, isReturn: false },
+    { gameNb: 3, round: 1, teamHome: 2, teamAway: 3, isReturn: false },
+    { gameNb: 4, round: 2, teamHome: 2, teamAway: 1, isReturn: true },
+    { gameNb: 5, round: 2, teamHome: 3, teamAway: 1, isReturn: true },
+    { gameNb: 6, round: 2, teamHome: 3, teamAway: 2, isReturn: true },
+  ],
+  [ // 4 teams
+    { gameNb: 1, round: 1, teamHome: 1, teamAway: 2, isReturn: false },
+    { gameNb: 2, round: 1, teamHome: 3, teamAway: 4, isReturn: false },
+    { gameNb: 3, round: 2, teamHome: 1, teamAway: 3, isReturn: false },
+    { gameNb: 4, round: 2, teamHome: 2, teamAway: 4, isReturn: false },
+    { gameNb: 5, round: 2, teamHome: 1, teamAway: 4, isReturn: false },
+    { gameNb: 6, round: 2, teamHome: 2, teamAway: 3, isReturn: false },
+    { gameNb: 7,  round: 1, teamHome: 1, teamAway: 2, isReturn: true },
+    { gameNb: 8,  round: 1, teamHome: 3, teamAway: 4, isReturn: true },
+    { gameNb: 9,  round: 2, teamHome: 1, teamAway: 3, isReturn: true },
+    { gameNb: 10, round: 2, teamHome: 2, teamAway: 4, isReturn: true },
+    { gameNb: 11, round: 2, teamHome: 1, teamAway: 4, isReturn: true },
+    { gameNb: 12, round: 2, teamHome: 2, teamAway: 3, isReturn: true },
+  ],
+  [ // TODO 5 teams
+  ],
+  [ // TODO 6 teams
+  ],
+  [ // TODO 7 teams
+  ],
+  [ // TODO 8 teams
+  ],
+];
+
+/** Define a game in pool draw. */
+interface GamePool {
+  /** Number of the game */
+  gameNb: number;
+  /** Round of the game */
+  round: number;
+  /** Numbef of the home team to play (start from 1) */
+  teamHome: number;
+  /** Numbef of the away team to play (start from 1) */
+  teamAway: number;
+  /** Indicates if the game is the 2nd game between both teams */
+  isReturn: boolean;
+}
