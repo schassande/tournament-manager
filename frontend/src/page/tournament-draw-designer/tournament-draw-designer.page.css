@@ -1,0 +1,294 @@
+:host {
+  display: block;
+}
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem 1rem 50px;
+}
+.toolbar,
+.toolbar-primary,
+.draw-header,
+.draw-main-row,
+.draw-actions,
+.manager-add,
+.manager-row,
+.point-toolbar,
+.point-form,
+.step-fields {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.toolbar {
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--surface-border);
+  flex-direction: column;
+  align-items: stretch;
+}
+.toolbar-primary,
+.toolbar-actions {
+  padding: 1rem;
+}
+.toolbar-primary {
+  background: #e0f2fe;
+  border-bottom: 1px solid #bae6fd;
+}
+.selector {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.point-form label,
+.step-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.point-form {
+  align-items: flex-start;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 0.5rem;
+  flex-direction: column;
+  margin-top: 0.5rem;
+  max-width: 100%;
+  padding: 1rem;
+  width: fit-content;
+}
+.point-form label {
+  align-items: center;
+  gap: 0.5rem;
+  flex-direction: row;
+}
+.point-form label > span {
+  flex: 0 0 5rem;
+  text-align: right;
+}
+.selector p-select {
+  min-width: 12rem;
+}
+.card {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  background: var(--surface-card);
+}
+.step {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  width: 650px;
+}
+.draw-header {
+  flex-direction: column;
+  align-items: stretch;
+}
+.draw-main-row {
+  justify-content: space-between;
+}
+.draw-name-field {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+}
+.draw-name-field input {
+  min-width: 18rem;
+}
+.draw-actions {
+  justify-content: flex-end;
+}
+.draw-managers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.manager-add {
+  margin: 0;
+}
+.manager-add label {
+  min-width: 5rem;
+}
+.manager-add input {
+  min-width: 22rem;
+}
+.manager-list {
+  max-width: 48rem;
+}
+.manager-row {
+  border-bottom: 1px solid var(--surface-border);
+  padding: 0.35rem 0;
+}
+.manager-row span:first-child,
+.manager-row span:nth-child(2) {
+  flex: 1;
+}
+.manager-row button {
+  margin-left: auto;
+}
+h2,
+h3 {
+  margin: 0 0 0.75rem;
+}
+.hint {
+  color: var(--text-color-secondary);
+}
+.team-list {
+  max-width: 40rem;
+  padding-left: 2rem;
+}
+.team-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0;
+}
+.team-list li .team-index {
+  flex: 0 0 2rem;
+}
+.team-list li .team-name {
+  flex: 1;
+}
+.step-fields {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.step-fields label,
+.step-field {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+.step-heading h3 {
+  margin: 0;
+}
+.step-fields label > span:first-child {
+  flex: 0 0 8rem;
+  text-align: right;
+}
+.step-field > span:first-child {
+  flex: 0 0 8rem;
+  padding-top: 0.5rem;
+  text-align: right;
+}
+.step-field {
+  align-items: flex-start;
+}
+.step-control {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.step-group-field {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+.step-field-label {
+  flex: 0 0 8rem;
+  padding-top: 0.5rem;
+  text-align: right;
+}
+.step-group-value {
+  min-width: 0;
+}
+.step-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(600px, 100%), 1fr));
+  gap: 1rem;
+}
+.step-derived {
+  color: var(--text-color-secondary);
+  margin: 0;
+}
+.step-description {
+  color: var(--text-color-secondary);
+  white-space: pre-line;
+}
+.steps-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+}
+.steps > p-message {
+  grid-column: 1 / -1;
+}
+.steps-heading h2 {
+  margin: 0;
+}
+.status {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.step table {
+  display: inline-table;
+  margin-left: 0;
+  width: max-content;
+  max-width: 100%;
+}
+th,
+td {
+  border-bottom: 1px solid var(--surface-border);
+  padding: 0.5rem;
+  text-align: left;
+}
+.step th,
+.step td {
+  padding: 0.25rem 0.5rem;
+}
+.step th:nth-child(2),
+.step td:nth-child(2),
+.step th:nth-child(3),
+.step td:nth-child(3) {
+  text-align: center;
+  width: 1%;
+  white-space: nowrap;
+}
+.step .group-name-input {
+  width: 12rem;
+  max-width: 100%;
+}
+.group-name-actions {
+  display: flex;
+  gap: 1rem;
+  margin-left: 0;
+  margin-top: 0.5rem;
+}
+.group-name-actions button {
+  background: transparent;
+  border: 0;
+  color: var(--primary-color);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+.group-name-actions button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.page-state {
+  padding: 2rem;
+  text-align: center;
+}

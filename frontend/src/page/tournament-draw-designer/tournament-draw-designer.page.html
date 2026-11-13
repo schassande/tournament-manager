@@ -1,0 +1,224 @@
+@if (loading()) {
+<div class="page-state">Loading draw designer…</div>
+} @else if (loadError()) {
+<div class="page-state"><p-message severity="error">{{ loadError() }}</p-message></div>
+} @else {
+<main class="page">
+  <header class="toolbar">
+    <div class="toolbar-primary">
+      <div class="selector">
+        <label for="division">Division</label
+        ><p-select
+          id="division"
+          [options]="divisions()"
+          optionLabel="name"
+          optionValue="id"
+          [ngModel]="selectedDivisionId()"
+          (ngModelChange)="divisionChanged($event)" />
+      </div>
+      <span class="team-count">{{ selectedDivision()?.teams?.length ?? 0 }} teams</span>
+      <div class="selector">
+        <label for="draw">Draw</label
+        ><p-select
+          id="draw"
+          [options]="divisionDraws()"
+          optionLabel="name"
+          optionValue="id"
+          [ngModel]="selectedDrawId()"
+          (ngModelChange)="drawChanged($event)"
+          [disabled]="!divisionDraws().length"
+          placeholder="No draw" />
+      </div>
+      <button
+        pButton
+        type="button"
+        icon="pi pi-plus"
+        label="New draw"
+        (click)="createDraw()"
+        [disabled]="!selectedDivision()"></button>
+    </div>
+  </header>
+
+  @if (error()) { <p-message severity="error">{{ error() }}</p-message> }
+  @if (message()) { <p-message severity="success">{{ message() }}</p-message> } @if (selectedDraw(); as draw) { @if
+  (isDrawLocked(draw)) {
+  <p-message severity="warn">This draw contains a running or finished step and cannot be edited.</p-message> }
+  <section class="draw-header card">
+    <div class="draw-main-row">
+      <label class="draw-name-field" for="draw-name">Draw name <input id="draw-name" pInputText [(ngModel)]="draw.name" [disabled]="isDrawLocked(draw)" /></label>
+      <div class="draw-actions">
+        @if (isActive(draw)) {
+        <button pButton type="button" label="Deactivate" severity="secondary" (click)="deactivateDraw(draw)"></button>
+        } @else {
+        <button pButton type="button" label="Activate" severity="secondary" (click)="activateDraw(draw)"></button>
+        }
+        <button pButton type="button" icon="pi pi-trash" label="Delete" severity="danger" (click)="deleteDraw()"></button>
+        <button pButton type="button" icon="pi pi-save" label="Save" (click)="save()" [loading]="saving()"></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Teams</h2>
+    <p class="hint">The first step receives the division teams in this order.</p>
+    <ol class="team-list">
+      @for (rankedTeam of inputTeams(draw); track rankedTeam.teamId; let index = $index) {
+      <li>
+        <button
+          pButton
+          type="button"
+          icon="pi pi-chevron-up"
+          text="true"
+          (click)="moveTeam(index, -1)"
+          [disabled]="index === 0 || !draw.steps.length"
+          aria-label="Move team up"></button
+        ><button
+          pButton
+          type="button"
+          icon="pi pi-chevron-down"
+          text="true"
+          (click)="moveTeam(index, 1)"
+          [disabled]="index === inputTeams(draw).length - 1 || !draw.steps.length"
+          aria-label="Move team down"></button
+        ><span class="team-index">{{ index + 1 }}.</span
+        ><span class="team-name">{{ teamName(rankedTeam.teamId) }}</span>
+      </li>
+      }
+    </ol>
+  </section>
+
+  <section class="steps">
+    <div class="steps-heading">
+      <h2>Steps</h2>
+      <button
+        pButton
+        type="button"
+        icon="pi pi-plus"
+        label="Add step"
+        (click)="addStep()"
+        [disabled]="isDrawLocked(draw)"></button>
+    </div>
+    @if (!compatibleDrawTypes().length) {
+    <p-message severity="warn"
+      >No enabled draw type is available for this division. Ask a platform administrator to initialize or activate the
+      draw types.</p-message
+    >
+    } @for (step of draw.steps; track step.id; let index = $index) {
+    <article class="card step">
+      <div class="step-heading"><h3>Step {{ index + 1 }}</h3><span class="status">{{ step.status }}</span></div>
+      <div class="step-fields">
+        <label><span>Name</span> <input pInputText [(ngModel)]="step.name" [disabled]="isStepLocked(step)" /></label
+        ><div class="step-field">
+          <span>Draw type</span>
+          <div class="step-control">
+          <p-select
+            [options]="compatibleDrawTypes()"
+            optionLabel="drawName"
+            optionValue="id"
+            [ngModel]="stepDrawTypeId(step)"
+            (ngModelChange)="drawTypeChanged(step, $event)"
+            [disabled]="isStepLocked(step)"
+            placeholder="Select draw type" />
+            @if (drawType(step)?.description; as description) {
+            <span class="step-description" [innerHTML]="description"></span>
+            } @else {
+            <span class="step-derived">{{ drawType(step)?.nbGroup ?? 0 }} groups, {{ drawType(step)?.nbGames ?? 0 }} games</span>
+            }
+          </div>
+        </div
+        ><label
+          ><span>Teams distribution</span>
+          <p-select
+            [options]="spreadTeamsAlgos"
+            optionLabel="label"
+            optionValue="value"
+            [(ngModel)]="step.spreadTeamsAlgo"
+            [disabled]="isStepLocked(step)" /></label
+        ><div class="step-group-field">
+          <span class="step-field-label">Groups</span>
+          <div class="step-group-value">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Teams</th>
+                  <th>Games</th>
+                  <th>Group type</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (group of step.groups; track group.id) {
+                <tr>
+                  <td><input class="group-name-input" pInputText [(ngModel)]="group.name" [disabled]="isStepLocked(step)" /></td>
+                  <td>{{ drawType(step)?.groups?.[group.position]?.nbTeams ?? group.teams.length }}</td>
+                  <td>{{ drawType(step)?.groups?.[group.position]?.nbGames ?? group.games.length }}</td>
+                  <td>{{ group.type }}</td>
+                </tr>
+                }
+              </tbody>
+            </table>
+            <div class="group-name-actions">
+              <button type="button" (click)="useNeutralGroupNames(step)" [disabled]="isStepLocked(step)">Use neutral group names</button>
+              <button type="button" (click)="useRankedGroupNames(step)" [disabled]="isStepLocked(step)">Use ranked grouped names</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+    } @empty { <p-message severity="info">No steps have been configured yet.</p-message> }
+  </section>
+  <section class="card draw-managers">
+    <h2>Managers</h2>
+    <div class="manager-add">
+      <label for="draw-manager-email">Email</label>
+      <input id="draw-manager-email" type="email" pInputText [(ngModel)]="managerEmail" (keyup.enter)="addDrawManager(draw)" placeholder="manager@example.com" />
+      <button pButton type="button" icon="pi pi-plus" label="Add" (click)="addDrawManager(draw)"></button>
+    </div>
+    <div class="manager-list">
+      @for (managerId of draw.managerAttendeeIds; track managerId) {
+      @if (managerById(managerId); as manager) {
+      <div class="manager-row">
+        <span>{{ manager.person?.email ?? managerId }}</span>
+        <span>{{ managerName(manager) }}</span>
+        <button pButton type="button" icon="pi pi-trash" severity="danger" text="true" [attr.aria-label]="'Remove manager ' + (manager.person?.email ?? managerId)" (click)="removeDrawManager(draw, managerId)"></button>
+      </div>
+      }
+      }
+    </div>
+  </section>
+  <section class="card points">
+    <h2>Point calculations</h2>
+    <div class="point-toolbar">
+      <p-select
+        [options]="draw.pointCalculations"
+        optionLabel="name"
+        optionValue="id"
+        [ngModel]="selectedPointCalculationId()"
+        (ngModelChange)="selectedPointCalculationId.set($event)"
+        placeholder="No calculation" /><button
+        pButton
+        type="button"
+        icon="pi pi-plus"
+        (click)="addPointCalculation()"
+        aria-label="Add point calculation"></button
+      ><button
+        pButton
+        type="button"
+        icon="pi pi-trash"
+        severity="danger"
+        (click)="deletePointCalculation()"
+        [disabled]="!selectedPointCalculation()"
+        aria-label="Delete point calculation"></button>
+    </div>
+    @if (selectedPointCalculation(); as calculation) {
+    <div class="point-form">
+      <label><span>Name</span> <input pInputText [(ngModel)]="calculation.name" /></label
+      ><label><span>Win</span> <p-inputnumber [(ngModel)]="calculation.winPoint" [inputStyle]="{ width: '4rem' }" /></label
+      ><label><span>Draw</span> <p-inputnumber [(ngModel)]="calculation.drawPoint" [inputStyle]="{ width: '4rem' }" /></label
+      ><label><span>Loss</span> <p-inputnumber [(ngModel)]="calculation.lostPoint" [inputStyle]="{ width: '4rem' }" /></label>
+    </div>
+    }
+  </section>
+  } @else { <p-message severity="info">Create a draw to start configuring the competition structure.</p-message> }
+</main>
+}

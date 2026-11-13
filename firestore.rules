@@ -40,7 +40,10 @@ service cloud.firestore {
 
     function isPlatformAdmin() {
       return verifiedIdentity()
-        && exists(/databases/$(database)/documents/PlaformAdmin/$(normalizedEmail(request.auth.token.email)));
+        && (
+          exists(/databases/$(database)/documents/platform-admin/$(normalizedEmail(request.auth.token.email)))
+          || exists(/databases/$(database)/documents/PlaformAdmin/$(normalizedEmail(request.auth.token.email)))
+        );
     }
 
     function canManageTournament(tournamentId) {
@@ -310,6 +313,56 @@ service cloud.firestore {
       allow update: if canManageTournament(documentId) && request.resource.data.id == resource.data.id;
     }
 
+    function validPDrawType(data, documentId) {
+      return data.keys().hasOnly([
+          'id', 'lastChange', 'enabled', 'nbTeam', 'drawName', 'nbGroup',
+          'nbGames', 'requirePointCalculationConfig', 'groups'])
+        && data.id == documentId
+        && data.lastChange is number
+        && data.enabled is bool
+        && data.nbTeam is int && data.nbTeam > 0
+        && data.drawName is string
+        && data.nbGroup is int && data.nbGroup >= 0
+        && data.nbGames is int && data.nbGames >= 0
+        && data.requirePointCalculationConfig is bool
+        && data.groups is list;
+    }
+
+    // Draw templates are readable by authenticated users and writable only by platform administrators.
+    match /draw-type/{documentId} {
+      allow read: if signedIn();
+      allow create: if isPlatformAdmin() && validPDrawType(request.resource.data, documentId);
+      allow update: if isPlatformAdmin()
+        && validPDrawType(request.resource.data, documentId);
+      allow delete: if isPlatformAdmin();
+    }
+
+    // A division draw is private tournament configuration managed by tournament managers.
+    function validDivisionDraw(data, documentId) {
+      return data.keys().hasOnly([
+          'id', 'lastChange', 'tournamentId', 'name', 'divisionId',
+          'steps', 'managerAttendeeIds', 'pointCalculations'])
+        && data.id == documentId
+        && data.lastChange is number
+        && data.tournamentId is string
+        && data.divisionId is string
+        && data.name is string
+        && data.steps is list
+        && data.managerAttendeeIds is list
+        && data.pointCalculations is list;
+    }
+
+    match /division-draw/{documentId} {
+      allow read: if canManageTournament(resource.data.tournamentId);
+      allow create: if canManageTournament(request.resource.data.tournamentId)
+        && validDivisionDraw(request.resource.data, documentId);
+      allow update: if canManageTournament(resource.data.tournamentId)
+        && request.resource.data.tournamentId == resource.data.tournamentId
+        && request.resource.data.divisionId == resource.data.divisionId
+        && validDivisionDraw(request.resource.data, documentId);
+      allow delete: if canManageTournament(resource.data.tournamentId);
+    }
+
     match /fit-data/{documentId} {
       allow read: if canManageTournament(resource.data.tournamentId);
       allow create: if canManageTournament(request.resource.data.tournamentId);
@@ -436,6 +489,10 @@ service cloud.firestore {
 
     // Platform administrators are managed outside the client application.
     match /PlaformAdmin/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /platform-admin/{documentId} {
       allow read, write: if false;
     }
 

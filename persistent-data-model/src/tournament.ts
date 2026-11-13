@@ -18,6 +18,8 @@ export interface Tournament extends PersistentObject {
   divisions: Division[];
   managerAttendeeIds: string[];
   managerEmails: string[];
+  /** Identifier of the schedule currently used when creating or allocating games. */
+  currentScheduleId?: string;
   currentDrawDivisionIds?: string[];
   allowPlayerReferees?: boolean; // true if the tournament has player referees
   /** FIT competition selection and the user's persistent import naming rules. */

@@ -171,6 +171,7 @@ export interface TeamReference {
  * This class is persistent in the firestore.
  */
 export interface PDrawType extends DrawType, PersistentObject {
+  enabled: boolean;
 }
 
 /** 
@@ -196,6 +197,8 @@ export interface DrawType {
   requirePointCalculationConfig: boolean;
   /** Sub groups of this drawType */
   groups: DrawTypeSubGroup[];
+  /** Description of the draw type */
+  description?: string;
 }
 
 /** A Sub group of the Draw Type */
@@ -218,16 +221,17 @@ export type SpreadTeamsAlgo = 'Random' // randomly
 
 /** Define the type of draw for a group of teams */
 export type GroupType = 'NONE' 
-| 'POOL' | 'POOL_RET' | 'POOL_3'
-| '2_WINS'  | '3_WINS' | '4_WINS' | '5_WINS' 
-| 'CUP2_RK2' 
-| 'CUP4_RK2' | 'CUP4_RK4' 
-| 'CUP8_RK2' | 'CUP8_RK4' | 'CUP8_RK8'
-| 'CUP16_RK2' | 'CUP16_RK4' | 'CUP16_RK8' | 'CUP16_RK16' 
-| 'CUP32_RK2' | 'CUP32_RK4' | 'CUP32_RK8' | 'CUP32_RK16' | 'CUP32_RK32'
-| 'CUP64_RK2' | 'CUP64_RK4' | 'CUP64_RK8' | 'CUP64_RK16' | 'CUP64_RK32' | 'CUP64_RK64'
-| 'CUP128_RK2' | 'CUP128_RK4' | 'CUP128_RK8' | 'CUP128_RK16' | 'CUP128_RK32' | 'CUP128_RK64' | 'CUP128_RK128'
-| 'POOL_3';
+  | 'POOL' | 'POOL_RET' | 'POOL_3'
+  | '2_WINS'  | '3_WINS' | '4_WINS' | '5_WINS' 
+  | 'CUP2_RK2'
+  | 'SEMI' 
+  | 'CUP4_RK2'   | 'CUP4_RK4' 
+  | 'CUP8_RK2'   | 'CUP8_RK4'   | 'CUP8_RK8'
+  | 'CUP16_RK2'  | 'CUP16_RK4'  | 'CUP16_RK8' 
+  | 'CUP32_RK2'  | 'CUP32_RK4'  | 'CUP32_RK8' 
+  | 'CUP64_RK2'  | 'CUP64_RK4'  | 'CUP64_RK8' 
+  | 'CUP128_RK2' | 'CUP128_RK4' | 'CUP128_RK8'
+  | 'POOL_3';
 
 /** Default DrawType to make persistent. */
 export const default_drawlibs: DrawType[] = [
@@ -244,6 +248,149 @@ export const default_drawlibs: DrawType[] = [
   createDrawType(4, '4 teams, cup & ranking',      createDrawTypeGroup(0, 4,	'CUP4_RK2',	12)),
   createDrawType(4, '4 teams, 1vs2 + 3vs4',        createDrawTypeGroup(0, 2,	'CUP2_RK2',	1),   createDrawTypeGroup(1, 2,	'CUP2_RK2',	1)),
 
+  createDrawType(5, '5 teams, 1 pool',             createDrawTypeGroup(0, 5,	'POOL',	10)),
+  createDrawType(5, '5 teams, pool return',        createDrawTypeGroup(0, 5,	'POOL_RET',	20)),
+  createDrawType(5, '5 teams, 1vs2 + 3vs4 + none', createDrawTypeGroup(0, 2,	'CUP2_RK2',	1),   createDrawTypeGroup(1, 2,	'CUP2_RK2',	1),   createDrawTypeGroup(2, 1,	'NONE',	0)),
+
+  createDrawType(6, '6 teams, pool',               createDrawTypeGroup(0, 6,	'POOL',	15)),
+  createDrawType(6, '6 teams, pool +  Return',     createDrawTypeGroup(0, 6,	'POOL_RET',	30)),
+  createDrawType(6, '6 teams, 2 pools',            createDrawTypeGroup(0, 3,	'POOL',	3),      createDrawTypeGroup(1, 3,	'POOL',	3)),
+  createDrawType(6, '6 teams, 2 pools + Return',   createDrawTypeGroup(0, 3,	'POOL_RET',	3),  createDrawTypeGroup(1, 3,	'POOL_RET',	3)),
+  createDrawType(6, '6 teams, Cup4 + Cup2',        createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 2,	'CUP2_RK2',	1)),
+  createDrawType(6, '6 teams, Cup4 + none',        createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 2,	'NONE',	0)),
+  createDrawType(6, '6 teams, None4 + Cup2',       createDrawTypeGroup(0, 2,	'NONE',	0),      createDrawTypeGroup(1, 4,	'SEMI',	2)),
+  createDrawType(6, '6 teams, Cup2 + None4',       createDrawTypeGroup(0, 2,	'CUP2_RK2',	1),  createDrawTypeGroup(1, 2,	'NONE',	0),),
+
+  createDrawType(7, '7 teams, pool',               createDrawTypeGroup(0, 7,	'POOL',	21)),    
+  createDrawType(7, '7 teams, pool + return',      createDrawTypeGroup(0, 7,	'POOL_RET',	42)),
+  createDrawType(7, '7 teams, pool4 + pool3',      createDrawTypeGroup(0, 4,	'POOL',	6),      createDrawTypeGroup(1, 3,	'POOL',	3)), 
+  createDrawType(7, '7 teams, Cup4 + Pool3',       createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 3,	'POOL',	3)), 
+
+  createDrawType(8, '8 teams, pool',               createDrawTypeGroup(0, 8,	'POOL',	21)),    
+  createDrawType(8, '8 teams, cup & full ranking', createDrawTypeGroup(0, 8,	'CUP8_RK8',	24)),
+  createDrawType(8, '8 teams, cup & ranking 4',    createDrawTypeGroup(0, 8,	'CUP8_RK4',	8)),
+  createDrawType(8, '8 teams, cup & ranking 2',    createDrawTypeGroup(0, 8,	'CUP8_RK2',	7)),
+  createDrawType(8, '8 teams, pool4 + pool4',      createDrawTypeGroup(0, 4,	'POOL',	6),      createDrawTypeGroup(1, 4,	'POOL',	6)),    
+  createDrawType(8, '8 teams, pool4R + pool4R',    createDrawTypeGroup(0, 4,	'POOL_RET',	12), createDrawTypeGroup(1, 4,	'POOL_RET',	12)),    
+  createDrawType(8, '8 teams, cup4 + cup4',        createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 4,	'CUP4_RK4',	4)),
+
+  createDrawType(9, '9 teams, pool5 + pool4',      createDrawTypeGroup(0, 5,	'POOL',	10),     createDrawTypeGroup(1, 4,	'POOL',	6)),    
+  createDrawType(9, '9 teams, pool5 + pool4R',     createDrawTypeGroup(0, 5,	'POOL',	10),     createDrawTypeGroup(1, 4,	'POOL_RET',	6)),    
+  createDrawType(9, '9 teams, 3 x pool3',          createDrawTypeGroup(0, 3,	'POOL',	3),      createDrawTypeGroup(1, 3,	'POOL',	3),       createDrawTypeGroup(2, 3,	'POOL',	3)),    
+
+  createDrawType(10, '10 teams, 2 x pool5',        createDrawTypeGroup(0, 5,	'POOL',	10),     createDrawTypeGroup(1, 5,	'POOL',	10)),    
+  createDrawType(10, '10 teams, 2 x pool5R',       createDrawTypeGroup(0, 5,	'POOL_RET',	20), createDrawTypeGroup(1, 5,	'POOL_RET',	20)),    
+  createDrawType(10, '10 teams, pool4 + 2xpool3',  createDrawTypeGroup(0, 4,	'POOL',	6),      createDrawTypeGroup(1, 3,	'POOL',	3),       createDrawTypeGroup(2, 3,	'POOL',	3)),    
+  createDrawType(10, '10 teams, 2xcup4 + 2wins',   createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 4,	'CUP4_RK4',	4),   createDrawTypeGroup(2, 2,	'2_WINS',	3)),
+  createDrawType(10, '10 teams, cup8 + 2wins',     createDrawTypeGroup(0, 8,	'CUP8_RK4',	8),  createDrawTypeGroup(1, 2,	'2_WINS',	3)),
+
+  createDrawType(11, '11 teams, 3 x pool443',      createDrawTypeGroup(0, 4,	'POOL',	6),      createDrawTypeGroup(1, 4,	'POOL',	6),       createDrawTypeGroup(2, 3,	'POOL',	3)),    
+  createDrawType(11, '11 teams, 2xCup4 + pool3',   createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 4,	'CUP4_RK4',	4),   createDrawTypeGroup(2, 3,	'POOL',	3)),    
+
+  createDrawType(12, '12 teams, 3 x pool',         createDrawTypeGroup(0, 4,	'POOL',	6),      createDrawTypeGroup(1, 4,	'POOL',	6),       createDrawTypeGroup(2, 4,	'POOL',	6)),    
+  createDrawType(12, '12 teams, 3xCup4',           createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 4,	'CUP4_RK4',	4),   createDrawTypeGroup(2, 4,	'CUP4_RK4',	4)),    
+
+  /*
+  createDrawType(13, '13 teams, 3 pools',
+  createDrawType(13, '13 teams, 4 pools',
+  createDrawType(13, '13 teams, cup4 + cup4 + pool3 + return',
+
+  createDrawType(14, '14 teams, 3 pools',
+  createDrawType(14, '14 teams, 4 pools',
+  createDrawType(14, '14 teams, cup4 + cup4 + cup4 + return',
+
+  createDrawType(15, '15 teams, 3 pools',
+  createDrawType(15, '15 teams, 4 pools',
+  createDrawType(15, '15 teams, cup4 + cup4 + cup4 + pool3',
+
+  createDrawType(16, '16 teams, 4 pools',
+  createDrawType(16, '16 teams, cup',
+  createDrawType(16, '16 teams, cup rank 2',
+  createDrawType(16, '16 teams, cup rank 4',
+  createDrawType(16, '16 teams, cup rank 8',
+  createDrawType(16, '16 teams, cup8 + cup8',
+  createDrawType(16, '16 teams, cup4 + cup4 + cup4 + cup4',
+
+  createDrawType(17, '17 teams, 4 pools',
+  createDrawType(17, '17 teams, cup4 + cup4 + cup4 + pool3 + return',
+  createDrawType(17, '17 teams, cup8 + cup4 + pool3 + return',
+
+  createDrawType(18, '18 teams, 3 pools',
+  createDrawType(18, '18 teams, 4 pools',
+  createDrawType(18, '18 teams, 3 pools',
+  createDrawType(18, '18 teams, cup8 + cup8 + return',
+  createDrawType(18, '18 teams, cup4 + cup4 + cup4 + cup4 + return',
+
+  createDrawType(19, '19 teams, 4 pools',
+  createDrawType(19, '19 teams, 5 pools',
+  createDrawType(19, '19 teams, cup4 + cup4 + cup4 + cup4 + Pool3',
+
+  createDrawType(20, '20 teams, 4 pools',
+  createDrawType(20, '20 teams, 5 pools',
+  createDrawType(20, '20 teams, cup4 + cup4 + cup4 + cup4 + cup4',
+  createDrawType(20, '20 teams, cup8 + cup8 + cup4',
+
+  createDrawType(21, '21 teams, 3 pools',
+  createDrawType(21, '21 teams, 4 pools',
+  createDrawType(21, '21 teams, 5 pools',
+  createDrawType(21, '21 teams, 6 pools',
+  createDrawType(21, '21 teams, cup8 + cup8 + Pool3 + return',
+
+  createDrawType(22, '22 teams, 4 pools',
+  createDrawType(22, '22 teams, 5 pools',
+  createDrawType(22, '22 teams, 6 pools',
+  createDrawType(22, '22 teams, cup8 + cup8 + cup4 + return',
+
+  createDrawType(23, '23 teams, 5 pools',
+  createDrawType(23, '23 teams, 6 pools',
+  createDrawType(23, '23 teams, 2 x cup8 + Pool3',
+
+  createDrawType(24, '24 teams, 4 pools',
+  createDrawType(24, '24 teams, 5 pools',
+  createDrawType(24, '24 teams, 6 pools',
+  createDrawType(24, '24 teams, 3 x cup8',
+
+  createDrawType(25, '25 teams, 4 pools',
+  createDrawType(25, '25 teams, 5 pools',
+  createDrawType(25, '25 teams, 6 pools',
+  createDrawType(25, '25 teams, 2 x cup8 + cup4 + Pool3 + return',
+
+  createDrawType(26, '26 teams, 5 pools',
+  createDrawType(26, '26 teams, 6 pools',
+  createDrawType(26, '26 teams, 3 x cup8 + return',
+
+  createDrawType(27, '27 teams, 5 pools',
+  createDrawType(27, '27 teams, 6 pools',
+  createDrawType(27, '27 teams, 3 x cup8 + Pool3',
+  createDrawType(27, '27 teams, 6 x cup4 + Pool3',
+
+  createDrawType(28, '28 teams, 5 pools',
+  createDrawType(28, '28 teams, 6 pools',
+  createDrawType(28, '28 teams, 7 pools',
+
+  createDrawType(29, '29 teams, 5 pools',
+  createDrawType(29, '29 teams, 6 pools',
+  createDrawType(29, '29 teams, 7 pools',
+  createDrawType(29, '29 teams, 8 pools',
+
+  createDrawType(30, '30 teams, 5 pools',
+  createDrawType(30, '30 teams, 6 pools',
+  createDrawType(30, '30 teams, 7 pools',
+  createDrawType(30, '30 teams, 8 pools',
+
+  createDrawType(31, '31 teams, 6 pools',
+  createDrawType(31, '31 teams, 7 pools',
+  createDrawType(31, '31 teams, 8 pools',
+
+  createDrawType(32, '32 teams, 6 pools',
+  createDrawType(32, '32 teams, 7 pools',
+  createDrawType(32, '32 teams, 8 pools',
+  createDrawType(32, '32 teams, cup rank 32',
+  createDrawType(32, '32 teams, cup rank 2',
+  createDrawType(32, '32 teams, cup rank 4',
+  createDrawType(32, '32 teams, cup rank 8',
+  createDrawType(32, '32 teams, cup rank 16',
+*/
 ];
 
 /**

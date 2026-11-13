@@ -1,220 +1,342 @@
-# Draw designer
+# Draw Designer
 
-## Objectif
+Last updated: 2026-11-12
 
-L'objectif de cette évolution est de permettre au gestionnaire d'une competition de définir la structure de la competition pour chaque division, puis d'allouer les matches dans un planning.
+## Objective
 
+Allow tournament managers to define the competition structure for each division and allocate the resulting matches in the tournament schedule. Provide a public read-only view of the active draw.
 
-## Modelisation
+The feature is delivered in three implementation stages, in this order:
 
-Une Division d'un tournoi regroupe les équipes par catégorie. Chaque division a sa propre structure de compétition. La definition de la structure de la compétition est mémorisée dans l'objet DrawDivision. Pour une division, la structure de compétition est découpée en étape (Step). Pour chaque étape les équipes sont réparties dans des groupes (Group).
-A la fin d'une étape, les équipes sont classées pour être allouée dans l'étape suivante selon une stratégie de répartition. Il y a donc une liste d'équipe en entrée et en sortie de chaque étape.
+1. DrawDivision design screen.
+2. Match planning screen.
+3. Public draw visualization screen.
+4. Platform DrawType administration screen.
 
-L'administrateur de la competition peut définir plusieurs DrawDivision pour faire des essais ou tentatives. Mais un seul DrawDivision par division devra être sélectionné comme allocation courante. L'attribut Tournament.currentDrawDivisionIds détermine les DrawDivision selectionnés. Il ne doit y avoir un seul DrawDivision par division dans cette liste.
+Each stage must be tested before the next stage starts. The developer must ask before moving to the next stage.
 
-Les match (Game) contiennent les informations determinant leur allocation (dayID, partId, slotId et fieldId).
+Before the draw design screen is used, persisted draw-type templates may be initialized explicitly from the Platform DrawType administration screen.
 
+## Scope
 
+### In scope
 
-## Ecran de conception de DrawDivision
+- Managing several draw definitions for one division, with exactly one active draw per division.
+- Designing steps, groups, team ordering, point calculations, and draw games.
+- Allocating and deallocating draw games in the tournament schedule.
+- Detecting and correcting invalid persisted allocations when the planning screen loads.
+- Public read-only visualization of the active draw.
 
-Cette page est accessible uniquement aux gestionnaires de la competition.
-L'écran est composé de :
-- une barre d'action
-- La configuration d'une DrawDesigner
+### Out of scope
 
-### Barre d'action
+- The live match score-entry screen; it must not be implemented at this stage.
+- Creating real `Game` records while designing a draw; real games are created only when a draw game is allocated.
 
-Premier ligne de l'écran : 
-- Un Select pour choisir la division. 
-- Un second Select pour choisir le DrawDivision de la division sélectionné dans le premier Select
-- Un bouton pour ajouter un nouveau DrawDivision dans la division sélectionné. L'objet DrawDivision est créé avec un nom aléatoire (5 lettre/chiffre en majuscule choisi aleatoirement. Il est rendu persistant immédiatement. S'il n'y a pas d'autres DrawDivision pour cette division alors il est automatiquement activé dans le tournoi. 
-- un texte court indiquant le nombre d'équipe dans la division.
-- Un bouton pour supprimer le DrawDivision
-- Si Tournament.currentDrawDivisionIds contient l'id du DrawDivision sélectionné alors on affiche un texte 'Active' pour indiquer que ce DrawDivision est celui actuellement retenu.
-- Si Tournament.currentDrawDivisionIds contient l'id du DrawDivision sélectionné alors on affiche un bouton 'Activate' pour faire de DrawDivision l'unique DrawDivision actif. Cela veut dire supprimer de Tournament.currentDrawDivisionIds les DrawDivision concernant la meme division, puis ajouter l'id du DrawDivision courant dans la liste Tournament.currentDrawDivisionIds.
+## Functional requirements
 
-### Configuration d'un DrawDesigner
+### Draw model
 
-Lorsqu'une division et un DrawDivision sont sélectionnés dans la barre d'action, il faut afficher le designer de DrawDivision
+- A division groups teams by category and has its own competition structure.
+- The persisted draw definition is represented by the existing `DivisionDraw` model.
+- A draw is composed of ordered `Step` objects. Each step distributes input teams into `Group` objects and produces ranked output teams for the next step.
+- A tournament manager may create several draw definitions for the same division for experiments or alternatives.
+- `Tournament.currentDrawDivisionIds` identifies the active draws. It must contain at most one draw identifier for each division.
+- `Game` allocation data uses the existing model fields `dayId`, `timeslotId`, and `fieldId`. The implementation must use `timeslotId`; no `slotId` or additional `partId` field is introduced.
+- `PDrawType` is the persisted form of `DrawType` and contains the `enabled` flag.
+- `default_drawlibs` remains the source definition for the initial persisted templates; it is not itself a database collection.
 
-Le designer de DrawDivision est un composant Angular permettant de concevoir/editer la structure d'une competition pour UNE division.
+### Persisted DrawType initialization
 
-Le designer de DrawDivision contient :
-- une ligne d'information: 
-  - Si un des steps est dans l'état 'RUNNING' ou 'FINISHED' il faut mettre un message en rouge pour avertir que des step sont déjà en cours de jeu et que modifier n'est pas autorisé. 
-- un bouton save qui est tout à droite
-- un formulaire dense pour editer le nom du DrawDivision  et les listes des emails des gestionnaires de ce draw.
-- Un formulaire pour éditer des DrawDivision.pointCalculations
-- La liste des équipes de la division. L'utilisateur peut changer l'ordre des équipes. Les équipes triés sont mémorisées dans la première Step.
+- Provide a dedicated `PDrawTypeService` for loading and persisting `PDrawType` records in the `draw-type` collection.
+- Do not trigger initialization during application startup or user connection.
+- The Platform DrawType administration screen invokes the `initializePDrawTypes` callable asynchronously when the administrator requests default initialization.
+- The initialization action is available only to platform administrators and must not block unrelated application navigation.
+- The initialization lists all `PDrawType` records. If at least one record exists, it does nothing.
+- If no record exists, copy every `DrawType` from `default_drawlibs` into a new `PDrawType` record with `enabled: true`, a Firestore-generated document identifier, and the current `lastChange` value.
+- The initialization must be authorized server-side using the `platform-admin` authority. The legacy `PlaformAdmin` collection remains accepted for compatibility; a normal user or tournament manager cannot seed templates.
+- Initialization must be safe to retry and must not overwrite or duplicate an already populated collection.
 
-Le formulaire pour éditer DrawDivision.pointCalculations doit contenir :
-- un Select listant les noms des PointCalculation
-- un bouton + pour ajouter un nouveau PointCalculation
-- un bouton trash pour supprimer le PointCalculation sélectionné
-- un mini formulaire permettant d'éditer les attributs du PointCalculation selectionné
+### Draw design screen
 
-Un DrawDivision se décompose en plusieurs Step. Chaque step est affichée dans un Card. La card contient :
-* dans la colonne de gauche l'un en dessous des autres : 
-  - un champ de saisie du nom de la step
-  - un Select pour choisir le drawType parmi les PDrawType existants en base de données et qui ont le nombre d'équipe de la division. 
-  - un Select pour choisir le spreadTeamsAlgo parmi les valeurs possible du Type SpreadTeamsAlgo
-  - les informations sur le DrawType choisi: nombre de groupe, nombre de match
-* dans la colonne de droite un tableau des groupes (Group) définis par le drawType (DrawType.groups). Le tableau contient les colonnes suivantes : # Teams, Draw, # games, Group name et Point calculation name. 
-  - L'avant dernière colonne est éditable. Les informations des 3 premiers colonnes ne sont pas modifiable car elles sont tirées du DrawType.groups
-  - La dernière colonne est visible uniquement si le group type require PointCalculation
-* dans le coin en haut à droite le statut de la step.
+Route: `/tournament/<tournamentId>/draw-designer`.
 
-Lors d'un changement de DrawType, il faut mettre à jour les Step.groups. Il ne faut pas creer les Step.groups.games (DrawGame)
+Only tournament managers may access this screen.
 
-Lors de la sauvegarde il faut créer/supprimer les Step.groups.games (DrawGame) lorsque le DrawType d'une step a changé. Le statut du DrawGame est par défaut 'DRAWN'
-Les Game ne sont pas créés à ce moment là. Ils seront créés lors de l'allocation des match dans un planning.
+The action bar contains:
 
-## Ecran de plannification des matches
+- A division selector.
+- A draw selector containing draws for the selected division.
+- An action to create a draw for the selected division. The client generates a random five-character uppercase alphanumeric name and persists the new draw immediately. Name collisions are not checked or handled. If it is the first draw for the division, it becomes active automatically.
+- A short team count for the selected division.
+- The selectors, team count, and create action are displayed together in the first row, which has a distinct background color.
+- Each selector label is displayed inline with its Select; the team count follows the Division Select, and the create action follows the Draw Select.
+- The selected draw section displays the draw name and activation/deactivation, deletion, and save actions on its first row.
+- The selected draw managers and point calculations sections are displayed after the Steps section. Managers use an email add form and a list containing each manager's email, display name, and remove action. The active status text is not displayed because the activation state is represented by the action button.
+- Each step displays its group table as the value of a `Groups` form field and provides actions below the table to apply neutral or ranked group names from the shared `GroupNames` definitions.
+- The draw-type Select displays the selected `DrawType.description` below it when present; otherwise it displays the default group/game count summary.
+- Saving is refused when any configured step requires point calculation and the draw has no point calculation defined.
+- Saving is refused when the draw contains no step.
+- The selected draw status and its activation/deactivation and deletion actions are displayed in a second row below.
+- An action to delete the selected draw. Refuse deletion when the draw is active or contains a planified, running, or finished match.
+- An `Active` indicator when the selected draw is active.
+- A `Deactivate` action when the selected draw is active; it removes the draw identifier from `Tournament.currentDrawDivisionIds`.
+- An `Activate` action that removes the selected division's other draw identifier from `Tournament.currentDrawDivisionIds` and adds the selected draw identifier.
 
-L'objectif de cette page est d'allouer les matches sur le planning de la competition
-Le planning est défini par les days, les slot et les terrains, de l'objet Tournanment.
+When a division and draw are selected, display the draw designer for that division.
 
-### Organisation de la page
+The designer contains:
 
-L'organisation de la page est la suivante :
-- Sur une premiere ligne de barre d'outils
-- en dessous
-  - A gauche un panneau de selection
-  - à droite, un tableau affiche le planning. 
+- A red warning when any step is `RUNNING` or `FINISHED`; editing is not allowed in that state.
+- A save action aligned to the right.
+- A dense form for the draw name and a selector for existing tournament managers represented by `Attendee` records. Persist the selected attendee identifiers in `managerAttendeeIds`.
+- A form for `DivisionDraw.pointCalculations` with a point-calculation selector, add action, delete action, and editor for the selected calculation's name, win points, lost points, and draw points.
+- The division team list, with reordering. The resulting order is persisted as the input ranking of the first step.
 
-### La barre d'outils
-Elle est sur une seule ligne. Elle contient:
-- Un Select pour choisir le jour
-- un Select pour Highlight certains matchs. 
-- un pourcentage de match alloué.
+Each step is displayed in a card containing:
 
-#### Highlight de match
+- The step name field.
+- A draw-type selector containing persisted `PDrawType` values whose `nbTeam` equals the division team count.
+- A `spreadTeamsAlgo` selector using the existing `SpreadTeamsAlgo` values.
+- The selected draw type's group count and game count.
+- A group table with columns: team count, draw/group type, game count, group name, and point-calculation name.
+- The first three group columns are read-only and come from the selected draw type. The group name is editable. The point-calculation column is shown only when the group type requires point-calculation configuration.
+- The step status in the top-right corner.
 
-La fonctionnalité de Highlight permet de mettre en lumière avec un fond jaune certains matches, tandis que les autres matches sont en fond gris clair.
-Le Select du Hightlight contient différents niveaux de selection variés:
-- Division: Il y a une entée pour chaque division du tournoi. Le nom de l'entrée contient le nom court de la Division. Exemple: 'MO'. Tous les matches de la division sont mis en évidence.
-- Step: Il y a une entée pour chaque Step pour chaque division. Le nom contient la division et la step,  Exemple: 'MO-Pool' Tous les matchs de cette Step sont mis en évidences.
-- Group: Il y a une entée pour chaque groupe de chaque step de chaque division. Le nom contient la division, la step et le nom du groupe, exemple 'MO-Pool-A'. Tous les matches de ce groupe sont mis en évidence.
-- Equipe: Il y a une entrée pour chaque équipe de chaque division. Le nom de l'entrée contient le nom de la division et le nom de l'équipe, Exemple: 'MO-France'. Tous les matchs de cette équipe sont mis en évidence.
+The steps section also contains an `Add step` action. It appends a `DRAFT` step, assigns the next position, uses the first compatible enabled `PDrawType`, initializes its groups without draw games, and copies the division team order into the first step's input ranking. The action is disabled while the draw is locked by a running or finished step. If no compatible enabled `PDrawType` exists, the action remains visible and the page displays an explicit initialization/activation warning.
 
-### Le planning
+When a step's draw type changes, update its groups but do not create `Group.games`/`DrawGame` records immediately. On save, create or remove draw games when the draw type changed. New draw games have status `DRAWN`.
 
-Le planning est tableau à double entrée.
-Il y a :
-- Une ligne pour chaque slot de la journée selectionnée
-- Une colonne pour chaque terrain utilisable pour le jour sélectionné
+### Match planning screen
 
-Une case du planning :
-- affiche les informations du match: 
-  - 1ère ligne: Division.shortName, Step.name et un icon croix rouge tout à droite pour désallouer le match
-  - 2ieme ligne: Round, what
-  - 3ieme ligne: homeTeam - awayTeam. Si les 2 équipes ne sont pas connues alors la ligne n'est pas affichée. Si une des 2 équipes n'est pas connue alors elle est remplacée par '?'.
-- est colorisée avec la couleur de la catégorie
-- est vide sur fond blanc, lorsque la case n'a pas de match, 
+The planning screen allocates matches to the tournament schedule, which is defined by tournament days, parts, timeslots, and fields.
 
-Le tableau est scrollé horizontalement et verticalement pour toujours voir  la 1ère ligne des noms des terrains et la 1ère colonne des horaires des slots.
+The page contains:
 
-### Panneau de selection
-Le panneau de selection permet de visualiser des DrawGame restant à allouer. Il contient :
-- en haut des filtres liés : Division, Step de la division séléctionné, Group du Step sélectionné
-- Puis la liste filtrée des DrawGame non encore alloués. Chaque element de la liste est affiché sous forme de bloc:
-  - 1ère ligne: Division.shortName, Step.name
-  - 2ieme ligne: Round, what
-  - 3ieme ligne: homeTeam - awayTeam. Si les 2 équipes ne sont pas connues alors la ligne n'est pas affichée. Si une des 2 équipes n'est pas connue alors elle est remplacée par '?'.
-Les blocs de match à allouer on la meme largeur que les colonnes des cases de match dans le planning. Utiliser une variable.
+- A single-line toolbar with a day selector, a match-highlight selector, and the percentage of matches allocated.
+- A left selection panel.
+- A right planning table.
 
-### Allocation / Desallocation
+The highlight selector supports division, step, group, and team entries. Their labels are respectively the division short name, `<division>-<step>`, `<division>-<step>-<group>`, and `<division>-<team>`. Highlighted matches have a yellow background; other matches have a light-gray background.
 
-Pour allouer un DrawGame, l'utilisateur peut Drag N Drop un DrawGame du panneau de gauche vers une case slot/terrain. L'allocation provoque :
-- La creation de l'objet Game avec (dayId, PartId, SlotId, fieldId) 
-- L'affectation du gameId dans le DrawGame.
-- Le changement de statut du DrawGame à 'PLANIFIED'
+The planning table has one row per timeslot of the selected day and one column per field available for that day. It must scroll horizontally and vertically while keeping the field header row and timeslot column visible.
 
-Si l'utilisateur Drag N drop un match déjà alloué (présent dans une case) vers une autre case :
-- Si dans la nouvelle case, il y a un match alors les matches sont inversés.
-- Si la nouvelle case est vide, alors le match est déplacé
+Each occupied cell displays division/step plus a red deallocation cross, round/`what`, and the home/away teams. Hide the team line when neither team is known and display `?` for an unknown side. Occupied cells use the division category color; empty cells are white.
 
-Pour désallouer un match, l'utilisateur peut :
-- Drag N Drop le match en dehors du planning
-- Cliquer sur la croix dans la case
-Lorsque un Game est désalloué alors 
-- les informations d'allocation (dayId, PartId, SlotId, fieldId) sont vidées de l'objet Game mais le game n'est pas supprimé.
-- Le statut du DrawGame est remis à 'DRAWN'
-- il revient alors automatiquement dans le panneau de gauche. 
+The selection panel provides linked division, step, and group filters, followed by the filtered list of unallocated `DrawGame` records. Each item uses the same three-line match display as a planning cell. The item width must use a shared configurable variable matching the planning-cell width.
 
-Les actions d'allocation ou desallocation sont effectués en direct. 
+Allocation behavior:
 
-Regle du doublon: Il y a une contrainte forte à respect pour l'allocation des matches. Une équipe ne peut jouer en meme temps sur le meme slot sur 2 terrains différents. Donc lors de l'opération de Drag N Drop il faut empecher l'allocation. Lors du Drop il faut faire la vérification si l'opération viole la règle alors elle n'est pas réalisée/annulée.
+- Dragging an unallocated draw game to a free timeslot/field creates a `Game`, sets `DrawGame.gameId`, and changes the draw-game status to `PLANIFIED`. `Game.homeTeamId` and `Game.awayTeamId` are optional so a game may be allocated before one or both teams are known.
+- Dragging an allocated match to an occupied cell swaps the two matches; dragging it to an empty cell moves it.
+- Dragging a match outside the planning table or clicking its cross deallocates it. The `Game` is retained but its allocation fields are cleared, the draw-game status becomes `DRAWN`, and the draw game returns to the selection panel.
+- Allocation and deallocation are applied immediately.
+- Reject any operation where one team would play on two different fields in the same timeslot. Validate on drop; a rejected operation must not modify either match.
 
-### URL
+### Public draw visualization screen
 
-La page concerne un tournoi dont l'id est dans l'url de la page "/draw-designer/<tournamendId>".
+Route: `/draw/<tournamentId>`. All application users, including unauthenticated users, may access this read-only screen.
 
-### Performance et Chargement
+The toolbar contains a division selector and a step selector for the active draw of the selected division. The first division and first step are selected by default. If the selected division has no active draw, hide the step selector.
 
-Un tournoi dure au maximum 5 jours environ. Un tournoi peut avoir environ 100 match par jour. Donc Il y aurait environ 500 match par jour. Il y aura au maximum environ 20 division. Ces volumétries sont gérables coté client dans le navigateur. Donc la stratégie est de chargé toutes les données de tous les matches pour avoir une interface réactive pour l'utilisateur.
+The selected step displays its name and group views. Group rendering is specific to `GroupType`, with Angular components for supported group type families: `CUP...` displays a bracket according to level; `POOL...` and wins-based groups display a team ranking table.
 
-Les éléments à charger : 
-- Il faut charger le tournoi par son Id pour connaitre les divisions, days, slots et terrains.
-- Les DivisionDraw sont chargés en une seule requete pour optimiser le chargement. Il suffit de rechercher tous les DivisionDraw par le tournamentId. Cela donnera acces aux Step, Group et DrawGame.
-- Les Game sont chargés en une seule requete pour optimiser le chargement. Il suffit de rechercher tous les Game par le tournamentId.
+Each group-specific component uses a shared match component that displays all matches chronologically (day, time, field), including scores. If the current user is a tournament administrator, scores are editable. Score-change events update the group-specific component and, when applicable, subsequent matches. The view also displays the final ranking, supports tournament-manager-only changes and validation of the ranking, persists the decision, recalculates dependent matches, and displays input teams.
 
-### Controle et gestion d'erreur au chargement
+## Business rules
 
-Au chargement de la page il faut faire des vérification et des corrections sur les données si nécessaire. 
-- Les matches alloués sur un terrain ou un slot qui a disparu sont désalloués.
-- Les matches violant la règle du doublon sont désalloués. On garde seulement le 1er match sur le slot.
-- Les Game qui ne sont dans aucun DrawGame sont supprimés
-- Vider le gameId des DrawGame qui ont un gameId ne correspondant à aucun match.
+- Only one draw may be active per division.
+- Draw editing is forbidden when any step is `RUNNING` or `FINISHED`.
+- Deletion is refused when the draw is active or contains a planified, running, or finished match.
+- A draw type may be selected for a step only when its configured team count equals the division team count, as currently specified.
+- Group metadata derived from a draw type is not user-editable except for group name and applicable point-calculation configuration.
+- Draw games are generated only during save after a draw-type change; they default to `DRAWN`.
+- Real games are created on allocation, not during draw design.
+- A team cannot be scheduled on two fields in the same timeslot.
+- Only tournament managers may change or validate a final ranking; validation persists the tournament decision and recalculates dependent matches.
 
-Un message générique avertit l'utilisateur que le planning a été modifié si besoin.
+## User interface and workflow
 
-## Ecran de visualisation du draw
+The workflow is: select division, select or create a draw, configure and save the draw, activate exactly one draw for the division, then allocate its draw games in the planning screen. The public screen reads only the active draw.
 
-Cette écran permet à tout utilisateur de l'application de consulter les structures de competition pour chaque division. La page est donc accessible lecture à tous, meme un utilisateur non connecté.
-L'url est donc "/draw/<tournamentId>".
+The exact confirmation dialogs, empty states, loading indicators, and error presentation are to be clarified. Concurrent saves overwrite the persisted version with the current user's submitted data.
 
-La page contient :
-- une barre d'action
-- La visualisation d'une Step d'une DrawDivision
+### Tournament navigation menu
 
-### La barre d'action
-Elle est sur une seule ligne. Elle contient
-- Un select de division
-- un Select de step du DrawDivision actif de la division sélectionné. Il dépend donc du premier Select.
-Par défaut:
-- La première selection est selectionné. Ainsi il y a toujours une valeure.
-- La premiere Step du DrawDivision actif de la division sélectionné est sélectionné. ainsi il y a toujours une valeur.
+When the `DRAW_DESIGNER` module is enabled for a tournament, the tournament manager menu contains an entry labelled exactly `Draw designer`, linking to `/tournament/<tournamentId>/draw-designer`. The entry belongs to the existing `Games` group and is displayed before the existing `Games` entry. The entry is shown only to tournament managers because the draw designer is a manager-only screen.
 
-Si une division n'a pas de DrawDivision actif alors le seconde Select n'est pas visible.
+The existing match-management entry is labelled `Games` and remains in the same group. The current implementation route is `/tournament/<tournamentId>/game`.
 
-### La visualisation d'une Step d'un DrawDivision
+### Screen inventory and proposed roadmap
 
-La visualisation d'une Step affiche :
-- Le nom de la step
-- la visualisation des groupes de la step.
+Verified current screens and routes:
 
-La visusalisation d'un groupe dépend du GroupType. Il faut un composant Angular par GroupType car l'affichage est spécifique. 
-Si le groupeType est CUPxxxx alors il faut représenter un arbre de competition de type coupe en fonction du niveau.
-Si le groupType est POOL ou WINS alors il faut représenter un tableau de classement des équipes 
-Chaque composant specifique utilise un composant commun qui affiche :
-- la liste de tous les matches classés par ordre chronologique (Jour, heure, Terrain)
-  - Les matches affichent les scores
-  - Si l'utilisateur courant est connecté et est un administrateur du tournoi alors les scores sont éditables. Un événement de modification de score est envoyé au composant specifique pour mettre à jour les données specifique et éventuellement les matches suivants
-- Classement final. Possibilité de changer le classement (décision tournoi), validation du classement
-- Liste des équipes en entrée
+- `Games`: existing match list/import screen at `/tournament/<tournamentId>/game`.
+- `Draw designer`: manager draw-configuration screen at `/tournament/<tournamentId>/draw-designer`.
+- Referee/coaching configuration and allocation screens already exist under their current routes.
 
-## Ecran de score des match en cours
+Proposed future screens derived from this specification:
 
-Cette écran doit permettre aux gestionaires du tournoi d'entrer les scores des matches.
-Cet écran n'est pas à développer tout de suite.
+- `Game allocator`: implement the match-planning screen described in this document. It should allocate `DrawGame` records to day/timeslot/field cells and enforce the same-timeslot team constraint.
+- `Draw viewer`: implement the public active-draw visualization at `/draw/<tournamentId>`.
+- `Score entry`: implement a manager/result-manager score-entry screen after draw visualization and dependent ranking updates are defined.
+- `Tournament dashboard`: provide a status view for active draw, allocation progress, games needing scores, and unresolved scheduling conflicts.
+- `Draw validation`: provide a pre-publication checklist for missing point calculations, incomplete steps, unallocated games, and invalid team references.
+- `Schedule quality`: provide diagnostics for field capacity, team rest time, duplicate allocations, and empty schedule slots.
 
-## Implementation
+These roadmap items are proposals, not additional implementation requirements for the current stage. `Game allocator` is the next screen in the required draw implementation order; it is not currently implemented as a dedicated page.
 
-Cette specification définit plusieurs écrans. Leur implementation doit être réalisé dans cet ordre : 
-- Ecran de conception de DrawDivision
-- Ecran de plannification des matches
-- Ecran de visualisation du draw
-L'implementation doit se faire en étapes. 1 etape par écran.
-Il faut demander avant de passer à l'étape suivante. Le developpeur testera chaque étape avant de passer à la suivante.
+### Platform DrawType administration screen
+
+Route: `/admin/draw-types`.
+
+Only platform administrators may access this screen. The global navigation menu contains an `Admin` section at the bottom with a `Draw types` entry linking to this route, visible only to platform administrators identified by `platform-admin`. It is the final screen in the implementation order.
+
+On screen initialization, load all persisted `PDrawType` records through `PDrawTypeService`, including disabled records. The defaults created by the explicit initialization action must therefore appear after the list is refreshed. If the collection is empty, display an empty state with an `Initialize defaults` action and keep the creation action available.
+
+The screen contains:
+
+- A first-row filter for the number of teams managed by the `PDrawType`. It contains `All` followed by each existing `nbTeam` value and defaults to `All`.
+- Below the filter, a left panel containing the unpaginated list of filtered draw types, sorted by ascending `nbTeam` and then alphabetically by name, displaying only each draw type name.
+- A right panel for creating or editing the selected draw type. It edits the name, `enabled`, and the composed subgroup list; `nbTeam` is calculated as the sum of subgroup `nbTeams`, while `nbGroup`, `nbGames`, and `requirePointCalculationConfig` are calculated automatically and displayed read-only.
+- Creating a draw type starts with an unsaved blank form: empty name and no subgroups. `nbTeam` is displayed read-only and remains the sum of subgroup `nbTeams`. `Save` is disabled until the configuration is valid.
+- Subgroup add, delete, and edit operations for `position`, `nbTeams`, `groupType`, and `nbGames`; derived fields must be recalculated consistently.
+- Before saving, subgroup positions must be unique and contiguous from `0`, the sum of subgroup `nbTeams` must equal `nbTeam`, and subgroup numeric values must be valid non-negative integers, with type-specific minimums enforced where required.
+- `Delete`, `Cancel`, and `Save` actions. `Cancel` exits the screen. `Save` always requires confirmation before persisting. Validation or persistence errors block the form and are displayed to the administrator.
+- An enabled/disabled control for `PDrawType.enabled`.
+- A disabled `PDrawType` is excluded from Draw Designer selectors and draw-type changes, while existing steps containing its snapshot remain unchanged.
+
+Deletion, activation, and deactivation are platform-administrator-only operations. A `PDrawType` may be deleted even when existing steps contain a copied `DrawType`, because steps are independent snapshots.
+
+## Data model and persistence
+
+Verified existing model facts:
+
+- `DivisionDraw` contains `tournamentId`, `divisionId`, `name`, `steps`, `managerAttendeeIds`, and `pointCalculations`.
+- `Step` contains status, position, name, draw type, spread algorithm, input/output ranked teams, and groups.
+- `Step.drawType` is an integral snapshot copy of the selected `PDrawType`; it does not persist a live reference to the `PDrawType` identifier. Later modification, disabling, or deletion of the source `PDrawType` does not affect existing steps.
+- `Group` contains position, type, name, draw games, ranked teams, and type-specific data.
+- `DrawGame` contains an optional `gameId`, round, description, result requirement, status, and team references.
+- `PDrawType` is persisted and contains `nbTeam`, groups, and derived game/group counts.
+- `Game` contains tournament, schedule, division, day, timeslot, field, team, and draw-game linkage fields through `scheduleInfo`.
+- `Tournament.currentDrawDivisionIds` is optional and stores active draw identifiers.
+
+The implementation must preserve existing persisted data and use explicit mapping between the UI model and these existing interfaces. Any required data-model change must also update `doc/datamodel.md`.
+
+## Errors, validation, and permissions
+
+- Enforce tournament-manager authorization for draw design and planning actions.
+- Enforce read-only access for unauthenticated users on the public draw screen.
+- Validate all allocation operations against existing day, part, timeslot, and field identifiers.
+- On planning-screen load, repair invalid persisted data: deallocate games whose field or timeslot no longer exists; deallocate duplicate-team matches on the same timeslot, retaining the match whose allocation has the earliest persisted allocation timestamp; delete `Game` records not referenced by any draw game; and clear `DrawGame.gameId` when it references no existing game.
+- Show a generic message when loading caused planning data to be modified.
+- Execute planning-data repairs server-side in a transaction before returning the planning data. The client displays a generic notification when the transaction changed data.
+
+## Compatibility and migration
+
+- Existing tournaments, draws, draw games, and games must remain readable. Making `Game.homeTeamId` and `Game.awayTeamId` optional is backward-compatible for existing records.
+- No migration is currently specified.
+- Compatibility behavior for missing or malformed `currentDrawDivisionIds`, missing schedule references, and legacy field names is to be clarified.
+
+## Technical specifications
+
+### Loading and performance
+
+Load the tournament by ID to obtain divisions, days, parts, timeslots, and fields. Load all division draws for the tournament in one query. Load all tournament games in one query. The target scale is approximately five tournament days, up to 500 matches per day, and up to 20 divisions; complete client-side loading is considered acceptable for a responsive interface.
+
+The first implementation stage persists `DivisionDraw` records in the `division-draw` collection and reads persisted `PDrawType` templates from the `draw-type` collection.
+
+The `PDrawTypeService` must use Firestore-generated identifiers for newly persisted templates. The explicit administration action is exposed through the secured `initializePDrawTypes` backend callable so that platform-admin authorization and the empty-collection check are performed atomically on the trusted side.
+
+### Implementation constraints
+
+- Implement the three screens in the order defined in Objective.
+- Use Angular components, services, and existing persistent models; separate UI state, transport, persistence, and draw logic.
+- Add concise JSDoc for new reusable contracts and functions.
+- Add tests for draw generation, active-draw uniqueness, allocation/deallocation, duplicate-team validation, repair behavior, and public rendering logic as applicable to the existing test setup.
+- Review and update documentation for every functional or technical behavior change.
+
+### Verified code observations
+
+- The repository uses `DivisionDraw` and `timeslotId`; these names are authoritative for this feature.
+- `SpreadTeamsAlgo` currently includes `Random`, `Best teams together`, `Spread best teams`, and `Manual`.
+- Group types and point-calculation requirements are defined in `persistent-data-model/src/schedule.ts`; use persisted values rather than UI-only alternatives.
+- Draw managers are selected from existing `Attendee` records and persisted as attendee IDs.
+- The current `Game` model requires schedule, division, and team fields in addition to allocation coordinates. This feature changes `homeTeamId` and `awayTeamId` to optional fields so unknown draw-game teams can be planned.
+
+## Acceptance criteria
+
+- A tournament manager can create, select, edit, save, activate, and delete division draws subject to status and active-draw rules.
+- A draw-type change updates group configuration on screen and generates the correct draw games only when saved.
+- A manager can add a step when the draw is editable; missing compatible draw types produce an explicit warning rather than a silently disabled action.
+- A manager can deactivate the selected active draw.
+- Team ordering, point calculations, group names, and applicable configuration persist and reload correctly.
+- A manager can allocate, move, swap, and deallocate matches with immediate persistence.
+- Invalid duplicate-team allocations are rejected without changing the schedule.
+- Loading repairs the invalid persisted cases listed above and informs the user when repairs occurred.
+- The planning table, filters, highlight behavior, colors, and unknown-team display match the requirements.
+- Unauthenticated users can view the active draw, while only tournament administrators can edit scores.
+- The public draw view renders supported cup, pool, and wins-based group types and propagates score updates to dependent data.
+- When `DRAW_DESIGNER` is enabled, a tournament manager sees `Draw designer` first in the `Games` menu group and it navigates to the draw designer route.
+- The implementation is covered by relevant automated tests and documentation remains accurate.
+
+### List of new tests
+
+- Draw creation naming, immediate persistence, automatic activation, and one-active-draw enforcement.
+- Draw-type initialization, retry safety, Firestore-generated identifiers, enabled defaults, and non-admin rejection.
+- Draw edit lock for `RUNNING` and `FINISHED` steps.
+- Draw-type filtering, group regeneration, and save-time draw-game creation/deletion.
+- Adding a step, default position/status, first-step team ranking, and locked-state behavior.
+- Team ordering and point-calculation persistence.
+- Allocation, move, swap, deallocation, and status transitions.
+- Duplicate-team same-timeslot rejection.
+- Planning-load repair rules and generic repair notification.
+- Highlight/filter selection and unknown-team display.
+- Public access and administrator-only score editing.
+- Group-specific rendering and score propagation for supported group types.
+- Menu visibility, label, group placement, ordering, and route for the enabled `DRAW_DESIGNER` module.
+- DrawType administration filtering, sorting, CRUD, enabled state, subgroup editing, cancel behavior, and platform-admin access.
+- DrawType administration validation, save confirmation, cancel navigation, deletion of snapshot-source templates, and disabled-template behavior.
+
+## Open decisions
+
+- Define confirmation and error dialogs.
+- Confirm supported group-type families and bracket/ranking algorithms for the first implementation stage.
+
+## Readiness
+
+Ready for implementation of the Platform DrawType administration screen.
+
+## Summary
+
+The draw designer, DrawType initialization, and Platform DrawType administration requirements are specified. The remaining open decisions concern other draw screens and do not block the administration screen.
+
+## Verified impacts
+
+| Area | Evidence | Expected impact |
+|---|---|---|
+| Persistent model | `persistent-data-model/src/schedule.ts`, `persistent-data-model/src/tournament.ts` | Reuse existing draw models and resolve terminology mismatches. |
+| Game allocation | `persistent-data-model/src/tournament.ts` | Create/update `Game` using `timeslotId`, `fieldId`, and `scheduleInfo`; define unknown-team handling. |
+| Frontend | `frontend/AGENTS.md`, existing placeholder page | Add staged Angular screens and services following project conventions. |
+| Backend/security | `functions/AGENTS.md` and existing persistence architecture | Validate manager actions and repair/write operations at the trusted boundary. |
+| Documentation | Repository rules and `doc/datamodel.md` | Update model documentation if persisted fields or semantics change. |
+
+## Remaining assumptions
+
+- Existing persistent interfaces are authoritative unless a clarified decision requires a documented model change. `Game.homeTeamId` and `Game.awayTeamId` are the documented exception and must become optional.
+- The three screens will be implemented incrementally and reviewed between stages.
+- The target data volume is small enough for complete client-side loading, subject to measurement during implementation.
+
+## Recommended implementation breakdown
+
+1. Update the persistent model and documentation for optional game team identifiers.
+2. Implement and test the draw design screen and persistence operations.
+3. Implement and test planning, allocation constraints, transactional repair, and overwrite-on-save behavior.
+4. Implement and test public draw visualization and score propagation.
+
+## Recommended checks
+
+- Type-check and build the frontend after each stage.
+- Run focused model/service/component tests and the complete test suite before advancing stages.
+- Verify Firestore/query authorization and transactional behavior for all writes.
+- Test empty, partially configured, malformed, and legacy draw data.
+- Review `/doc` and `doc/datamodel.md` after each persisted behavior change.

@@ -3,6 +3,12 @@ import { AuthGuard } from './auth-guard';
 
 export const routes: Routes = [
   {
+    path: 'admin/draw-types',
+    loadComponent: () => import('../page/admin-draw-types/admin-draw-types.page').then((m) => m.AdminDrawTypesPage),
+    data: { title: 'Draw types administration' },
+    canActivate: [AuthGuard],
+  },
+  {
     path: 'home',
     loadComponent: () => import('../page/home.page').then((m) => m.HomeComponent),
     data: { title: 'Touch Tournament Manager' },
@@ -49,8 +55,8 @@ export const routes: Routes = [
   {
     path: 'tournament/:tournamentId/draw-designer',
     loadComponent: () =>
-      import('../page/tournament-draw-designer-placeholder.page').then(
-        (m) => m.TournamentDrawDesignerPlaceholderComponent,
+      import('../page/tournament-draw-designer/tournament-draw-designer.page').then(
+        (m) => m.TournamentDrawDesignerPage,
       ),
     data: { title: 'Draw Designer' },
     canActivate: [AuthGuard],

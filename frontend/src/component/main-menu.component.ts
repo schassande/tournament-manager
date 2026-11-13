@@ -6,6 +6,7 @@ import { ToolbarModule } from 'primeng/toolbar';
 import { take } from 'rxjs';
 import { Attendee, AttendeeRole, ModulesNames, Tournament } from '@tournament-manager/persistent-data-model';
 import { AttendeeService } from '../service/attendee.service';
+import { PDrawTypeService } from '../service/division-draw.service';
 import { TitleService } from '../service/title.service';
 import { TournamentService } from '../service/tournament.service';
 import { UserService } from '../service/user.service';
@@ -30,12 +31,7 @@ interface DrawerMenuGroup {
   template: `
     <p-toolbar class="top-toolbar">
       <div class="p-toolbar-group-left">
-        <button
-          type="button"
-          class="menu-toggle"
-          aria-label="Open navigation menu"
-          (click)="drawerVisible.set(true)"
-        >
+        <button type="button" class="menu-toggle" aria-label="Open navigation menu" (click)="drawerVisible.set(true)">
           <i class="pi pi-bars" aria-hidden="true"></i>
         </button>
       </div>
@@ -51,15 +47,12 @@ interface DrawerMenuGroup {
       position="left"
       styleClass="main-menu-drawer"
       ariaLabel="Navigation menu"
-      [style]="{ width: '14rem', 
-        '--p-drawer-header-padding': '0', 
-        '--p-drawer-content-padding': '0.5rem' }"
+      [style]="{ width: '14rem', '--p-drawer-header-padding': '0', '--p-drawer-content-padding': '0.5rem' }"
       [showCloseIcon]="false"
-      [closable]="false"
-    >
+      [closable]="false">
       <div class="drawer-content">
         <nav class="drawer-navigation" aria-label="Global navigation">
-          @for (entry of globalMenuEntries; track entry.route) {
+          @for (entry of globalMenuEntries(); track entry.route) {
             <button type="button" class="drawer-entry" [routerLink]="entry.route" (click)="closeDrawer()">
               <i [class]="entry.icon" aria-hidden="true"></i>
               <span>{{ entry.label }}</span>
@@ -71,12 +64,20 @@ interface DrawerMenuGroup {
           <div class="drawer-separator" role="separator"></div>
 
           <nav class="drawer-navigation" aria-label="Current tournament navigation">
-            <button type="button" class="drawer-entry current-tournament-entry" [routerLink]="tournamentMenu()!.home.route" (click)="closeDrawer()">
+            <button
+              type="button"
+              class="drawer-entry current-tournament-entry"
+              [routerLink]="tournamentMenu()!.home.route"
+              (click)="closeDrawer()">
               <i [class]="tournamentMenu()!.home.icon" aria-hidden="true"></i>
               <span>{{ tournamentMenu()!.home.label }}</span>
             </button>
             @if (tournamentMenu()!.generalConfig) {
-              <button type="button" class="drawer-entry" [routerLink]="tournamentMenu()!.generalConfig!.route" (click)="closeDrawer()">
+              <button
+                type="button"
+                class="drawer-entry"
+                [routerLink]="tournamentMenu()!.generalConfig!.route"
+                (click)="closeDrawer()">
                 <i [class]="tournamentMenu()!.generalConfig!.icon" aria-hidden="true"></i>
                 <span>{{ tournamentMenu()!.generalConfig!.label }}</span>
               </button>
@@ -84,12 +85,27 @@ interface DrawerMenuGroup {
             @for (group of tournamentMenu()!.groups; track group.label) {
               <div class="drawer-group-heading">{{ group.label }}</div>
               @for (entry of group.entries; track entry.route) {
-                <button type="button" class="drawer-entry drawer-entry-nested" [routerLink]="entry.route" (click)="closeDrawer()">
+                <button
+                  type="button"
+                  class="drawer-entry drawer-entry-nested"
+                  [routerLink]="entry.route"
+                  (click)="closeDrawer()">
                   <i [class]="entry.icon" aria-hidden="true"></i>
                   <span>{{ entry.label }}</span>
                 </button>
               }
             }
+          </nav>
+        }
+
+        @if (isPlatformAdmin()) {
+          <div class="drawer-separator" role="separator"></div>
+          <div class="drawer-group-heading">Admin</div>
+          <nav class="drawer-navigation" aria-label="Administration navigation">
+            <button type="button" class="drawer-entry" [routerLink]="'/admin/draw-types'" (click)="closeDrawer()">
+              <i class="pi pi-sitemap" aria-hidden="true"></i>
+              <span>Draw types</span>
+            </button>
           </nav>
         }
 
@@ -106,7 +122,11 @@ interface DrawerMenuGroup {
             </span>
           </div>
           @if (userService.isConnected()) {
-            <button type="button" class="drawer-entry" [routerLink]="['/user', userService.currentUser$()?.id]" (click)="closeDrawer()">
+            <button
+              type="button"
+              class="drawer-entry"
+              [routerLink]="['/user', userService.currentUser$()?.id]"
+              (click)="closeDrawer()">
               <i class="pi pi-cog" aria-hidden="true"></i>
               <span>My Account</span>
             </button>
@@ -246,16 +266,20 @@ export class MainMenuComponent {
   readonly userService = inject(UserService);
   private readonly tournamentService = inject(TournamentService);
   private readonly attendeeService = inject(AttendeeService);
+  private readonly drawTypeService = inject(PDrawTypeService);
   readonly drawerVisible = signal(false);
+  readonly isPlatformAdmin = signal(false);
   private readonly currentAttendee = signal<Attendee | null>(null);
   readonly selectedTournament = computed(() => this.tournamentService.currentTournament());
   readonly userFirstName = computed(() => this.userService.currentUser$()?.firstName ?? 'Guest');
   readonly userLastName = computed(() => this.userService.currentUser$()?.lastName ?? '');
 
-  readonly globalMenuEntries: DrawerMenuEntry[] = [
-    { label: 'Home', icon: 'pi pi-home', route: '/home' },
-    { label: 'Tournaments', icon: 'pi pi-list', route: '/tournament' },
-  ];
+  readonly globalMenuEntries = computed<DrawerMenuEntry[]>(() => {
+    return [
+      { label: 'Home', icon: 'pi pi-home', route: '/home' },
+      { label: 'Tournaments', icon: 'pi pi-list', route: '/tournament' },
+    ];
+  });
 
   readonly tournamentMenu = computed(() => {
     const tournament = this.selectedTournament();
@@ -276,9 +300,25 @@ export class MainMenuComponent {
       const user = this.userService.currentUser$();
       this.currentAttendee.set(null);
       if (tournament && user) {
-        this.attendeeService.findByEmail(tournament.id, user.email).pipe(take(1)).subscribe(attendees => {
-          this.currentAttendee.set(attendees[0] ?? null);
-        });
+        this.attendeeService
+          .findByEmail(tournament.id, user.email)
+          .pipe(take(1))
+          .subscribe((attendees) => {
+            this.currentAttendee.set(attendees[0] ?? null);
+          });
+      }
+    });
+    effect(() => {
+      const user = this.userService.currentUser$();
+      this.isPlatformAdmin.set(false);
+      if (user) {
+        this.drawTypeService
+          .platformAdminStatus()
+          .pipe(take(1))
+          .subscribe({
+            next: (status) => this.isPlatformAdmin.set(status.isPlatformAdmin),
+            error: () => this.isPlatformAdmin.set(false),
+          });
       }
     });
   }
@@ -299,6 +339,9 @@ export class MainMenuComponent {
     const gameEntries: DrawerMenuEntry[] = [];
     const refereeEntries: DrawerMenuEntry[] = [];
     if (this.hasAnyRole('TournamentManager', 'GameAllocator', 'ResultManager')) {
+      if (this.hasRole('TournamentManager') && this.moduleEnabled(tournament, 'DRAW_DESIGNER')) {
+        gameEntries.push(this.entry('Draw designer', 'pi pi-sitemap', `/tournament/${tournament.id}/draw-designer`));
+      }
       gameEntries.push(this.entry('Games', 'pi pi-calendar', `/tournament/${tournament.id}/game`));
     }
     if (this.hasRole('TournamentManager') && this.moduleEnabled(tournament, 'FIT_IMPORT')) {
@@ -318,12 +361,14 @@ export class MainMenuComponent {
       refereeEntries.push(this.entry('Upgrades', 'pi pi-arrow-up', `/tournament/${tournament.id}/referee-upgrade`));
     }
     if (this.moduleEnabled(tournament, 'RANKING') && this.hasRefereeCoachRight()) {
-      refereeEntries.push(this.entry('Ranking', 'pi pi-sort-amount-down', `/tournament/${tournament.id}/basic-ranking`));
+      refereeEntries.push(
+        this.entry('Ranking', 'pi pi-sort-amount-down', `/tournament/${tournament.id}/basic-ranking`),
+      );
     }
     return [
-      { label: 'Game', entries: gameEntries },
+      { label: 'Games', entries: gameEntries },
       { label: 'Referee', entries: refereeEntries },
-    ].filter(group => group.entries.length > 0);
+    ].filter((group) => group.entries.length > 0);
   }
 
   private entry(label: string, icon: string, route: string): DrawerMenuEntry {
@@ -331,13 +376,15 @@ export class MainMenuComponent {
   }
 
   private hasAnyRole(...roles: AttendeeRole[]): boolean {
-    return roles.some(role => this.hasRole(role));
+    return roles.some((role) => this.hasRole(role));
   }
 
   private hasRole(role: AttendeeRole): boolean {
     const attendee = this.currentAttendee();
-    return attendee?.roles?.includes(role) === true
-      || (role === 'TournamentManager' && attendee?.isTournamentManager === true);
+    return (
+      attendee?.roles?.includes(role) === true ||
+      (role === 'TournamentManager' && attendee?.isTournamentManager === true)
+    );
   }
 
   private hasRefereeCoachRight(): boolean {

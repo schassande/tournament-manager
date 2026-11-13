@@ -26,7 +26,10 @@ export function requireDocumentId(value: unknown): asserts value is string {
 /** Reads platform authority in the same transaction as a privileged mutation. */
 export async function platformAdmin(tx: admin.firestore.Transaction, identity: Identity): Promise<boolean> {
   if (identity.email.includes('/')) return false;
-  return (await tx.get(admin.firestore().collection('PlaformAdmin').doc(identity.email))).exists;
+  const db = admin.firestore();
+  const platformAdminSnapshot = await tx.get(db.collection('platform-admin').doc(identity.email));
+  const legacyPlatformAdminSnapshot = await tx.get(db.collection('PlaformAdmin').doc(identity.email));
+  return platformAdminSnapshot.exists || legacyPlatformAdminSnapshot.exists;
 }
 
 /** Resolves the current actor without relying on a mutable or missing Person link. */

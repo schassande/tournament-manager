@@ -39,3 +39,5 @@ export { deleteTournament } from './tournament/delete-tournament';
 export { removeRankingReferees } from './referee-ranking/remove-ranking-referees';
 export { repairRefereeRanking } from './referee-ranking/repair-referee-ranking';
 export { deleteRefereeRanking } from './referee-ranking/delete-referee-ranking';
+export { initializePDrawTypes } from './draw-type/initialize-p-draw-types';
+export { getPlatformAdminStatus } from './draw-type/platform-admin-status';
