@@ -191,7 +191,7 @@ Each group-specific component uses a shared match component that displays all ma
 
 ## User interface and workflow
 
-The workflow is: select division, select or create a draw, configure and save the draw, activate exactly one draw for the division, then allocate its draw games in the planning screen. The public screen reads only the active draw. Informational success messages in the Draw Designer, such as `Draw saved.`, disappear automatically after three seconds.
+The workflow is: select division, select or create a draw, configure and save the draw, activate exactly one draw for the division, then allocate its draw games in the planning screen. The public screen reads only the active draw. Informational success messages in the Draw Designer and Draw Planning, such as `Draw saved.` or `Match allocated.`, disappear automatically after three seconds. Error messages remain visible until the page clears or replaces them.
 
 The exact confirmation dialogs, empty states, loading indicators, and error presentation are to be clarified. Concurrent saves overwrite the persisted version with the current user's submitted data.
 

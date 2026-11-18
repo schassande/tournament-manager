@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import {
@@ -43,6 +43,7 @@ interface HighlightOption {
 
 /** Step states in which an active division draw can be planned or run. */
 const ACTIVE_DRAW_STEP_STATUSES: StepStatus[] = ['DRAWN', 'PLANIFYING', 'PLANIFIED', 'RUNNING', 'FINISHED'];
+const INFO_MESSAGE_DURATION_MS = 3000;
 
 /** Allocates draw games to tournament timeslots and fields. */
 @Component({
@@ -51,11 +52,12 @@ const ACTIVE_DRAW_STEP_STATUSES: StepStatus[] = ['DRAWN', 'PLANIFYING', 'PLANIFI
   templateUrl: './tournament-draw-planning.page.html',
   styleUrl: './tournament-draw-planning.page.css',
 })
-export class TournamentDrawPlanningPage implements OnInit {
+export class TournamentDrawPlanningPage implements OnDestroy, OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly tournamentService = inject(TournamentService);
   private readonly drawService = inject(DivisionDrawService);
   private readonly gameService = inject(GameService);
+  private messageTimeout: number | undefined;
 
   readonly tournament = signal<Tournament | null>(null);
   readonly draws = signal<DivisionDraw[]>([]);
@@ -70,6 +72,11 @@ export class TournamentDrawPlanningPage implements OnInit {
   readonly error = signal('');
   readonly dragged = signal<PlanningDrawGame | undefined>(undefined);
   readonly planningCellWidth = '180px';
+
+  /** Clears the pending informational-message timeout when the page is destroyed. */
+  ngOnDestroy(): void {
+    this.clearMessageTimeout();
+  }
 
   /** Loads the tournament schedule, draws, and games used by the planner. */
   ngOnInit(): void {
@@ -293,7 +300,7 @@ export class TournamentDrawPlanningPage implements OnInit {
       .then(async () => {
         this.games.update((games) => games.map((candidate) => (candidate.id === game.id ? updatedGame : candidate)));
         await this.persistLifecycleStatuses([updatedDraw], this.games());
-        this.message.set('Match deallocated.');
+        this.showMessage('Match deallocated.');
       })
       .catch((cause: unknown) => this.reportError('Unable to deallocate match.', cause));
   }
@@ -575,7 +582,7 @@ export class TournamentDrawPlanningPage implements OnInit {
         if (targetDraw) affectedDraws.push(targetDraw);
       }
       await this.persistLifecycleStatuses(affectedDraws, updatedGames);
-      this.message.set('Match allocated.');
+      this.showMessage('Match allocated.');
       this.error.set('');
     } catch (cause: unknown) {
       this.reportError('Unable to allocate match.', cause);
@@ -677,7 +684,7 @@ export class TournamentDrawPlanningPage implements OnInit {
       void Promise.all(clearedGames.map((game) => firstValueFrom(this.gameService.save(game))));
     }
     void this.persistLifecycleStatuses(draws, games);
-    if (repaired) this.message.set('Some invalid planning data was repaired while loading.');
+    if (repaired) this.showMessage('Some invalid planning data was repaired while loading.');
   }
 
   /** Recomputes and persists lifecycle statuses for the supplied draws. */
@@ -703,5 +710,23 @@ export class TournamentDrawPlanningPage implements OnInit {
   private reportError(message: string, cause: unknown): void {
     console.error(message, cause);
     this.error.set(message);
+  }
+
+  /** Displays an informational message and hides it automatically after three seconds. */
+  private showMessage(message: string): void {
+    this.clearMessageTimeout();
+    this.message.set(message);
+    this.messageTimeout = window.setTimeout(() => {
+      this.message.set('');
+      this.messageTimeout = undefined;
+    }, INFO_MESSAGE_DURATION_MS);
+  }
+
+  /** Cancels the pending informational-message timeout. */
+  private clearMessageTimeout(): void {
+    if (this.messageTimeout !== undefined) {
+      window.clearTimeout(this.messageTimeout);
+      this.messageTimeout = undefined;
+    }
   }
 }
