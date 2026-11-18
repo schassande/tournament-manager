@@ -1,0 +1,142 @@
+@if (loading()) {
+<p class="loading">Loading draw planning…</p>
+} @else {
+<main class="draw-planning" [style.--planning-cell-width]="planningCellWidth">
+  <section class="toolbar" aria-label="Draw match planning controls">
+    <label
+      >Day
+      <p-select
+        [options]="dayOptions()"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="selectedDayId()"
+        (ngModelChange)="selectedDayId.set($event)"
+        ariaLabel="Day" />
+    </label>
+    <label
+      >Highlight
+      <p-select
+        [options]="highlights()"
+        optionLabel="label"
+        optionValue="key"
+        [ngModel]="selectedHighlightKey()"
+        (ngModelChange)="selectedHighlightKey.set($event)"
+        ariaLabel="Highlight" />
+    </label>
+    <div class="allocation-summary">
+      <span class="allocation-progress">{{ allocationPercent() }}% allocated</span>
+      @if (missingActiveDrawDivisionNames().length) {
+      <span class="missing-draw-warning" role="alert">
+        Missing division: {{ missingActiveDrawDivisionNames().join(', ') }}
+      </span>
+      }
+    </div>
+  </section>
+
+  @if (error()) {
+  <p-message severity="error" [text]="error()" />
+  } @if (message()) {
+  <p-message severity="info" [text]="message()" />
+  }
+
+  <section class="planning-layout">
+    <aside class="selection-panel" aria-label="Unallocated draw matches">
+      <h2>Matches to plan</h2>
+      <label
+        >Division
+        <p-select
+          [options]="divisions()"
+          optionLabel="shortName"
+          optionValue="id"
+          [ngModel]="selectedDivisionId()"
+          (ngModelChange)="divisionChanged($event)"
+          ariaLabel="Division" />
+      </label>
+      <label
+        >Step
+        <p-select
+          [options]="stepOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="selectedStepId()"
+          (ngModelChange)="stepChanged($event)"
+          ariaLabel="Step" />
+      </label>
+      <label
+        >Group
+        <p-select
+          [options]="groupOptions()"
+          optionLabel="label"
+          optionValue="value"
+          [ngModel]="selectedGroupId()"
+          (ngModelChange)="selectedGroupId.set($event)"
+          ariaLabel="Group" />
+      </label>
+
+      <div class="unallocated-list">
+        @for (item of unallocatedDrawGames(); track item.drawGame.id) {
+        <article class="match-card" draggable="true" (dragstart)="startDrag(item)" (dragend)="endDrag()">
+          <div class="match-heading">{{ matchLine(item) }}</div>
+          <div>
+            <div>{{ teamLabel(item, 'homeTeam') }}</div>
+            <div>{{ teamLabel(item, 'awayTeam') }}</div>
+          </div>
+        </article>
+        } @empty {
+        <p class="empty">No unallocated matches.</p>
+        }
+      </div>
+    </aside>
+
+    <div class="planning-table-wrapper">
+      <table class="planning-table">
+        <thead>
+          <tr>
+            <th class="timeslot-header">Timeslot</th>
+            @for (field of fields(); track field.id) {
+            <th class="field-header">{{ field.name }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (timeslot of timeslots(); track timeslot.id) {
+          <tr>
+            <th class="timeslot-header">{{ timeslot.start * 1000 | date: 'HH:mm' }}</th>
+            @for (field of fields(); track field.id) { @let planningCell = cell(timeslot.id, field.id);
+            <td
+              class="planning-cell"
+              [class.occupied]="planningCell.drawGame"
+              [class.highlighted]="isHighlighted(planningCell.drawGame)"
+              [style.--division-color]="divisionColor(planningCell.drawGame)"
+              (dragover)="$event.preventDefault()"
+              (drop)="drop(timeslot.id, field.id)">
+              @if (planningCell.drawGame) {
+              <article
+                class="cell-match"
+                draggable="true"
+                (dragstart)="startDrag(planningCell.drawGame!)"
+                (dragend)="endDrag()">
+                <button
+                  type="button"
+                  class="deallocate"
+                  aria-label="Deallocate match"
+                  (click)="deallocate(planningCell.drawGame); $event.stopPropagation()">
+                  ×
+                </button>
+                <div class="match-heading">{{ matchLine(planningCell.drawGame) }}</div>
+                <div>
+                  <div>{{ teamLabel(planningCell.drawGame, 'homeTeam') }}</div>
+                  <div>{{ teamLabel(planningCell.drawGame, 'awayTeam') }}</div>
+                </div>
+              </article>
+              }
+            </td>
+            }
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+}

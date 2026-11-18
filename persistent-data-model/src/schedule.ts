@@ -42,30 +42,36 @@ export interface PointCalculation extends WithId {
  */
 export interface Step extends WithId {
   /** Status of the Step */
-  status: 'DRAFT' | 'DRAWED' | 'PLANIFIED' | 'RUNNING' | 'FINISHED' | 'CANCELED';
+  status: StepStatus;
   /** Position of the step in the Draw (0 based value) */
   position: number;
   /** Name of the step */
   name: string;
   /** identifier of the DrawLib describing the structure of the draw for this step */
   drawType: DrawType;
-  /** Define a way the team from the previous step are splited over the groups of the step */
+  /** Define a way the teams from the previous step are splited over the groups of the step */
   spreadTeamsAlgo: SpreadTeamsAlgo;
   /** Sorted list of the teams as input of the Step. */
-  inputTeamIds: RankedTeam[];
+  inputTeams: TeamReference[];
   /** The list of the groups in this step */
   groups: Group[];
   /** Sorted list of the teams as output of the Step. */
-  outputTeamIds: RankedTeam[];
+  outputTeams: TeamReference[];
+  /** Define the way the ouput teams are ranked  */
+  ouputTeamRankingStrategy?: OuputTeamRankingStrategy;
 }
 
-/** Define an input or an output team of a step */
-export interface RankedTeam {
-  /** Identifier of the team */
-  teamId: string;
-  /** Position/rank of the team */
-  rank: number;
-}
+/** 
+ * Define the way the ouput teams are ranked in the step. 
+ * Assumption: Each group produces a ranked list of its teams.
+ */
+export type OuputTeamRankingStrategy = 
+  'GROUP_ORDER' // output teams list is built by the ranking of the first group, then the ranking of the second group
+  | 'BEST_TOGETHER' // output teams list is built by taking the first of each group firstly, then second of each group...
+  ;
+
+/** Lifecycle status of a competition step. */
+export type StepStatus = 'DRAFT' | 'DRAWN' | 'PLANIFYING' | 'PLANIFIED' | 'RUNNING' | 'FINISHED' | 'CANCELED';
 
 /** 
  * Define a group of teams and games in a step. It can 
@@ -81,7 +87,7 @@ export interface Group extends WithId {
   /** List of the game definition */
   games: DrawGame[];
   /** List of the team sorted by the rank */
-  teams: RankedTeam[];
+  teams: TeamReference[];
   /** Additionnal data specific to the GroupType. It can contains configuration items and Running data. */
   specificData: SpecificData;
 }
@@ -103,6 +109,9 @@ export interface PointCalculationConfig extends SpecificDataForConfig {
 export interface SpecificDataPool extends PointCalculationConfig, SpecificDataForRun {
   /** Data structure storing the points for each team. */
   teamsPoints: TeamPoint[];
+}
+export interface SpecificDataCup extends SpecificDataForRun {
+  ouputTeams: TeamReference[];
 }
 /** 
  * Define a structure for storing data about a team. 
@@ -156,12 +165,19 @@ export interface DrawGame extends WithId {
 /** Define a Team involved in a DrawGame. This teams could be unknown from the begining because 
  * it could depend on the result of a game. */
 export interface TeamReference {
-  teamSelectorType:'RANK' | 'WINNER_OF' | 'LOSER_OF' | 'MANUAL';
+  teamSelectorType:'RANK_IN_STEP' | 'RANK_IN_GROUP' | 'WINNER_OF' | 'LOSER_OF' | 'MANUAL' | 'TEAM_ID';
   /** used when teamSelectorType is 'WINNER_OF' | 'LOER_OF' */
   drawGameId?: string;
-  /** used when teamSelectorType is 'RANK' */
+  /** used when teamSelectorType is 'RANK_IN_GROUP' */
+  groupId?: string;
+  /** used when teamSelectorType is 'RANK_IN_STEP' */
+  stepId?: string;
+  /** used when teamSelectorType is 'RANK_IN_STEP' or 'RANK_IN_GROUP' */
   rank?: number;
-  /** used when teamSelectorType is 'MANUAL' or when the team is known during the competition. */
+  /** used 
+   *  - when the team is known during the competition. 
+   *  - when teamSelectorType is 'MANUAL' or 'TEAM_ID'
+   */
   teamId?: string;
 }
 
@@ -231,7 +247,7 @@ export type GroupType = 'NONE'
   | 'CUP32_RK2'  | 'CUP32_RK4'  | 'CUP32_RK8' 
   | 'CUP64_RK2'  | 'CUP64_RK4'  | 'CUP64_RK8' 
   | 'CUP128_RK2' | 'CUP128_RK4' | 'CUP128_RK8'
-  | 'POOL_3';
+  ;
 
 /** Default DrawType to make persistent. */
 export const default_drawlibs: DrawType[] = [
@@ -499,18 +515,207 @@ export const GamePoolOptions: GamePool[][] = [
     { gameNb: 11, round: 2, teamHome: 1, teamAway: 4, isReturn: true },
     { gameNb: 12, round: 2, teamHome: 2, teamAway: 3, isReturn: true },
   ],
-  [ // TODO 5 teams
+  [ // 5 teams
+    { gameNb: 1, round: 1, teamHome: 1, teamAway: 2, isReturn: false },
+    { gameNb: 2, round: 1, teamHome: 3, teamAway: 4, isReturn: false },
+    { gameNb: 3, round: 2, teamHome: 1, teamAway: 5, isReturn: false },
+    { gameNb: 4, round: 2, teamHome: 2, teamAway: 4, isReturn: false },
+    { gameNb: 5, round: 3, teamHome: 3, teamAway: 5, isReturn: false },
+    { gameNb: 6, round: 3, teamHome: 1, teamAway: 4, isReturn: false },
+    { gameNb: 7, round: 4, teamHome: 2, teamAway: 3, isReturn: false },
+    { gameNb: 8, round: 4, teamHome: 4, teamAway: 5, isReturn: false },
+    { gameNb: 9, round: 5, teamHome: 1, teamAway: 3, isReturn: false },
+    { gameNb: 10, round: 5, teamHome: 2, teamAway: 5, isReturn: false },
+
+    { gameNb: 11, round: 6, teamHome: 2, teamAway: 1, isReturn: true },
+    { gameNb: 12, round: 6, teamHome: 4, teamAway: 3, isReturn: true },
+    { gameNb: 13, round: 7, teamHome: 5, teamAway: 1, isReturn: true },
+    { gameNb: 14, round: 7, teamHome: 4, teamAway: 2, isReturn: true },
+    { gameNb: 15, round: 8, teamHome: 5, teamAway: 3, isReturn: true },
+    { gameNb: 16, round: 8, teamHome: 4, teamAway: 1, isReturn: true },
+    { gameNb: 17, round: 9, teamHome: 3, teamAway: 2, isReturn: true },
+    { gameNb: 18, round: 9, teamHome: 5, teamAway: 4, isReturn: true },
+    { gameNb: 19, round: 10, teamHome: 3, teamAway: 1, isReturn: true },
+    { gameNb: 20, round: 10, teamHome: 5, teamAway: 2, isReturn: true },
   ],
   [ // TODO 6 teams
+    { gameNb: 1, round: 1, teamHome: 1, teamAway: 2, isReturn: false },
+    { gameNb: 2, round: 1, teamHome: 3, teamAway: 6, isReturn: false },
+    { gameNb: 3, round: 1, teamHome: 4, teamAway: 5, isReturn: false },
+
+    { gameNb: 4, round: 2, teamHome: 2, teamAway: 6, isReturn: false },
+    { gameNb: 5, round: 2, teamHome: 1, teamAway: 4, isReturn: false },
+    { gameNb: 6, round: 2, teamHome: 5, teamAway: 6, isReturn: false },
+
+    { gameNb: 7, round: 3, teamHome: 2, teamAway: 3, isReturn: false },
+    { gameNb: 8, round: 3, teamHome: 1, teamAway: 5, isReturn: false },
+    { gameNb: 9, round: 3, teamHome: 4, teamAway: 6, isReturn: false },
+
+    { gameNb: 10, round: 4, teamHome: 2, teamAway: 5, isReturn: false },
+    { gameNb: 11, round: 4, teamHome: 1, teamAway: 3, isReturn: false },
+    { gameNb: 12, round: 4, teamHome: 2, teamAway: 4, isReturn: false },
+
+    { gameNb: 13, round: 5, teamHome: 3, teamAway: 5, isReturn: false },
+    { gameNb: 14, round: 5, teamHome: 1, teamAway: 6, isReturn: false },
+    { gameNb: 15, round: 5, teamHome: 3, teamAway: 4, isReturn: false },
+
+
+    { gameNb: 16, round: 1, teamHome: 2, teamAway: 1, isReturn: true },
+    { gameNb: 17, round: 1, teamHome: 6, teamAway: 3, isReturn: true },
+    { gameNb: 18, round: 1, teamHome: 5, teamAway: 4, isReturn: true },
+    
+    { gameNb: 19, round: 2, teamHome: 6, teamAway: 2, isReturn: true },
+    { gameNb: 20, round: 2, teamHome: 4, teamAway: 1, isReturn: true },
+    { gameNb: 21, round: 2, teamHome: 6, teamAway: 5, isReturn: true },
+    
+    { gameNb: 22, round: 3, teamHome: 3, teamAway: 2, isReturn: true },
+    { gameNb: 23, round: 3, teamHome: 5, teamAway: 1, isReturn: true },
+    { gameNb: 24, round: 3, teamHome: 6, teamAway: 4, isReturn: true },
+    
+    { gameNb: 25, round: 4, teamHome: 5, teamAway: 2, isReturn: true },
+    { gameNb: 26, round: 4, teamHome: 3, teamAway: 1, isReturn: true },
+    { gameNb: 27, round: 4, teamHome: 4, teamAway: 2, isReturn: true },
+    
+    { gameNb: 28, round: 5, teamHome: 5, teamAway: 3, isReturn: true },
+    { gameNb: 29, round: 5, teamHome: 6, teamAway: 1, isReturn: true },
+    { gameNb: 30, round: 5, teamHome: 4, teamAway: 3, isReturn: true },
   ],
-  [ // TODO 7 teams
+
+  [ // 7 teams
+    { gameNb: 1, round: 1, teamHome: 5, teamAway: 7, isReturn: false },
+    { gameNb: 2, round: 1, teamHome: 1, teamAway: 2, isReturn: false },
+    { gameNb: 3, round: 1, teamHome: 3, teamAway: 4, isReturn: false },
+
+    { gameNb: 4, round: 2, teamHome: 6, teamAway: 5, isReturn: false },
+    { gameNb: 5, round: 2, teamHome: 7, teamAway: 1, isReturn: false },
+    { gameNb: 6, round: 2, teamHome: 2, teamAway: 3, isReturn: false },
+
+    { gameNb: 7, round: 3, teamHome: 4, teamAway: 5, isReturn: false },
+    { gameNb: 8, round: 3, teamHome: 1, teamAway: 3, isReturn: false },
+    { gameNb: 9, round: 3, teamHome: 6, teamAway: 2, isReturn: false },
+
+    { gameNb: 10, round: 4, teamHome: 4, teamAway: 7, isReturn: false },
+    { gameNb: 11, round: 4, teamHome: 1, teamAway: 5, isReturn: false },
+    { gameNb: 12, round: 4, teamHome: 6, teamAway: 3, isReturn: false },
+
+    { gameNb: 13, round: 5, teamHome: 2, teamAway: 7, isReturn: false },
+    { gameNb: 14, round: 5, teamHome: 4, teamAway: 6, isReturn: false },
+    { gameNb: 15, round: 5, teamHome: 2, teamAway: 5, isReturn: false },
+
+    { gameNb: 16, round: 6, teamHome: 3, teamAway: 7, isReturn: false },
+    { gameNb: 17, round: 6, teamHome: 1, teamAway: 6, isReturn: false },
+    { gameNb: 18, round: 6, teamHome: 2, teamAway: 4, isReturn: false },
+
+    { gameNb: 19, round: 7, teamHome: 3, teamAway: 5, isReturn: false },
+    { gameNb: 20, round: 7, teamHome: 6, teamAway: 7, isReturn: false },
+    { gameNb: 21, round: 7, teamHome: 1, teamAway: 4, isReturn: false },
+
+
+    { gameNb: 22, round: 8, teamHome: 7, teamAway: 5, isReturn: true },
+    { gameNb: 23, round: 8, teamHome: 2, teamAway: 1, isReturn: true },
+    { gameNb: 24, round: 8, teamHome: 4, teamAway: 3, isReturn: true },
+
+    { gameNb: 25, round: 9, teamHome: 5, teamAway: 6, isReturn: true },
+    { gameNb: 26, round: 9, teamHome: 1, teamAway: 7, isReturn: true },
+    { gameNb: 27, round: 9, teamHome: 3, teamAway: 2, isReturn: true },
+
+    { gameNb: 28, round: 10, teamHome: 5, teamAway: 4, isReturn: true },
+    { gameNb: 29, round: 10, teamHome: 3, teamAway: 1, isReturn: true },
+    { gameNb: 30, round: 10, teamHome: 2, teamAway: 6, isReturn: true },
+
+    { gameNb: 31, round: 11, teamHome: 7, teamAway: 4, isReturn: true },
+    { gameNb: 32, round: 11, teamHome: 5, teamAway: 1, isReturn: true },
+    { gameNb: 33, round: 11, teamHome: 3, teamAway: 6, isReturn: true },
+
+    { gameNb: 34, round: 12, teamHome: 7, teamAway: 2, isReturn: true },
+    { gameNb: 35, round: 12, teamHome: 6, teamAway: 4, isReturn: true },
+    { gameNb: 36, round: 12, teamHome: 5, teamAway: 2, isReturn: true },
+
+    { gameNb: 37, round: 13, teamHome: 7, teamAway: 3, isReturn: true },
+    { gameNb: 38, round: 13, teamHome: 6, teamAway: 1, isReturn: true },
+    { gameNb: 39, round: 13, teamHome: 4, teamAway: 2, isReturn: true },
+
+    { gameNb: 40, round: 14, teamHome: 5, teamAway: 3, isReturn: true },
+    { gameNb: 41, round: 14, teamHome: 7, teamAway: 6, isReturn: true },
+    { gameNb: 42, round: 14, teamHome: 4, teamAway: 1, isReturn: true },
   ],
-  [ // TODO 8 teams
+
+  [ // 8 teams
+    { gameNb: 1,  round: 1, teamHome: 1, teamAway: 2, isReturn: false },
+    { gameNb: 2,  round: 1, teamHome: 3, teamAway: 4, isReturn: false },
+    { gameNb: 3,  round: 1, teamHome: 5, teamAway: 6, isReturn: false },
+    { gameNb: 4,  round: 1, teamHome: 7, teamAway: 8, isReturn: false },
+ 
+    { gameNb: 5,  round: 2, teamHome: 1, teamAway: 3, isReturn: false },
+    { gameNb: 6,  round: 2, teamHome: 2, teamAway: 4, isReturn: false },
+    { gameNb: 7,  round: 2, teamHome: 5, teamAway: 7, isReturn: false },
+    { gameNb: 8,  round: 2, teamHome: 6, teamAway: 8, isReturn: false },
+
+    { gameNb: 9,  round: 3, teamHome: 1, teamAway: 4, isReturn: false },
+    { gameNb: 10, round: 3, teamHome: 2, teamAway: 3, isReturn: false },
+    { gameNb: 11, round: 3, teamHome: 6, teamAway: 7, isReturn: false },
+    { gameNb: 12, round: 3, teamHome: 5, teamAway: 8, isReturn: false },
+
+    { gameNb: 13, round: 4, teamHome: 1, teamAway: 5, isReturn: false },
+    { gameNb: 14, round: 4, teamHome: 2, teamAway: 6, isReturn: false },
+    { gameNb: 15, round: 4, teamHome: 3, teamAway: 8, isReturn: false },
+    { gameNb: 16, round: 4, teamHome: 4, teamAway: 7, isReturn: false },
+
+    { gameNb: 17, round: 5, teamHome: 1, teamAway: 6, isReturn: false },
+    { gameNb: 18, round: 5, teamHome: 2, teamAway: 5, isReturn: false },
+    { gameNb: 19, round: 5, teamHome: 4, teamAway: 8, isReturn: false },
+    { gameNb: 20, round: 5, teamHome: 3, teamAway: 7, isReturn: false },
+
+    { gameNb: 21, round: 6, teamHome: 1, teamAway: 7, isReturn: false },
+    { gameNb: 22, round: 6, teamHome: 2, teamAway: 8, isReturn: false },
+    { gameNb: 23, round: 6, teamHome: 3, teamAway: 5, isReturn: false },
+    { gameNb: 24, round: 6, teamHome: 4, teamAway: 6, isReturn: false },
+
+    { gameNb: 25, round: 7, teamHome: 1, teamAway: 8, isReturn: false },
+    { gameNb: 26, round: 7, teamHome: 2, teamAway: 7, isReturn: false },
+    { gameNb: 27, round: 7, teamHome: 4, teamAway: 5, isReturn: false },
+    { gameNb: 28, round: 7, teamHome: 3, teamAway: 6, isReturn: false },
+
+
+    { gameNb: 29, round: 8, teamHome: 2, teamAway: 1, isReturn: true },
+    { gameNb: 30, round: 8, teamHome: 4, teamAway: 3, isReturn: true },
+    { gameNb: 31, round: 8, teamHome: 6, teamAway: 5, isReturn: true },
+    { gameNb: 32, round: 8, teamHome: 8, teamAway: 7, isReturn: true },
+ 
+    { gameNb: 33, round: 9, teamHome: 3, teamAway: 1, isReturn: true },
+    { gameNb: 34, round: 9, teamHome: 4, teamAway: 2, isReturn: true },
+    { gameNb: 35, round: 9, teamHome: 7, teamAway: 5, isReturn: true },
+    { gameNb: 36, round: 9, teamHome: 8, teamAway: 6, isReturn: true },
+
+    { gameNb: 37, round: 10, teamHome: 4, teamAway: 1, isReturn: true },
+    { gameNb: 38, round: 10, teamHome: 3, teamAway: 2, isReturn: true },
+    { gameNb: 39, round: 10, teamHome: 7, teamAway: 6, isReturn: true },
+    { gameNb: 40, round: 10, teamHome: 8, teamAway: 5, isReturn: true },
+
+    { gameNb: 41, round: 11, teamHome: 5, teamAway: 1, isReturn: true },
+    { gameNb: 42, round: 11, teamHome: 6, teamAway: 2, isReturn: true },
+    { gameNb: 43, round: 11, teamHome: 8, teamAway: 3, isReturn: true },
+    { gameNb: 44, round: 11, teamHome: 7, teamAway: 4, isReturn: true },
+
+    { gameNb: 45, round: 12, teamHome: 6, teamAway: 1, isReturn: true },
+    { gameNb: 46, round: 12, teamHome: 5, teamAway: 2, isReturn: true },
+    { gameNb: 47, round: 12, teamHome: 8, teamAway: 4, isReturn: true },
+    { gameNb: 48, round: 12, teamHome: 7, teamAway: 3, isReturn: true },
+
+    { gameNb: 49, round: 13, teamHome: 7, teamAway: 1, isReturn: true },
+    { gameNb: 50, round: 13, teamHome: 8, teamAway: 2, isReturn: true },
+    { gameNb: 51, round: 13, teamHome: 5, teamAway: 3, isReturn: true },
+    { gameNb: 52, round: 13, teamHome: 6, teamAway: 4, isReturn: true },
+
+    { gameNb: 53, round: 14, teamHome: 8, teamAway: 1, isReturn: true },
+    { gameNb: 54, round: 14, teamHome: 7, teamAway: 2, isReturn: true },
+    { gameNb: 55, round: 14, teamHome: 5, teamAway: 4, isReturn: true },
+    { gameNb: 56, round: 14, teamHome: 6, teamAway: 3, isReturn: true },
   ],
 ];
 
 /** Define a game in pool draw. */
-interface GamePool {
+export interface GamePool {
   /** Number of the game */
   gameNb: number;
   /** Round of the game */

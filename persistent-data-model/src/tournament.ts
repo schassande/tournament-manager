@@ -190,8 +190,10 @@ export interface Game extends PersistentObject {
   dayId: string; // unique identifier of the day
   timeslotId: string; // unique identifier within the day
   fieldId: string; // unique identifier of the field
-  homeTeamId: string; // unique identifier of the home team
-  awayTeamId: string; // unique identifier of the away team
+  /** Optional while a draw match has not resolved its home team. */
+  homeTeamId?: string; // unique identifier of the home team
+  /** Optional while a draw match has not resolved its away team. */
+  awayTeamId?: string; // unique identifier of the away team
   /** Displayed game type, for example Pool or a knockout round. */
   what: string;
   /** Whether a result is required for this game; absent when unspecified. */

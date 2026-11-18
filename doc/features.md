@@ -90,6 +90,8 @@ Chaque tournoi peut contenir plusieurs divisions avec :
 - une couleur d'affichage
 - une liste d'equipes
 
+Les noms complet et court des equipes sont editables depuis la configuration du tournoi et sont sauvegardes automatiquement.
+
 ## Construire le programme des matchs
 
 L'utilisateur peut planifier les matchs du tournoi dans une grille organisee par jour et par partie de journee.
@@ -109,6 +111,16 @@ L'application propose aussi quelques aides pratiques :
 
 - reutilisation intelligente du dernier slot ou terrain lors de l'ajout d'un match
 - tri automatique par horaire puis par terrain
+
+Dans la page de planification du draw, les filtres Division, Step et Group du
+panneau gauche filtrent uniquement la liste des matchs restant a planifier.
+Le filtre Division ne propose que les divisions possedant un draw actif dans un
+etat permettant la planification ou l'execution.
+La grille des matchs deja alloues reste complete et independante de ces filtres.
+La page avertit aussi lorsque certaines divisions n'ont pas de `DivisionDraw`
+actif dans un etat permettant la planification ou l'execution, en listant leur
+short name. Le pourcentage d'allocation est calcule uniquement sur les matchs
+des divisions ayant un draw actif dans l'un de ces etats.
 
 ## Gerer les arbitres et les coaches d'arbitres
 

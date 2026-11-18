@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -11,18 +11,23 @@ import {
   Group,
   PointCalculation,
   PDrawType,
-  RankedTeam,
   Step,
+  OuputTeamRankingStrategy,
   SpreadTeamsAlgo,
+  TeamReference,
 } from '@tournament-manager/persistent-data-model';
+import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { SelectModule } from 'primeng/select';
+import { TooltipModule } from 'primeng/tooltip';
 import { forkJoin, of, switchMap, take } from 'rxjs';
 import { AttendeeService } from '../../service/attendee.service';
 import { DivisionDrawService, PDrawTypeService } from '../../service/division-draw.service';
+import { GameService } from '../../service/game.service';
 import { TournamentService } from '../../service/tournament.service';
 
 const SPREAD_TEAMS_ALGOS: { label: string; value: SpreadTeamsAlgo }[] = [
@@ -32,6 +37,13 @@ const SPREAD_TEAMS_ALGOS: { label: string; value: SpreadTeamsAlgo }[] = [
   { label: 'Manual', value: ' Manual' },
 ];
 
+const OUTPUT_TEAM_RANKING_STRATEGIES: { label: string; value: OuputTeamRankingStrategy }[] = [
+  { label: 'Group order', value: 'GROUP_ORDER' },
+  { label: 'Best teams together', value: 'BEST_TOGETHER' },
+];
+
+const SUCCESS_MESSAGE_DURATION_MS = 3000;
+
 /** Edits persisted competition structure for one tournament division. */
 @Component({
   selector: 'app-tournament-draw-designer',
@@ -39,22 +51,26 @@ const SPREAD_TEAMS_ALGOS: { label: string; value: SpreadTeamsAlgo }[] = [
     CommonModule,
     FormsModule,
     ButtonModule,
+    ConfirmDialogModule,
     InputNumberModule,
     InputTextModule,
     MessageModule,
     SelectModule,
+    TooltipModule,
   ],
   templateUrl: './tournament-draw-designer.page.html',
   styleUrl: './tournament-draw-designer.page.css',
 })
-export class TournamentDrawDesignerPage implements OnInit {
+export class TournamentDrawDesignerPage implements OnDestroy, OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly tournamentService = inject(TournamentService);
   private readonly drawService = inject(DivisionDrawService);
+  private readonly gameService = inject(GameService);
   private readonly drawTypeService = inject(PDrawTypeService);
   private readonly attendeeService = inject(AttendeeService);
-  private saveMessageTimeout: number | undefined;
+  private readonly confirmationService = inject(ConfirmationService);
+  private messageTimeout: number | undefined;
 
   readonly tournament = signal<import('@tournament-manager/persistent-data-model').Tournament | null>(null);
   readonly draws = signal<DivisionDraw[]>([]);
@@ -69,7 +85,13 @@ export class TournamentDrawDesignerPage implements OnInit {
   readonly error = signal('');
   readonly loadError = signal('');
   readonly spreadTeamsAlgos = SPREAD_TEAMS_ALGOS;
+  readonly outputTeamRankingStrategies = OUTPUT_TEAM_RANKING_STRATEGIES;
   managerEmail = '';
+
+  /** Clears the pending success-message timeout when the page is destroyed. */
+  ngOnDestroy(): void {
+    this.clearMessageTimeout();
+  }
 
   /** Loads the tournament, draw definitions, templates, and manager choices. */
   ngOnInit(): void {
@@ -170,7 +192,7 @@ export class TournamentDrawDesignerPage implements OnInit {
         this.draws.set(draws);
         this.selectedDrawId.set(saved.id);
         if (this.divisionDraws(division.id).length === 1) this.activateDraw(saved);
-        this.message.set('Draw created.');
+        this.showMessage('Draw created.');
       },
       error: (err: unknown) => this.reportError('Unable to create draw.', err),
     });
@@ -188,7 +210,7 @@ export class TournamentDrawDesignerPage implements OnInit {
     this.tournamentService.save(tournament).subscribe({
       next: (saved) => {
         this.tournament.set(saved);
-        this.message.set('Draw activated.');
+        this.showMessage('Draw activated.');
       },
       error: (err: unknown) => this.reportError('Unable to activate draw.', err),
     });
@@ -202,7 +224,7 @@ export class TournamentDrawDesignerPage implements OnInit {
     this.tournamentService.save(tournament).subscribe({
       next: (saved) => {
         this.tournament.set(saved);
-        this.message.set('Draw deactivated.');
+        this.showMessage('Draw deactivated.');
       },
       error: (err: unknown) => this.reportError('Unable to deactivate draw.', err),
     });
@@ -225,16 +247,118 @@ export class TournamentDrawDesignerPage implements OnInit {
         const draws = this.draws().filter((item) => item.id !== draw.id);
         this.draws.set(draws);
         this.selectFirstDraw(this.selectedDivisionId(), draws);
-        this.message.set('Draw deleted.');
+        this.showMessage('Draw deleted.');
       })
       .catch((err: unknown) => this.reportError('Unable to delete draw.', err));
+  }
+
+  /** Generates the draw games for a draft step and persists its drawn status. */
+  drawStep(step: Step): void {
+    const draw = this.selectedDraw();
+    const division = this.selectedDivision();
+    const stepPosition = draw?.steps.findIndex((candidate) => candidate.id === step.id) ?? -1;
+    if (!draw || !division || step.status !== 'DRAFT' || stepPosition < 0) return;
+    try {
+      this.drawService.drawStep(draw, division, stepPosition);
+      this.drawService.save(draw).subscribe({
+        next: (saved) => {
+          this.draws.update((draws) => draws.map((item) => (item.id === saved.id ? saved : item)));
+          this.showMessage('Step drawn.');
+        },
+        error: (err: unknown) => this.reportError('Unable to draw the step.', err),
+      });
+    } catch (err: unknown) {
+      this.reportError('Unable to draw the step.', err);
+    }
+  }
+
+  /** Removes a draft step after confirmation and persists the updated step order. */
+  deleteStep(step: Step): void {
+    const draw = this.selectedDraw();
+    if (!draw || step.status !== 'DRAFT') return;
+    this.confirmationService.confirm({
+      header: 'Delete step',
+      message: `Delete ${step.name}? This action cannot be undone.`,
+      icon: 'pi pi-exclamation-triangle',
+      rejectButtonProps: { label: 'Cancel', severity: 'secondary', outlined: true },
+      acceptButtonProps: { label: 'Delete', severity: 'danger' },
+      accept: () => this.persistStepDeletion(draw, step),
+    });
+  }
+
+  /** Deletes a pre-running step's games and returns its structure to draft mode. */
+  returnStepToDraft(step: Step): void {
+    if (!['DRAWN', 'PLANIFYING', 'PLANIFIED'].includes(step.status)) return;
+    this.confirmationService.confirm({
+      header: 'Return step to draft',
+      message: 'Returning this step to draft will permanently delete its games and draw games. Continue?',
+      icon: 'pi pi-exclamation-triangle',
+      rejectButtonProps: { label: 'Cancel', severity: 'secondary', outlined: true },
+      acceptButtonProps: { label: 'Return to draft', severity: 'secondary' },
+      accept: () => this.persistReturnStepToDraft(step),
+    });
+  }
+
+  /** Deletes the pre-running step games and persists the draft status after confirmation. */
+  private persistReturnStepToDraft(step: Step): void {
+    const draw = this.selectedDraw();
+    const tournament = this.tournament();
+    if (!draw || !tournament) return;
+    this.gameService
+      .byTournament(tournament.id)
+      .pipe(take(1))
+      .subscribe({
+        next: (games) => {
+          const drawGameIds = new Set(step.groups.flatMap((group) => group.games.map((drawGame) => drawGame.id)));
+          const linkedGameIds = new Set(
+            step.groups.flatMap((group) => group.games.map((drawGame) => drawGame.gameId).filter(Boolean)),
+          );
+          const linkedGames = games.filter(
+            (game) =>
+              game.scheduleInfo?.stepId === step.id ||
+              drawGameIds.has(game.scheduleInfo?.drawGameId ?? '') ||
+              linkedGameIds.has(game.id),
+          );
+          Promise.all(linkedGames.map((game) => this.gameService.delete(game.id)))
+            .then(() => {
+              step.groups.forEach((group) => {
+                group.games = [];
+                group.teams = [];
+              });
+              step.outputTeams = [];
+              step.status = 'DRAFT';
+              this.drawService.save(draw).subscribe({
+                next: (saved) => {
+                  this.draws.update((draws) => draws.map((item) => (item.id === saved.id ? saved : item)));
+                  this.showMessage('Step returned to draft.');
+                },
+                error: (err: unknown) => this.reportError('Unable to return the step to draft.', err),
+              });
+            })
+            .catch((err: unknown) => this.reportError('Unable to delete the step games.', err));
+        },
+        error: (err: unknown) => this.reportError('Unable to load the step games.', err),
+      });
+  }
+
+  /** Cancels a step without changing its draw games or real games. */
+  cancelStep(step: Step): void {
+    const draw = this.selectedDraw();
+    if (!draw || step.status !== 'RUNNING') return;
+    step.status = 'CANCELED';
+    this.drawService.save(draw).subscribe({
+      next: (saved) => {
+        this.draws.update((draws) => draws.map((item) => (item.id === saved.id ? saved : item)));
+        this.showMessage('Step canceled.');
+      },
+      error: (err: unknown) => this.reportError('Unable to cancel the step.', err),
+    });
   }
 
   /** Persists the selected draw and its edited configuration. */
   save(): void {
     this.error.set('');
-    this.message.set('');
-    this.clearSaveMessageTimeout();
+    this.clearMessage();
     const draw = this.selectedDraw();
     if (!draw) return;
     if (!draw.steps.length) {
@@ -250,11 +374,7 @@ export class TournamentDrawDesignerPage implements OnInit {
       next: (saved) => {
         this.draws.update((draws) => draws.map((item) => (item.id === saved.id ? saved : item)));
         this.saving.set(false);
-        this.message.set('Draw saved.');
-        this.saveMessageTimeout = window.setTimeout(() => {
-          this.message.set('');
-          this.saveMessageTimeout = undefined;
-        }, 5000);
+        this.showMessage('Draw saved.');
       },
       error: (err: unknown) => {
         this.saving.set(false);
@@ -324,12 +444,11 @@ export class TournamentDrawDesignerPage implements OnInit {
     const firstStep = draw?.steps[0];
     if (!firstStep) return;
     const target = index + offset;
-    if (target < 0 || target >= firstStep.inputTeamIds.length) return;
-    [firstStep.inputTeamIds[index], firstStep.inputTeamIds[target]] = [
-      firstStep.inputTeamIds[target],
-      firstStep.inputTeamIds[index],
+    if (target < 0 || target >= firstStep.inputTeams.length) return;
+    [firstStep.inputTeams[index], firstStep.inputTeams[target]] = [
+      firstStep.inputTeams[target],
+      firstStep.inputTeams[index],
     ];
-    firstStep.inputTeamIds.forEach((team, position) => (team.rank = position + 1));
   }
 
   /** Adds a draft step using the first compatible persisted draw type. */
@@ -345,6 +464,14 @@ export class TournamentDrawDesignerPage implements OnInit {
 
     const position = draw.steps.length;
     const { id: _drawTypeId, ...drawDefinition } = drawType;
+    const inputTeams =
+      position === 0
+        ? division.teams.map((team, rank): TeamReference => ({
+            teamId: team.id,
+            rank: rank + 1,
+            teamSelectorType: 'TEAM_ID',
+          }))
+        : [];
     draw.steps.push({
       id: crypto.randomUUID(),
       status: 'DRAFT',
@@ -352,8 +479,7 @@ export class TournamentDrawDesignerPage implements OnInit {
       name: `Step ${position + 1}`,
       drawType: drawDefinition,
       spreadTeamsAlgo: 'Random',
-      inputTeamIds:
-        position === 0 ? division.teams.map((team, rank): RankedTeam => ({ teamId: team.id, rank: rank + 1 })) : [],
+      inputTeams,
       groups: drawType.groups.map((definition, groupPosition): Group => ({
         id: crypto.randomUUID(),
         position: groupPosition,
@@ -363,16 +489,21 @@ export class TournamentDrawDesignerPage implements OnInit {
         teams: [],
         specificData: {},
       })),
-      outputTeamIds: [],
+      outputTeams: [],
+      ouputTeamRankingStrategy: 'GROUP_ORDER',
     });
   }
 
   /** Returns the first step's ranked teams, falling back to division order. */
-  inputTeams(draw = this.selectedDraw()): RankedTeam[] {
+  inputTeams(draw = this.selectedDraw()): TeamReference[] {
     const division = this.selectedDivision();
     const firstStep = draw?.steps[0];
-    if (firstStep) return firstStep.inputTeamIds;
-    return (division?.teams ?? []).map((team, rank) => ({ teamId: team.id, rank: rank + 1 }));
+    if (firstStep) return firstStep.inputTeams;
+    return (division?.teams ?? []).map((team, rank) => ({
+      teamId: team.id,
+      rank: rank + 1,
+      teamSelectorType: 'TEAM_ID',
+    }));
   }
 
   /** Returns the configured draw type for a step. */
@@ -419,9 +550,9 @@ export class TournamentDrawDesignerPage implements OnInit {
     this.renameGroups(step, 'rankedName');
   }
 
-  /** Reports whether a step is not editable because matches have started or finished. */
+  /** Reports whether a step requires an explicit lifecycle action before editing. */
   isStepLocked(step: Step): boolean {
-    return step.status === 'RUNNING' || step.status === 'FINISHED';
+    return step.status !== 'DRAFT';
   }
 
   /** Returns the selected point calculation. */
@@ -447,16 +578,50 @@ export class TournamentDrawDesignerPage implements OnInit {
     this.selectFirstPointCalculation();
   }
 
-  /** Clears the pending timeout used to hide the save confirmation message. */
-  private clearSaveMessageTimeout(): void {
-    if (this.saveMessageTimeout !== undefined) {
-      window.clearTimeout(this.saveMessageTimeout);
-      this.saveMessageTimeout = undefined;
+  /** Displays a success message and schedules it to disappear after three seconds. */
+  private showMessage(message: string): void {
+    this.clearMessageTimeout();
+    this.message.set(message);
+    this.messageTimeout = window.setTimeout(() => {
+      this.message.set('');
+      this.messageTimeout = undefined;
+    }, SUCCESS_MESSAGE_DURATION_MS);
+  }
+
+  /** Clears the success message and any pending timeout. */
+  private clearMessage(): void {
+    this.clearMessageTimeout();
+    this.message.set('');
+  }
+
+  /** Cancels the pending success-message timeout. */
+  private clearMessageTimeout(): void {
+    if (this.messageTimeout !== undefined) {
+      window.clearTimeout(this.messageTimeout);
+      this.messageTimeout = undefined;
     }
   }
 
   private selectFirstPointCalculation(): void {
     this.selectedPointCalculationId.set(this.selectedDraw()?.pointCalculations[0]?.id ?? '');
+  }
+
+  /** Persists the removal of a confirmed draft step and restores it if saving fails. */
+  private persistStepDeletion(draw: DivisionDraw, step: Step): void {
+    const previousSteps = draw.steps;
+    draw.steps = previousSteps
+      .filter((candidate) => candidate.id !== step.id)
+      .map((candidate, position) => ({ ...candidate, position }));
+    this.drawService.save(draw).subscribe({
+      next: (saved) => {
+        this.draws.update((draws) => draws.map((item) => (item.id === saved.id ? saved : item)));
+        this.showMessage('Step deleted.');
+      },
+      error: (err: unknown) => {
+        draw.steps = previousSteps;
+        this.reportError('Unable to delete the step.', err);
+      },
+    });
   }
 
   private randomDrawName(): string {

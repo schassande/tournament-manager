@@ -188,7 +188,7 @@ Champs principaux :
 - `scheduleId`
 - `divisionId`
 - `dayId`, `timeslotId`, `fieldId`
-- `homeTeamId`, `awayTeamId`
+- `homeTeamId?`, `awayTeamId?` : identifiants optionnels tant que les équipes d'un match de draw ne sont pas connues
 - `what` : type ou libellé du match, par exemple `Pool`
 - `resultRequired?: boolean` : resultat requis pour ce match ; absent si non renseigne. Importe depuis la cinquieme colonne du collage et affiche dans la page des matchs. Les matchs existants restent valides sans migration.
 - `score`
@@ -313,13 +313,13 @@ Le package partage contient aussi :
 - `Schedule`
 - `Draw`
 - `DivisionDraw`
-- `Step`
+- `Step` with lifecycle status `DRAFT`, `DRAWN`, `PLANIFYING`, `PLANIFIED`, `RUNNING`, `FINISHED`, or `CANCELED`, team distribution through `spreadTeamsAlgo`, and output ranking through the optional `ouputTeamRankingStrategy` (default `GROUP_ORDER`)
 - `Group`
 - `Round`
 - `RoundGame`
 - `GameEvent`
 
-Ces types decrivent le domaine, mais le depot actuel ne declare pas de collection Firestore, de service front ni de backend Firebase dedie pour eux. Ils semblent preparer des evolutions futures autour du tirage et de la planification.
+Ces types decrivent le domaine du tirage et de la planification. Les `DivisionDraw` sont persistés dans `division-draw`; les `DrawGame` sont imbriqués dans les `Step`, et les `Game` alloués référencent leur draw par `scheduleInfo`. La valeur historique `DRAWED` peut encore être lue mais est normalisée vers `DRAWN`.
 
 ## Diagramme Mermaid
 

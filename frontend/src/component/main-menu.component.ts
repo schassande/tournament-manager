@@ -341,6 +341,9 @@ export class MainMenuComponent {
     if (this.hasAnyRole('TournamentManager', 'GameAllocator', 'ResultManager')) {
       if (this.hasRole('TournamentManager') && this.moduleEnabled(tournament, 'DRAW_DESIGNER')) {
         gameEntries.push(this.entry('Draw designer', 'pi pi-sitemap', `/tournament/${tournament.id}/draw-designer`));
+        gameEntries.push(
+          this.entry('Game planning', 'pi pi-calendar-clock', `/tournament/${tournament.id}/draw-planning`),
+        );
       }
       gameEntries.push(this.entry('Games', 'pi pi-calendar', `/tournament/${tournament.id}/game`));
     }

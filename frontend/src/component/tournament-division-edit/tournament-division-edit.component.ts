@@ -62,13 +62,21 @@ import { BasicDivisions, Division, Team, Tournament } from '@tournament-manager/
           <tr class="tableRowItem">
             <td [pEditableColumn]="team" pEditableColumnField="name">
               <p-cellEditor>
-                <ng-template #input><input pInputText type="text" [(ngModel)]="team.name" (paste)="onPasteTeamNames($event, ri)" maxlength="30" /></ng-template>
+                <ng-template #input>
+                  <input pInputText type="text" [(ngModel)]="team.name"
+                    (ngModelChange)="onTeamNamechange(team.id, $event)"
+                    (paste)="onPasteTeamNames($event, ri)" maxlength="30" />
+                </ng-template>
                 <ng-template #output>{{ team.name }}</ng-template>
               </p-cellEditor>
             </td>
             <td [pEditableColumn]="team" pEditableColumnField="shortName" style="text-align: center;">
               <p-cellEditor>
-                <ng-template #input><input pInputText type="text" [(ngModel)]="team.shortName" (paste)="onPasteTeamShortNames($event, ri)"  maxlength="10"/></ng-template>
+                <ng-template #input>
+                  <input pInputText type="text" [(ngModel)]="team.shortName"
+                    (ngModelChange)="onTeamShortNamechange(team.id, $event)"
+                    (paste)="onPasteTeamShortNames($event, ri)" maxlength="10" />
+                </ng-template>
                 <ng-template #output style="text-align: center;">{{ team.shortName }}</ng-template>
               </p-cellEditor>
             </td>
@@ -137,6 +145,8 @@ export class TournamentDivisionEditComponent {
       return division;
     });
   }
+
+  /** Updates a team's full name and notifies the tournament editor. */
   onTeamNamechange(teamId: string, teamName: string) {
     this.division.update(division => {
       const team = division.teams.find(t => t.id === teamId);
@@ -147,6 +157,8 @@ export class TournamentDivisionEditComponent {
       return division;
     });
   }
+
+  /** Updates a team's short name and notifies the tournament editor. */
   onTeamShortNamechange(teamId: string, teamShortName: string) {
     this.division.update(division => {
       const team = division.teams.find(t => t.id === teamId);

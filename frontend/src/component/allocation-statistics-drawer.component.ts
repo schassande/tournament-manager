@@ -1199,8 +1199,8 @@ export class AllocationStatisticsDrawerComponent {
       time: slot ? this.dateService.toTime(slot.start) : '-',
       field: this.tournament().fields.find((value) => value.id === game?.fieldId)?.name ?? '-',
       division: this.divisionName(game?.divisionId ?? item.divisionId),
-      home: game ? this.teamName(game.divisionId, game.homeTeamId) : '-',
-      away: game ? this.teamName(game.divisionId, game.awayTeamId) : '-',
+      home: game ? this.teamName(game.divisionId, game.homeTeamId ?? '') : '-',
+      away: game ? this.teamName(game.divisionId, game.awayTeamId ?? '') : '-',
       referees: assigned
         .filter((value) => isReferee(value.attendeeRole))
         .map((value) => ({

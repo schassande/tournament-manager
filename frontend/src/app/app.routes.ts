@@ -112,6 +112,15 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
   },
   {
+    path: 'tournament/:tournamentId/draw-planning',
+    loadComponent: () =>
+      import('../page/tournament-draw-planning/tournament-draw-planning.page').then(
+        (m) => m.TournamentDrawPlanningPage,
+      ),
+    data: { title: 'Draw match planning' },
+    canActivate: [AuthGuard],
+  },
+  {
     path: 'tournament/:tournamentId/fit-import',
     loadComponent: () => import('../page/tournament-fit-import.page').then((m) => m.TournamentFitImportComponent),
     data: { title: 'FIT import' },

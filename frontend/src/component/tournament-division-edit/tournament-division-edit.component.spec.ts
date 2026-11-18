@@ -45,6 +45,32 @@ describe('TournamentDivisionEditComponent', () => {
     }));
   }
 
+  for (const [columnIndex, field] of ['name', 'shortName'].entries()) {
+    it(`emits a change when a team's ${field} is edited`, fakeAsync(() => {
+      const fixture = TestBed.createComponent(TournamentDivisionEditComponent);
+      const division = testDivision('100');
+      fixture.componentRef.setInput('division', division);
+      fixture.componentRef.setInput('tournament', { divisions: [division] });
+      fixture.detectChanges();
+      tick();
+      const changed = spyOn(fixture.componentInstance.divisionchanged, 'emit');
+      const cell: HTMLElement = fixture.nativeElement.querySelectorAll('p-table')[1].querySelectorAll('tbody td')[
+        columnIndex
+      ];
+      cell.click();
+      fixture.detectChanges();
+      tick(50);
+      const input = cell.querySelector('input')!;
+      input.value = 'Updated team';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      fixture.detectChanges();
+      tick();
+
+      expect(changed).toHaveBeenCalled();
+      fixture.destroy();
+    }));
+  }
+
   for (const method of ['onPasteTeamNames', 'onPasteTeamShortNames'] as const) {
     it(`updates existing teams and appends distinct teams using ${method}`, () => {
       const fixture = TestBed.createComponent(TournamentDivisionEditComponent);

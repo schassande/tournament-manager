@@ -207,6 +207,12 @@ h3 {
   justify-content: space-between;
   margin-bottom: 0.75rem;
 }
+.step-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
 .steps {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(600px, 100%), 1fr));

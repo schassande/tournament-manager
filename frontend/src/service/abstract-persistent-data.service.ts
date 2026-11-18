@@ -58,13 +58,23 @@ export abstract class AbstractPersistentDataService<T extends PersistentObject>{
     item.lastChange = new Date().getTime();
     const itemDoc = doc(this.firestore, `${this.getCollectionName()}/${item.id}`);
     console.log(`Document ID: ${itemDoc.id}`);
-    return from(setDoc(itemDoc, item).then(() => item));
+    try {
+      return from(setDoc(itemDoc, item).then(() => item));
+    } catch(error) {
+      console.error('Error when creating', item);
+      throw error;
+    }
   }
 
   private update(item: T): Observable<T> {
     item.lastChange = new Date().getTime();
     const itemDoc = doc(this.firestore, `${this.getCollectionName()}/${item.id}`);
-    return from(setDoc(itemDoc, item).then(() => item));
+    try {
+      return from(setDoc(itemDoc, item).then(() => item));
+    } catch(error) {
+      console.error('Error when updating', item);
+      throw error;
+    }
   }
 
   public delete(id: string): Promise<void> {
