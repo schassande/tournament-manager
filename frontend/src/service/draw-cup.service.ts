@@ -1,4 +1,4 @@
-import { DrawGame, Group, GroupType, SpecificDataCup, Step, TeamReference } from '@tournament-manager/persistent-data-model';
+import { Division, DivisionDraw, DrawGame, Group, GroupType, SpecificDataCup, Step, TeamReference } from '@tournament-manager/persistent-data-model';
 
 /**
  * Allocates games for a group Type CUP*
@@ -61,7 +61,7 @@ function allocateGroupGamesCupLevel(
       resultRequired: true,
       round,
       status: 'DRAWN',
-      what: whatPrefix + '-' + cupWhat(ranks),
+      what: whatPrefix + '-' + cupWhat(ranks, gameIndex),
     };
     if (ranks.last - ranks.first === 1) {
       // console.log('Allocate ouput teams winner and loser', group.name, ranks.first, ranks.last, gameIndex);
@@ -128,26 +128,135 @@ function getCupTeam(
 function isPowerOfTwo(value: number): boolean {
   return value > 0 && (value & (value - 1)) === 0;
 }
+
+const PREFIX_FINAL: string = 'Final';
+const PREFIX_3RD: string = '3rd';
+const PREFIX_SEMI_FINAL: string = 'Semi-Final-#';
+const PREFIX_QUARTER_FINAL: string = 'Quarter-Final-#';
 /**
  * Build a string describing the what attribute of a game in a Cup structure.
  * @param ranks a PlayingRanks
  * @returns a string
  */
-function cupWhat(ranks: PlayingRanks): string {
+function cupWhat(ranks: PlayingRanks, gameIndex:number): string {
   if (ranks.first === 1 && ranks.last === 2) {
-    return 'Final';
+    return PREFIX_FINAL;
   } else if (ranks.first === 1 && ranks.last === 4) {
-    return 'Semi-Final';
+    return PREFIX_SEMI_FINAL+(gameIndex+1);
   } else if (ranks.first === 1 && ranks.last === 8) {
-    return 'Quarter-Final';
+    return PREFIX_QUARTER_FINAL+(gameIndex+1);
   } else if (ranks.first === 3 && ranks.last === 4) {
-    return '3rd';
+    return PREFIX_3RD;
   } else if (ranks.first + 1 === ranks.last) {
     return ranks.first + 'th';
   } else {
-    return ranks.first + '-' + ranks.last;
+    return ranks.first + '-' + ranks.last+'-#'+(gameIndex+1);
   }
 }
+export function isFinal(what: string) {
+  return what === PREFIX_FINAL;
+}
+export function getGameIndex(what: string): number {
+  const idx = what.lastIndexOf('#');
+  if (idx < 0 || what.length <= (idx+2)) {
+    return -1;
+  }
+  const nbStr = what.substring(idx+1).trim();
+  const nb = Number.parseInt(nbStr);
+  if (Number.isNaN(nbStr)) {
+    return -1;
+  }
+  return nb;
+}
+/** Returns a team label, using ? for an unresolved draw reference. */
+export function teamLabel(
+  reference: TeamReference, 
+  draw: DivisionDraw,
+  division:Division): string {
+
+  if (reference.teamId) {
+    const team = division.teams.find(team => team.id === reference.teamId);
+    if (team) return team.name 
+  }
+  switch (reference?.teamSelectorType) {
+    case 'RANK_IN_GROUP':
+      return rankName(reference.rank!) + ' of group ' + getGroupName(reference.groupId, draw);
+    case 'RANK_IN_STEP': {
+      return rankName(reference.rank!) + ' of step ' + getStepName(reference.stepId, draw);
+    }
+    case 'WINNER_OF':
+      return 'Winner of ' + getGamewhat(reference.drawGameId, draw);
+    case 'LOSER_OF':
+      return 'Loser of ' + getGamewhat(reference.drawGameId, draw);
+    default:
+      return '?';
+  }
+}
+
+export function rankName(rank: number | undefined): string {
+  if (rank === undefined) return '?';
+  switch (rank) {
+    case 1:
+    case 11:
+    case 21:
+    case 31:
+    case 41:
+    case 51:
+    case 61:
+      return rank + 'st';
+    case 2:
+      return rank + 'nd';
+    case 12:
+    case 22:
+    case 32:
+    case 42:
+    case 52:
+    case 62:
+    case 3:
+      return rank + 'rd';
+    case 13:
+    case 23:
+    case 33:
+    case 43:
+    case 53:
+    case 63:
+    default:
+      return rank + 'th';
+  }
+}
+//  const draw: DivisionDraw | undefined = this.draws().find((d) => d.id === item.drawId);
+
+export function getGroupName(groupId: string | undefined, draw: DivisionDraw | undefined): string {
+  if (!groupId) return '?';
+  if (!draw) return 'Group';
+  let group: Group | undefined;
+  draw.steps.find((s) => {
+    group = s.groups.find((g) => g.id === groupId);
+    return group;
+  });
+  return group ? group.name : 'Group';
+}
+export function getStepName(stepId: string | undefined, draw: DivisionDraw | undefined): string {
+  if (!stepId) return '?';
+  if (!draw) return 'Step';
+  const step: Step | undefined = draw.steps.find((s) => s.id === stepId);
+  if (!step) return 'Step';
+  return step.name;
+}
+export function getGamewhat(drawGameId: string | undefined, draw: DivisionDraw | undefined): string {
+  if (!draw) return 'Game';
+  let what = '?';
+  draw.steps.find((s) => {
+    return s.groups.find((g) => {
+      const game = g.games.find((g) => g.id === drawGameId);
+      if (game) what = game.what;
+      return game;
+    });
+  });
+  return what;
+}
+
+
 /**
  * It is a internal structure containg first/last fields used for allocating games.
  * They indicates what are the ranks, the teams are playing.

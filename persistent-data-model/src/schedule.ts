@@ -118,8 +118,8 @@ export interface SpecificDataCup extends SpecificDataForRun {
  * It can be used to manage points and ranking in a Pool draw.
  */
 export interface TeamPoint {
-  /** Identifier of the team */
-  teamId: string;
+  /** Reference to a team */
+  team: TeamReference;
   /** Number of played games by the team */
   played: number;
   /** Number of wan games by the team */

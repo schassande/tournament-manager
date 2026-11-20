@@ -1,0 +1,20 @@
+.space-col {
+  width: 50px;
+}
+
+.link-top {
+  border-top: 1px solid black;
+}
+
+.link-right {
+  border-right: 1px solid black;
+}
+
+.vert-center {
+  vertical-align: middle;
+}
+
+.draw,
+.game-cell {
+  border: 1px solid black;
+}
