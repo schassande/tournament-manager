@@ -6,7 +6,7 @@ import { Group, Step } from "@tournament-manager/persistent-data-model";
 
 /** Displays the match planning grouped by referee coach. */
 @Component({
-  selector: 'app-draw-cup8rk4',
+  selector: 'app-draw-cuprk4',
   template: `
     <table class="draw">
       <tbody>
@@ -37,7 +37,7 @@ import { Group, Step } from "@tournament-manager/persistent-data-model";
     `],
   imports: [DrawGameCell],
 })
-export class DrawCup8Rk4Component extends AbstractDrawCupComponent {
+export class DrawCupRk4Component extends AbstractDrawCupComponent {
 
   roundDatas = signal<RoundData[]>([]);
   cup = computed<number>(() => this.group()?.teams.length ?? 0 );

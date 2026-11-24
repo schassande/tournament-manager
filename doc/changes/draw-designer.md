@@ -1,6 +1,6 @@
 # Draw Designer
 
-Last updated: 2026-11-18
+Last updated: 2026-11-20
 
 ## Objective
 
@@ -159,13 +159,44 @@ Allocation behavior:
 
 ### Public draw visualization screen
 
-Route: `/draw/<tournamentId>`. All application users, including unauthenticated users, may access this read-only screen.
+Component name: `draw-view`.
+Route: `/draw/<tournamentId>`.
+All application users, including unauthenticated users, may access this read-only screen.
+The page is available from the `Games` menu group under the exact label `View draw`.
 
-The toolbar contains a division selector and a step selector for the active draw of the selected division. The first division and first step are selected by default. If the selected division has no active draw, hide the step selector.
+The page is read-only.
 
-The selected step displays its name and group views. Group rendering is specific to `GroupType`, with Angular components for supported group type families: `CUP...` displays a bracket according to level; `POOL...` and wins-based groups display a team ranking table.
+Only steps whose status is `PLANIFIED`, `RUNNING`, or `FINISHED` are displayed. Each displayed step is expected to contain draw games with a `gameId`. If a linked game or any related display data is nevertheless missing, keep the game row visible and display `—` for each unavailable value; the page must not fail.
 
-Each group-specific component uses a shared match component that displays all matches chronologically (day, time, field), including scores. If the current user is a tournament administrator, scores are editable. Score-change events update the group-specific component and, when applicable, subsequent matches. The view also displays the final ranking, supports tournament-manager-only changes and validation of the ranking, persists the decision, recalculates dependent matches, and displays input teams.
+The toolbar contains a division selector listing only divisions with an active `DivisionDraw`, identified by the division short name. Active divisions follow the order of `Tournament.divisions`, and the first active division in that order is selected by default. If no division has an active draw, hide the selector and display a message stating that no active draw exists for any division.
+
+Once a division is selected, render one vertically stacked collapsible panel for each `Step`, ordered by ascending `Step.position`. The panel title is `Step ` followed by the step name. Each panel contains the input-team list, the ordered group sections, and the output-team list.
+Each group section uses the title `Group ` followed by the group name and contains the group-type widget, when supported, followed by a table of the group's draw games.
+
+Use the following group-type widget mapping:
+
+- `CUP4_RK2`: `DrawCup4Rk2Component`;
+- `CUP4_RK4`: `DrawCup4Rk4Component`;
+- a type starting with `CUP` and ending with `_RK4`: `DrawCupRk4Component`;
+- a type starting with `POOL`: `DrawPoolComponent`;
+- a type ending with `_WINS`: `DrawWinsComponent`;
+- any other type: display no group-type widget.
+
+Provide each widget with the inputs required by its existing contract: the group, division identifier, tournament, division draw, and the loaded tournament games where the widget accepts them. The public screen must not mutate these inputs.
+
+The group-games table contains the following columns:
+
+- `Day`, formatted as `DD/MM/YYYY`;
+- `Timeslot`, formatted as `HH:MM` using the 24-hour clock;
+- field name;
+- `What`;
+- home-team name;
+- home-team score;
+- away-team score;
+- away-team name;
+- game status.
+
+Resolve identifiers to display names through the loaded `Tournament` data. A draw game without a linked real `Game`, or with missing schedule references, remains visible with `—` for each unavailable value; it must not make the page fail.
 
 ## Business rules
 
@@ -316,7 +347,7 @@ The `PDrawTypeService` must use Firestore-generated identifiers for newly persis
 - Loading repairs the invalid persisted cases listed above and informs the user when repairs occurred.
 - The planning table, filters, highlight behavior, colors, and unknown-team display match the requirements.
 - Unauthenticated users can view the active draw, while only tournament administrators can edit scores.
-- The public draw view renders supported cup, pool, and wins-based group types and propagates score updates to dependent data.
+- The public draw view renders supported cup, pool, and wins-based group types without modifying scores, rankings, or any other persisted data.
 - When `DRAW_DESIGNER` is enabled, a tournament manager sees `Draw designer` first in the `Games` menu group and it navigates to the draw designer route.
 - The implementation is covered by relevant automated tests and documentation remains accurate.
 
@@ -360,11 +391,11 @@ The `PDrawTypeService` must use Firestore-generated identifiers for newly persis
 
 ## Readiness
 
-Ready for implementation of the Step lifecycle. Confirmation and error-dialog wording, and the supported group-type algorithms, remain non-blocking open decisions.
+Ready for implementation of the public draw visualization screen. Confirmation and error-dialog wording, and the supported group-type algorithms, remain non-blocking open decisions.
 
 ## Summary
 
-The draw designer, DrawType initialization, Platform DrawType administration, and Step lifecycle requirements are specified. The Step lifecycle uses `DrawGame.status` for running and finished detection, deletes linked `Game` and `DrawGame` records when returning to `DRAFT`, and normalizes legacy `DRAWED` values to `DRAWN`.
+The public draw visualization is strictly read-only. It displays only `PLANIFIED`, `RUNNING`, and `FINISHED` steps, uses `DrawWinsComponent` for `*_WINS` groups, preserves rows with unavailable values using `—`, and orders active divisions according to `Tournament.divisions`. The draw designer, DrawType initialization, Platform DrawType administration, and Step lifecycle requirements are also specified.
 
 ## Verified impacts
 

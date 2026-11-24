@@ -8,7 +8,9 @@ import {
   Group,
   PDrawType,
   SpecificDataCup,
+  SpecificDataPool,
   Step,
+  TeamPoint,
   TeamReference,
 } from '@tournament-manager/persistent-data-model';
 import { query, where } from '@angular/fire/firestore';
@@ -120,37 +122,40 @@ export class PDrawTypeService extends AbstractPersistentDataService<PDrawType> {
   private allocateOutputTeams(step: Step) {
     let trs: TeamReference[] = []
     if (step.groups.length === 1 || step.ouputTeamRankingStrategy === 'GROUP_ORDER') {
+      // iterator over teach by using the result of the group.
       step.groups.forEach(group => {
-        if (trs.length === 0) {
-          for (let teamIdx = 0; teamIdx < group.teams.length; teamIdx++) {        
-            trs.push(this.getOuputTeamReferenceFromGroup(group, teamIdx+1));
-          }
+        for (let teamIdx = 0; teamIdx < group.teams.length; teamIdx++) {        
+          trs.push(this.getOuputTeamReferenceFromGroup(group, teamIdx+1));
         }
       });
 
     } else if (step.ouputTeamRankingStrategy === 'BEST_TOGETHER') {
+      // Take the first of each group, then the second of each group
       const maxTeams = step.drawType.groups.map(groupDesc => groupDesc.nbTeams).reduce((a,b) => Math.max(a,b), 0)
+      // iterator over rank 
       for (let teamIdx = 0; teamIdx < maxTeams; teamIdx++) {
         step.groups
+          // Keep groups having the team at the expected rank
           .filter((group, gropuIdx) => teamIdx < step.drawType.groups[gropuIdx].nbTeams)
-          .forEach(group => {
-            trs.push(this.getOuputTeamReferenceFromGroup(group, teamIdx+1));
-          });        
+          // foreach group take the team at the rank
+          .forEach(group => trs.push(this.getOuputTeamReferenceFromGroup(group, teamIdx+1)));        
       }
     }
+    // insert the ouput team from the groups at the beginning of the list, 
+    // because teams could not play during this step
     step.outputTeams = [...trs, ...step.outputTeams];
   }
   private getOuputTeamReferenceFromGroup(group: Group, rank: number): TeamReference {
     if ('ouputTeams' in group.specificData) {
       const otrs = (group.specificData as SpecificDataCup).ouputTeams;
       if (otrs && otrs.length > 0) {
-        const trs = otrs.find(otr => otr.rank === rank);
-        if (trs) {
-          return trs;
+        const tr = otrs.find(otr => otr.rank === rank);
+        if (tr) {
+          return tr;
         }
-        throw new Error('Internal error: group.outputTeams does not contains a team ranked '+ rank);
+        throw new Error('Internal error: group.specificData.outputTeams does not contains a team ranked '+ rank);
       }
-      throw new Error('Internal error: group.outputTeams does not contains any team'+ otrs);
+      throw new Error('Internal error: group.specificData.outputTeams does not contains any team'+ otrs);
     } else {
       return { teamSelectorType: 'RANK_IN_GROUP', rank: rank, groupId: group.id }
     }
@@ -399,10 +404,32 @@ export class PDrawTypeService extends AbstractPersistentDataService<PDrawType> {
             resultRequired: false,
             round: gpo.round,
             status: 'DRAWN',
-            what: whatPrefix + '-R' + gpo.round + '-#' + gpo.gameNb,
+            what: whatPrefix + '-R' + gpo.round + '-#' + gpo.gameNb
           });
         });
     }
+    this.getOrCreateTeamPoints(group);
+  }
+  public getOrCreateTeamPoints(group: Group|undefined): TeamPoint[] {
+    if (group) {
+      let poolGroup: SpecificDataPool = group.specificData as SpecificDataPool;
+      poolGroup.teamsPoints = group.teams.map(teamRef => {
+        return {
+          team: teamRef,
+          cumulatedOppositeScore: 0,
+          cumulatedScore: 0,
+          draw: 0,
+          goalAverage: 0,
+          lost: 0,
+          played: 0,
+          points: 0,
+          rank: 1,
+          win: 0
+        };
+      });
+      return poolGroup.teamsPoints;
+    } else 
+      return []
   }
   private getTeamReference(rank: number, step: Step, draw: DivisionDraw): TeamReference {
     console.log('getTeamReference', rank, step, draw);

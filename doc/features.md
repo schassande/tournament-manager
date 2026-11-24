@@ -122,6 +122,12 @@ actif dans un etat permettant la planification ou l'execution, en listant leur
 short name. Le pourcentage d'allocation est calcule uniquement sur les matchs
 des divisions ayant un draw actif dans l'un de ces etats.
 
+La page publique `View draw`, accessible a l'adresse `/draw/<tournamentId>`,
+est disponible aux utilisateurs connectes ou non. Elle affiche uniquement le
+draw actif de chaque division, dans l'ordre des divisions du tournoi, et ne
+montre que les steps `PLANIFIED`, `RUNNING` ou `FINISHED`. La page est en
+lecture seule ; les donnees manquantes d'un match sont affichees avec `—`.
+
 ## Gerer les arbitres et les coaches d'arbitres
 
 ## Arbitres

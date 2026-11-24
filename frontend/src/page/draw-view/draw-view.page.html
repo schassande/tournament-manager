@@ -1,0 +1,143 @@
+<main class="draw-view-page">
+  @if (loading()) {
+  <p class="loading-message">Loading draw…</p>
+  } @else if (error()) {
+  <p-message severity="error">{{ error() }}</p-message>
+  } @else if (!activeDivisions().length) {
+  <p-message severity="info">There is no active draw for any division.</p-message>
+  } @else {
+  <div class="draw-toolbar">
+    <label for="draw-view-division">Division</label>
+    <p-select
+      inputId="draw-view-division"
+      [options]="activeDivisions()"
+      optionLabel="shortName"
+      optionValue="id"
+      [ngModel]="selectedDivisionId()"
+      (ngModelChange)="divisionChanged($event)" />
+  </div>
+
+  @if (selectedDraw(); as draw) { @if (!visibleSteps().length) {
+  <p-message severity="info">There are no planified or completed steps to display.</p-message>
+  } @else {
+  <div class="steps-list">
+    @for (step of visibleSteps(); track step.id) {
+    <details class="step-panel" open>
+      <summary>Step {{ step.name }}</summary>
+      <div class="step-content">
+        <section aria-label="Input teams">
+          <h3 class="section-title">Teams</h3>
+          <table class="section-content games-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Input team</th>
+                <th>Output team</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (team of step.inputTeams; track $index) {
+                <tr>
+                  <td>{{$index + 1}}</td>
+                  <td>{{ teamName(team, draw) }}</td>
+                  <td>{{ teamName(step.outputTeams[$index], draw) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </section>
+
+        @for (group of groups(step); track group.id) {
+        <section class="group-section">
+          <h3 class="section-title">Group {{ group.name }}</h3>
+          <div class="section-content">
+            @if (group.type === 'CUP4_RK2') {
+              <div class="group-specific-info">
+                <h4>Structure</h4>
+                <app-draw-cup4rk2
+                  [group]="group"
+                  [divisionId]="selectedDivisionId()"
+                  [tournament]="tournament() ?? undefined"
+                  [divisionDraw]="draw"
+                  [games]="games()" />
+              </div>
+            } @else if (group.type === 'CUP4_RK4') {
+              <div class="group-specific-info">
+                <h4>Structure</h4>
+                <app-draw-cup4rk4
+                  [group]="group"
+                  [divisionId]="selectedDivisionId()"
+                  [tournament]="tournament() ?? undefined"
+                  [divisionDraw]="draw"
+                  [games]="games()" />
+              </div>
+            } @else if (group.type.startsWith('CUP') && group.type.endsWith('_RK4')) {
+              <div class="group-specific-info">
+                <h4>Structure</h4>
+                <app-draw-cuprk4
+                  [group]="group"
+                  [divisionId]="selectedDivisionId()"
+                  [tournament]="tournament() ?? undefined"
+                  [divisionDraw]="draw"
+                  [games]="games()" />
+              </div>
+            } @else if (group.type.startsWith('POOL')) {
+              <div class="group-specific-info">
+                <h4>Points</h4>
+                <app-draw-pool 
+                  [group]="group"
+                  [divisionId]="selectedDivisionId()"
+                  [tournament]="tournament() ?? undefined"
+                  [divisionDraw]="draw" />
+              </div>
+            } @else if (group.type.endsWith('_WINS')) {
+              <div class="group-specific-info">
+                <h4>Wins information</h4>
+                <app-draw-wins
+                  [group]="group"
+                  [divisionId]="selectedDivisionId()"
+                  [tournament]="tournament() ?? undefined"
+                  [divisionDraw]="draw"
+                  [games]="games()" />
+              </div>
+            }
+            <h4>Games</h4>
+            <div class="games-table-wrapper">
+              <table class="games-table">
+                <thead>
+                  <tr>
+                    <th>Day</th>
+                    <th>Slot</th>
+                    <th>Field</th>
+                    <th>What</th>
+                    <th>Team A</th>
+                    <th>Score A</th>
+                    <th>Score B</th>
+                    <th>Team B</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (drawGame of group.games; track drawGame.id) { @let row = gameRow(drawGame);
+                  <tr>
+                    <td>{{ day(row) }}</td>
+                    <td>{{ timeslot(row) }}</td>
+                    <td>{{ field(row) }}</td>
+                    <td>{{ drawGame.what }}</td>
+                    <td>{{ gameTeamName(row, 'home') }}</td>
+                    <td>{{ score(row, 'home') }}</td>
+                    <td>{{ score(row, 'away') }}</td>
+                    <td>{{ gameTeamName(row, 'away') }}</td>
+                  </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        }
+      </div>
+    </details>
+    }
+  </div>
+  } } }
+</main>

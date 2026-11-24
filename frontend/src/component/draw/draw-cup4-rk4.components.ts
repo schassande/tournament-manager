@@ -8,25 +8,25 @@ import { AbstractDrawCupComponent } from './abstract-draw-cup.component';
   selector: 'app-draw-cup4rk4',
   styleUrl: './draw-cup.component.css',
   template: `
-    <table class="draw">
+    <table class="draw" cellSpacing="0" border="0">
       <tbody>
         <tr>
           <td rowspan="2" class="game-cell"><app-draw-gamecell [gameData]="gameSF1()"></app-draw-gamecell></td>
-          <td class=""space-col></td>
-          <td></td>
-          <td></td>
-          <td class=""space-col></td>
-          <td></td>
-          <td></td>
+          <td class="space-col"></td>
+          <td class="cup-col"></td>
+          <td class="cup-col"></td>
+          <td class="space-col"></td>
+          <td class="cup-col"></td>
+          <td class="cup-col"></td>
         </tr>
         <tr>
-          // row span of the first cell
+          <!--  row span of the first cell -->
           <td class="link-top"></td>
           <td class="link-top link-right"></td>
           <td class="link-top vert-center">Loser</td>
           <td class="link-top"></td>
           <td class="link-top link-right"></td>
-          <td class="link-top vert-center">Winner</td>
+          <td class="vert-center">Winner</td>
           <td></td>
         </tr>
         <tr>
@@ -46,7 +46,7 @@ import { AbstractDrawCupComponent } from './abstract-draw-cup.component';
           <td class="vert-center">Winner</td>
         </tr>
         <tr>
-          // row span of the first cell
+          <!-- row span of the first cell -->
           <td class="link-top"></td>
           <td class="link-top"></td>
           <td class="link-top"></td>
@@ -67,12 +67,14 @@ export class DrawCup4Rk4Component extends AbstractDrawCupComponent {
 
   protected assignGameData(gameData: GameData) {
     if (gameData.drawGame.round === 1) {
+      console.log(gameData.drawGame.what, getGameIndex(gameData.drawGame.what));
       if (getGameIndex(gameData.drawGame.what) === 1) { // semi final 1
         this.gameSF1.set(gameData);
       } else { // semi final 2
         this.gameSF2.set(gameData);
       }
     } else if (gameData.drawGame.round === 2) {
+      console.log(gameData.drawGame.what, isFinal(gameData.drawGame.what));
       if (isFinal(gameData.drawGame.what)) {
         this.gameFinal.set(gameData);
       } else {

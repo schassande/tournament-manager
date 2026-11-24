@@ -1,6 +1,7 @@
-import { Component, computed, input, signal } from "@angular/core";
+import { Component, computed, inject, input, signal } from "@angular/core";
 import { Division, DivisionDraw, Game, Group, SpecificDataPool, Team, TeamPoint, Tournament } from "@tournament-manager/persistent-data-model";
 import { teamLabel } from "../../service/draw-cup.service";
+import { DivisionDrawService, PDrawTypeService } from "../../service/division-draw.service";
 
 /** Displays the match planning grouped by referee coach. */
 @Component({
@@ -9,21 +10,21 @@ import { teamLabel } from "../../service/draw-cup.service";
     <table class="draw">
       <thead>
           <tr>
-            <td>Rank</td>
-            <td>Name</td>
-            <td>Points</td>
-            <td>Played</td>
-            <td>Win</td>
-            <td>Draw</td>
-            <td>Lost</td>
-            <td>GA</td>
+            <th>Rank</th>
+            <th>Name</th>
+            <th>Points</th>
+            <th>Played</th>
+            <th>Win</th>
+            <th>Draw</th>
+            <th>Lost</th>
+            <th>GA</th>
           </tr>
       </thead>
       <tbody>
         @for(teamPointData of teamsPointDatas(); track teamPointData.teamName) {
           <tr>
             <td>{{teamPointData.teamsPoint.rank}}</td>
-            <td>{{teamPointData.teamName}}</td>
+            <td class="team-col">{{teamPointData.teamName}}</td>
             <td>{{teamPointData.teamsPoint.points}}</td>
             <td>{{teamPointData.teamsPoint.played}}</td>
             <td>{{teamPointData.teamsPoint.win}}</td>
@@ -36,18 +37,31 @@ import { teamLabel } from "../../service/draw-cup.service";
     </table>
   `,
   styles: [
-    `.team-col { width: 15 rem; }`
+    `.draw { 
+      border-collapse: collapse; 
+      th { background: var(--p-surface-100); }
+      th,  td {
+        border: 1px solid var(--p-content-border-color);
+        padding: 0.5rem;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .team-col { text-align: left; }
+    }
+    `
   ],
   imports: [],
 })
 export class DrawPoolComponent {
+  pDrawTypeService = inject(PDrawTypeService);
+
   group = input<Group|undefined>(undefined);
   divisionId = input<string|undefined>(undefined);
   tournament = input<Tournament|undefined>(undefined);
   divisionDraw = input<DivisionDraw|undefined>(undefined);
 
   teamsPointDatas = computed<TeamPointData[]|undefined>(() => 
-    (this.group()?.specificData as SpecificDataPool)?.teamsPoints.map(teamsPoint => {
+   this.pDrawTypeService.getOrCreateTeamPoints(this.group()).map(teamsPoint => {
       const division: Division = this.tournament()!.divisions.find(div => div.id === this.divisionId())!;
       return {
         teamsPoint,

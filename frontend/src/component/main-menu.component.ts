@@ -347,6 +347,7 @@ export class MainMenuComponent {
       }
       gameEntries.push(this.entry('Games', 'pi pi-calendar', `/tournament/${tournament.id}/game`));
     }
+    gameEntries.push(this.entry('View draw', 'pi pi-sitemap', `/draw/${tournament.id}`));
     if (this.hasRole('TournamentManager') && this.moduleEnabled(tournament, 'FIT_IMPORT')) {
       gameEntries.push(this.entry('Import FIT', 'pi pi-download', `/tournament/${tournament.id}/fit-import`));
     }

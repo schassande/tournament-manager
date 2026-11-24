@@ -15,6 +15,7 @@ import {
   OuputTeamRankingStrategy,
   SpreadTeamsAlgo,
   TeamReference,
+  SpecificDataCup,
 } from '@tournament-manager/persistent-data-model';
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
@@ -324,6 +325,9 @@ export class TournamentDrawDesignerPage implements OnDestroy, OnInit {
               step.groups.forEach((group) => {
                 group.games = [];
                 group.teams = [];
+                if ('ouputTeams' in group.specificData) {
+                  (group.specificData as SpecificDataCup).ouputTeams  = [];
+                }
               });
               step.outputTeams = [];
               step.status = 'DRAFT';

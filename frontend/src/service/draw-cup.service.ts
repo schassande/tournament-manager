@@ -1,4 +1,5 @@
 import { Division, DivisionDraw, DrawGame, Group, GroupType, SpecificDataCup, Step, TeamReference } from '@tournament-manager/persistent-data-model';
+import { ref } from 'firebase/storage';
 
 /**
  * Allocates games for a group Type CUP*
@@ -20,8 +21,13 @@ export function allocateGroupGamesCup(step: Step, group: Group, groupType: Group
   if (Number.isNaN(cup) || Number.isNaN(rk) || !isPowerOfTwo(cup) || !isPowerOfTwo(rk))
     throw new Error('Malformed Cup groupType: ' + groupType);
 
+  const cupSpecificData: SpecificDataCup = group.specificData as SpecificDataCup; 
+  cupSpecificData.ouputTeams = [];
+
   // call the recursive method for the first round
   allocateGroupGamesCupLevel(cup, rk, [], true, 1, group, step, whatPrefix, { first: 1, last: cup });
+
+  cupSpecificData.ouputTeams.sort((ot1, ot2) => ot2.rank! - ot1.rank!)
 }
 
 /**
@@ -131,8 +137,8 @@ function isPowerOfTwo(value: number): boolean {
 
 const PREFIX_FINAL: string = 'Final';
 const PREFIX_3RD: string = '3rd';
-const PREFIX_SEMI_FINAL: string = 'Semi-Final-#';
-const PREFIX_QUARTER_FINAL: string = 'Quarter-Final-#';
+const PREFIX_SEMI_FINAL: string = 'Semi-Final';
+const PREFIX_QUARTER_FINAL: string = 'Quarter-Final';
 /**
  * Build a string describing the what attribute of a game in a Cup structure.
  * @param ranks a PlayingRanks
@@ -141,24 +147,42 @@ const PREFIX_QUARTER_FINAL: string = 'Quarter-Final-#';
 function cupWhat(ranks: PlayingRanks, gameIndex:number): string {
   if (ranks.first === 1 && ranks.last === 2) {
     return PREFIX_FINAL;
-  } else if (ranks.first === 1 && ranks.last === 4) {
-    return PREFIX_SEMI_FINAL+(gameIndex+1);
-  } else if (ranks.first === 1 && ranks.last === 8) {
-    return PREFIX_QUARTER_FINAL+(gameIndex+1);
+
   } else if (ranks.first === 3 && ranks.last === 4) {
     return PREFIX_3RD;
+
   } else if (ranks.first + 1 === ranks.last) {
     return ranks.first + 'th';
+
+  } else if (ranks.first === 1 && ranks.last === 4) {
+    return PREFIX_SEMI_FINAL+ ' #' + (gameIndex+1);
+
+  } else if (ranks.first === 1 && ranks.last === 8) {
+    return PREFIX_QUARTER_FINAL+' #' + (gameIndex+1);
+
+  } else if (ranks.first === 1 && ranks.last === 16) {
+    return 'Last 16 #' + (gameIndex+1);
+
+  } else if (ranks.first === 1 && ranks.last === 32) {
+    return 'Last 32 #' + (gameIndex+1);
+
+  } else if (ranks.first === 1 && ranks.last === 64) {
+    return 'Last 64 #' + (gameIndex+1);
+
+  } else if (ranks.first === 1 && ranks.last === 128) {
+    return 'Last 128 #' + (gameIndex+1);
+
   } else {
-    return ranks.first + '-' + ranks.last+'-#'+(gameIndex+1);
+    return ranks.first + '-' + ranks.last+' #'+(gameIndex+1);
   }
 }
 export function isFinal(what: string) {
-  return what === PREFIX_FINAL;
+  return what.indexOf(PREFIX_FINAL) >=0 ;
 }
 export function getGameIndex(what: string): number {
   const idx = what.lastIndexOf('#');
-  if (idx < 0 || what.length <= (idx+2)) {
+  console.log(what, idx, what.length)
+  if (idx < 0 || what.length < (idx+2)) {
     return -1;
   }
   const nbStr = what.substring(idx+1).trim();
@@ -173,7 +197,7 @@ export function teamLabel(
   reference: TeamReference, 
   draw: DivisionDraw,
   division:Division): string {
-
+  if (!reference) return '';
   if (reference.teamId) {
     const team = division.teams.find(team => team.id === reference.teamId);
     if (team) return team.name 
@@ -253,6 +277,11 @@ export function getGamewhat(drawGameId: string | undefined, draw: DivisionDraw |
       return game;
     });
   });
+  if (what === '?') {
+    console.log('DrawGameId '+drawGameId+' not found in',
+      draw.steps.map((s) => s.groups.map((group) => 
+        group.games.map(game => s.name + '.'+ group.name+'.'+game.id))).flat(2).join(',\n'));
+  }
   return what;
 }
 

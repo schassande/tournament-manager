@@ -121,6 +121,11 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
   },
   {
+    path: 'draw/:tournamentId',
+    loadComponent: () => import('../page/draw-view/draw-view.page').then((m) => m.DrawViewPage),
+    data: { title: 'View draw' },
+  },
+  {
     path: 'tournament/:tournamentId/fit-import',
     loadComponent: () => import('../page/tournament-fit-import.page').then((m) => m.TournamentFitImportComponent),
     data: { title: 'FIT import' },

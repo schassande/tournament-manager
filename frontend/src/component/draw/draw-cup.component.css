@@ -3,18 +3,25 @@
 }
 
 .link-top {
-  border-top: 1px solid black;
+  border-top: 3px solid var(--p-surface-300);
 }
 
 .link-right {
-  border-right: 1px solid black;
+  border-right: 3px solid var(--p-surface-300);
 }
 
 .vert-center {
   vertical-align: middle;
 }
 
-.draw,
 .game-cell {
-  border: 1px solid black;
+  min-width: 200px;
+  min-height: 100px;
 }
+
+.cup-col {
+  min-width: 150px;
+}
+
+.draw tr { min-height: 100px;}
+.draw { margin: auto;}
