@@ -1,4 +1,4 @@
-import { GameView } from '../allocation-data-model';
+import { GameView } from '../../allocation-data-model';
 import { buildAllocationProblems, defaultAllocationConfiguration, isCoachEligible } from './allocation-problem.service';
 
 describe('allocation problem service', () => {

@@ -5,8 +5,8 @@ import {
   waterCarrierBlockingReason,
 } from '@tournament-manager/persistent-data-model';
 import { WaterCarrierComponent } from './water-carrier.component';
-import { WaterCarrierService } from '../../service/water-carrier.service';
-import { WaterCarrierPdfService } from '../../service/water-carrier-pdf.service';
+import { WaterCarrierService } from '../../service/water-carrier/water-carrier.service';
+import { WaterCarrierPdfService } from '../../service/water-carrier/water-carrier-pdf.service';
 
 /** Creates a minimal published match, using seconds for its interval. */
 function match(id: string, start = 1000, end = 2000): WaterCarrierMatch {

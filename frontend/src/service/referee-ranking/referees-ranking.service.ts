@@ -10,7 +10,7 @@ import {
   prepareIndividualRanking,
   TournamentRefereeRanking,
 } from '@tournament-manager/persistent-data-model';
-import { AbstractPersistentDataService } from './abstract-persistent-data.service';
+import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
 
 /** Shares all individual rankings for the selected parent with the page's tabs. */
 @Injectable({ providedIn: 'root' })

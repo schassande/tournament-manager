@@ -5,7 +5,7 @@ import {
   findDayUnavailability,
   isSlotUnavailable,
 } from '@tournament-manager/persistent-data-model';
-import { GameView } from '../allocation-data-model';
+import { GameView } from '../../allocation-data-model';
 
 /** Role of an attendee involved in an allocation problem. */
 export type AllocationProblemRole = 'Referee' | 'Coach';

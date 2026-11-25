@@ -6,10 +6,10 @@ import { ToolbarModule } from 'primeng/toolbar';
 import { take } from 'rxjs';
 import { Attendee, AttendeeRole, ModulesNames, Tournament } from '@tournament-manager/persistent-data-model';
 import { AttendeeService } from '../service/attendee.service';
-import { PDrawTypeService } from '../service/division-draw.service';
 import { TitleService } from '../service/title.service';
 import { TournamentService } from '../service/tournament.service';
 import { UserService } from '../service/user.service';
+import { PDrawTypeService } from '../service/draw/pdrawtype.service';
 
 /** Describes one directly selectable drawer destination. */
 interface DrawerMenuEntry {

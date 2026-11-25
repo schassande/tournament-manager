@@ -7,7 +7,7 @@ import {
   PersistentObject,
   Tournament,
 } from '@tournament-manager/persistent-data-model';
-import { environment } from '../environments/environment';
+import { environment } from '../../environments/environment';
 
 const FIT_API = `${environment.functionsApiUrl}/fitImport`;
 

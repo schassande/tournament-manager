@@ -201,6 +201,7 @@ export interface Game extends PersistentObject {
   score?: {
     homeTeamScore: number; // score of the home team
     awayTeamScore: number; // score of the away team
+    locked: boolean;
   };
   scheduleInfo?: {
     divisionDrawId: string; // unique identifier of the division draw

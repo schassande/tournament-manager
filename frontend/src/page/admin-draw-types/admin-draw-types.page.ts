@@ -9,7 +9,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { SelectModule } from 'primeng/select';
 import { take } from 'rxjs';
-import { PDrawTypeService } from '../../service/division-draw.service';
+import { PDrawTypeService } from '../../service/draw/pdrawtype.service';
 
 const GROUP_TYPES: GroupType[] = [
   'NONE', 'POOL', 'POOL_RET', 'POOL_3', '2_WINS', '3_WINS', '4_WINS', '5_WINS', 'CUP2_RK2', 'SEMI',

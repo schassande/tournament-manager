@@ -19,8 +19,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { AbstractTournamentPage } from '../component/tournament-abstract.page';
 import { AttendeeService } from '../service/attendee.service';
 import { PersonService } from '../service/person.service';
-import { RefereeUpgradeCoachVoteService } from '../service/referee-upgrade-coach-vote.service';
-import { RefereeUpgradePanelVoteService } from '../service/referee-upgrade-panel-vote.service';
+import { RefereeUpgradeCoachVoteService } from '../service/referee-upgrade/referee-upgrade-coach-vote.service';
+import { RefereeUpgradePanelVoteService } from '../service/referee-upgrade/referee-upgrade-panel-vote.service';
 import { UserService } from '../service/user.service';
 
 /** Page used by referee coaches to evaluate and deliberate referee upgrades. */

@@ -1,4 +1,4 @@
-import { GameView } from '../allocation-data-model';
+import { GameView } from '../../allocation-data-model';
 import { FragmentRefereeAllocationService } from './fragment-referee-allocation.service';
 
 describe('fragment referee allocation counter', () => {

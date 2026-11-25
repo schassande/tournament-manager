@@ -1,6 +1,5 @@
-import { Component, effect, signal } from "@angular/core";
+import { Component, effect, inject, signal } from "@angular/core";
 import { DrawGameCell, GameData } from "./draw-game-cell.component";
-import { getGameIndex, isFinal } from "../../service/draw-cup.service";
 import { AbstractDrawCupComponent } from './abstract-draw-cup.component';
 
 /** Displays the match planning grouped by referee coach. */
@@ -59,7 +58,7 @@ import { AbstractDrawCupComponent } from './abstract-draw-cup.component';
   `,
   imports: [DrawGameCell],
 })
-export class DrawCup4Rk4Component extends AbstractDrawCupComponent {  
+export class DrawCup4Rk4Component extends AbstractDrawCupComponent {
   gameSF1 = signal<GameData|undefined>(undefined);
   gameSF2 = signal<GameData|undefined>(undefined);
   game3rd = signal<GameData|undefined>(undefined);
@@ -67,15 +66,15 @@ export class DrawCup4Rk4Component extends AbstractDrawCupComponent {
 
   protected assignGameData(gameData: GameData) {
     if (gameData.drawGame.round === 1) {
-      console.log(gameData.drawGame.what, getGameIndex(gameData.drawGame.what));
-      if (getGameIndex(gameData.drawGame.what) === 1) { // semi final 1
+      // console.log(gameData.drawGame.what, this.drawCupService.getGameIndex(gameData.drawGame.what));
+      if (this.drawCupService.getGameIndex(gameData.drawGame.what) === 1) { // semi final 1
         this.gameSF1.set(gameData);
       } else { // semi final 2
         this.gameSF2.set(gameData);
       }
     } else if (gameData.drawGame.round === 2) {
-      console.log(gameData.drawGame.what, isFinal(gameData.drawGame.what));
-      if (isFinal(gameData.drawGame.what)) {
+      // console.log(gameData.drawGame.what, this.drawCupService.isFinal(gameData.drawGame.what));
+      if (this.drawCupService.isFinal(gameData.drawGame.what)) {
         this.gameFinal.set(gameData);
       } else {
         this.game3rd.set(gameData);

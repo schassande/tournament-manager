@@ -30,9 +30,9 @@ import { GameAttendeeAllocationService } from '../service/game-attendee-allocati
 import { GameService } from '../service/game.service';
 import { DateService } from '../service/date.service';
 import { RefereeAllocationStatisticsApiService } from '../service/referee-allocation-statistics-api.service';
-import { FragmentRefereeAllocationStatisticsService } from '../service/fragment-referee-allocation-statistics.service';
+import { FragmentRefereeAllocationStatisticsService } from '../service/referee-allocation/fragment-referee-allocation-statistics.service';
 import { PlanningGame } from '../service/referee-planning-model';
-import { TournamentRefereeAllocationStatisticsService } from '../service/tournament-referee-allocation-statistics.service';
+import { TournamentRefereeAllocationStatisticsService } from '../service/referee-allocation/tournament-referee-allocation-statistics.service';
 import { UserService } from '../service/user.service';
 import { RefereeService } from '../service/referee.service';
 import { RefereeTimeslotTableComponent } from './referee-timeslot-table.component';

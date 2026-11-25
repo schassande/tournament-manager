@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { AbstractPersistentDataService } from './abstract-persistent-data.service';
+import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
 import {
   colFragmentRefereeAllocation,
   FragmentRefereeAllocation,
@@ -7,7 +7,7 @@ import {
 } from '@tournament-manager/persistent-data-model';
 import { Observable } from 'rxjs';
 import { deleteField, doc, query, updateDoc, where } from '@angular/fire/firestore';
-import { GameView } from '../allocation-data-model';
+import { GameView } from '../../allocation-data-model';
 
 @Injectable({
   providedIn: 'root',

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as XLSX from 'xlsx';
 import { TournamentRefereeRanking } from '@tournament-manager/persistent-data-model';
-import { PanelTable, panelResultLabel } from '../component/ranking-panel/panel-table';
+import { PanelTable, panelResultLabel } from '../../component/ranking-panel/panel-table';
 
 /** Exports the visible comparison without computing or modifying saved data. */
 @Injectable({ providedIn: 'root' })

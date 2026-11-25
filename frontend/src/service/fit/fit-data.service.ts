@@ -2,7 +2,7 @@ import { colFitData } from '@tournament-manager/persistent-data-model';
 import { Injectable } from '@angular/core';
 import { orderBy, query, where } from '@angular/fire/firestore';
 import { map, Observable } from 'rxjs';
-import { AbstractPersistentDataService } from './abstract-persistent-data.service';
+import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
 import { FITData } from './fit-import.service';
 
 /** Provides persistence and retrieval of FIT import snapshots. */

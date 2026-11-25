@@ -19,7 +19,7 @@ import {
   CoachRefereesRanking,
   RankingDeletionResponse,
 } from '@tournament-manager/persistent-data-model';
-import { AbstractPersistentDataService } from './abstract-persistent-data.service';
+import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
 import { computePanelRanking } from './panel-ranking';
 
 /** Loads and creates parent rankings through their Firestore-safe representation. */

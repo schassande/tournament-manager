@@ -11,7 +11,7 @@ import {
   waterCarrierAllocationId,
   waterCarrierBlockingReason,
 } from '@tournament-manager/persistent-data-model';
-import { environment } from '../environments/environment';
+import { environment } from '../../environments/environment';
 
 /** Loads public planning snapshots and writes only the caller's explicit assignment state. */
 @Injectable({ providedIn: 'root' })

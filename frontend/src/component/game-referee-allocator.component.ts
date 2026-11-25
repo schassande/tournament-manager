@@ -23,9 +23,9 @@ import {
   AllocationProblem,
   isCoachEligible,
   resolveAllocationConfiguration,
-} from '../service/allocation-problem.service';
+} from '../service/referee-allocation/allocation-problem.service';
 import { RefereeAllocationStatisticsApiService } from '../service/referee-allocation-statistics-api.service';
-import { FragmentRefereeAllocationService } from '../service/fragment-referee-allocation.service';
+import { FragmentRefereeAllocationService } from '../service/referee-allocation/fragment-referee-allocation.service';
 import { TooltipModule } from 'primeng/tooltip';
 
 @Component({

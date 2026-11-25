@@ -24,12 +24,12 @@ import {
   FitImportService,
   FitReference,
   toCategory,
-} from '../service/fit-import.service';
+} from '../service/fit/fit-import.service';
 import { TournamentService } from '../service/tournament.service';
-import { FitDataService } from '../service/fit-data.service';
-import { FitMergePlan, FitMergeService } from '../service/fit-merge.service';
+import { FitDataService } from '../service/fit/fit-data.service';
+import { FitMergePlan, FitMergeService } from '../service/fit/fit-merge.service';
 import { GameService } from '../service/game.service';
-import { FitExcelExportService } from '../service/fit-excel-export.service';
+import { FitExcelExportService } from '../service/fit/fit-excel-export.service';
 
 interface RenameRow {
   fitName: string;

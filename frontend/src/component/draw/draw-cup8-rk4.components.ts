@@ -1,8 +1,7 @@
-import { Component, computed, effect, signal } from "@angular/core";
+import { Component, computed, signal } from "@angular/core";
 import { DrawGameCell, GameData } from "./draw-game-cell.component";
-import { getGameIndex, isFinal } from "../../service/draw-cup.service";
 import { AbstractDrawCupComponent } from './abstract-draw-cup.component';
-import { Group, Step } from "@tournament-manager/persistent-data-model";
+import { Step } from "@tournament-manager/persistent-data-model";
 
 /** Displays the match planning grouped by referee coach. */
 @Component({
@@ -182,20 +181,20 @@ export class DrawCup8Rk4Component extends AbstractDrawCupComponent {
 
   protected assignGameData(gameData: GameData) {
     if (gameData.drawGame.round === 1) {
-      switch(getGameIndex(gameData.drawGame.what)) {
+      switch(this.drawCupService.getGameIndex(gameData.drawGame.what)) {
         case 1: this.gameQF1.set(gameData); break;
         case 2: this.gameQF2.set(gameData); break;
         case 3: this.gameQF3.set(gameData); break;
         case 4: this.gameQF4.set(gameData); break;
       }
     } else if (gameData.drawGame.round === 2) {
-      if (getGameIndex(gameData.drawGame.what) === 1) { // semi final 1
+      if (this.drawCupService.getGameIndex(gameData.drawGame.what) === 1) { // semi final 1
         this.gameSF1.set(gameData);
       } else { // semi final 2
         this.gameSF2.set(gameData);
       }
     } else if (gameData.drawGame.round === 3) {
-      if (isFinal(gameData.drawGame.what)) {
+      if (this.drawCupService.isFinal(gameData.drawGame.what)) {
         this.gameFinal.set(gameData);
       } else {
         this.game3rd.set(gameData);

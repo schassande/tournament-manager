@@ -3,10 +3,8 @@ import {
   Division,
   DivisionDraw,
   DrawTypeSubGroup,
-  GamePool,
   GamePoolOptions,
   Group,
-  PDrawType,
   SpecificDataCup,
   SpecificDataPool,
   Step,
@@ -14,15 +12,14 @@ import {
   TeamReference,
 } from '@tournament-manager/persistent-data-model';
 import { query, where } from '@angular/fire/firestore';
-import { Functions, httpsCallable } from '@angular/fire/functions';
-import { from, map, Observable } from 'rxjs';
-import { AbstractPersistentDataService } from './abstract-persistent-data.service';
-import { allocateGroupGamesCup } from './draw-cup.service';
+import { Observable } from 'rxjs';
+import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
+import { DrawCupService } from './draw-cup.service';
 
 /** Provides persistence operations for competition draws belonging to tournaments. */
 @Injectable({ providedIn: 'root' })
 export class DivisionDrawService extends AbstractPersistentDataService<DivisionDraw> {
-  private readonly drawTypeService = inject(forwardRef(() => PDrawTypeService));
+  private readonly drawCupService = inject(DrawCupService);
 
   /** Returns the Firestore collection containing division draw definitions. */
   protected override getCollectionName(): string {
@@ -38,53 +35,9 @@ export class DivisionDrawService extends AbstractPersistentDataService<DivisionD
     return item;
   }
 
-  /** Generates teams and draw games for a draft step. */
-  public drawStep(divisionDraw: DivisionDraw, division: Division, stepPosition: number): void {
-    this.drawTypeService.drawStep(divisionDraw, division, stepPosition);
-  }
-
   /** Loads all draw definitions for one tournament. */
   public byTournament(tournamentId: string): Observable<DivisionDraw[]> {
     return this.query(query(this.itemsCollection(), where('tournamentId', '==', tournamentId)));
-  }
-}
-
-/** Response returned by the platform DrawType initialization callable. */
-export interface InitializePDrawTypesResponse {
-  initialized: boolean;
-  count: number;
-}
-
-/** Result returned by the platform-administrator status callable. */
-export interface PlatformAdminStatusResponse {
-  isPlatformAdmin: boolean;
-}
-
-/** Provides persistence operations for platform-managed draw-type templates. */
-@Injectable({ providedIn: 'root' })
-export class PDrawTypeService extends AbstractPersistentDataService<PDrawType> {
-  private readonly functions = inject(Functions);
-
-  /** Returns the Firestore collection containing persisted draw types. */
-  protected override getCollectionName(): string {
-    return 'draw-type';
-  }
-
-  /** Loads only enabled templates for use by tournament draw configuration. */
-  public enabled(): Observable<PDrawType[]> {
-    return this.query(query(this.itemsCollection(), where('enabled', '==', true)));
-  }
-
-  /** Initializes default templates through the trusted platform-admin callable. */
-  public initializeDefaults(): Observable<InitializePDrawTypesResponse> {
-    const call = httpsCallable<void, InitializePDrawTypesResponse>(this.functions, 'initializePDrawTypes');
-    return from(call()).pipe(map((result) => result.data));
-  }
-
-  /** Checks platform-administrator authority without exposing the admin collection. */
-  public platformAdminStatus(): Observable<PlatformAdminStatusResponse> {
-    const call = httpsCallable<void, PlatformAdminStatusResponse>(this.functions, 'getPlatformAdminStatus');
-    return from(call()).pipe(map((result) => result.data));
   }
 
   /**
@@ -113,52 +66,6 @@ export class PDrawTypeService extends AbstractPersistentDataService<PDrawType> {
     this.allocateOutputTeams(step);
 
     if (step.status === 'DRAFT') step.status = 'DRAWN';
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  // OUTPUT TEAMS MEHTODS
-  //////////////////////////////////////////////////////////////////////////
-
-  private allocateOutputTeams(step: Step) {
-    let trs: TeamReference[] = []
-    if (step.groups.length === 1 || step.ouputTeamRankingStrategy === 'GROUP_ORDER') {
-      // iterator over teach by using the result of the group.
-      step.groups.forEach(group => {
-        for (let teamIdx = 0; teamIdx < group.teams.length; teamIdx++) {        
-          trs.push(this.getOuputTeamReferenceFromGroup(group, teamIdx+1));
-        }
-      });
-
-    } else if (step.ouputTeamRankingStrategy === 'BEST_TOGETHER') {
-      // Take the first of each group, then the second of each group
-      const maxTeams = step.drawType.groups.map(groupDesc => groupDesc.nbTeams).reduce((a,b) => Math.max(a,b), 0)
-      // iterator over rank 
-      for (let teamIdx = 0; teamIdx < maxTeams; teamIdx++) {
-        step.groups
-          // Keep groups having the team at the expected rank
-          .filter((group, gropuIdx) => teamIdx < step.drawType.groups[gropuIdx].nbTeams)
-          // foreach group take the team at the rank
-          .forEach(group => trs.push(this.getOuputTeamReferenceFromGroup(group, teamIdx+1)));        
-      }
-    }
-    // insert the ouput team from the groups at the beginning of the list, 
-    // because teams could not play during this step
-    step.outputTeams = [...trs, ...step.outputTeams];
-  }
-  private getOuputTeamReferenceFromGroup(group: Group, rank: number): TeamReference {
-    if ('ouputTeams' in group.specificData) {
-      const otrs = (group.specificData as SpecificDataCup).ouputTeams;
-      if (otrs && otrs.length > 0) {
-        const tr = otrs.find(otr => otr.rank === rank);
-        if (tr) {
-          return tr;
-        }
-        throw new Error('Internal error: group.specificData.outputTeams does not contains a team ranked '+ rank);
-      }
-      throw new Error('Internal error: group.specificData.outputTeams does not contains any team'+ otrs);
-    } else {
-      return { teamSelectorType: 'RANK_IN_GROUP', rank: rank, groupId: group.id }
-    }
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -357,7 +264,7 @@ export class PDrawTypeService extends AbstractPersistentDataService<PDrawType> {
         return this.allocateGroupGamesSemi(draw, step, group, groupDesc, whatPrefix);
       default:
         if (groupDesc.groupType.startsWith('CUP')) {
-          return allocateGroupGamesCup(step, group, groupDesc.groupType, whatPrefix);
+          return this.drawCupService.allocateGroupGamesCup(step, group, groupDesc.groupType, whatPrefix);
         }
         throw new Error('GroupType is not supported yet: ' + groupDesc.groupType);
     }
@@ -470,7 +377,52 @@ export class PDrawTypeService extends AbstractPersistentDataService<PDrawType> {
       what: whatPrefix + '-3vs4',
     });
   }
+
+  //////////////////////////////////////////////////////////////////////////
+  // OUTPUT TEAMS MEHTODS
+  //////////////////////////////////////////////////////////////////////////
+
+  private allocateOutputTeams(step: Step) {
+    let trs: TeamReference[] = []
+    if (step.groups.length === 1 || step.ouputTeamRankingStrategy === 'GROUP_ORDER') {
+      // iterator over teach by using the result of the group.
+      step.groups.forEach(group => {
+        for (let teamIdx = 0; teamIdx < group.teams.length; teamIdx++) {        
+          trs.push(this.getOuputTeamReferenceFromGroup(group, teamIdx+1));
+        }
+      });
+
+    } else if (step.ouputTeamRankingStrategy === 'BEST_TOGETHER') {
+      // Take the first of each group, then the second of each group
+      const maxTeams = step.drawType.groups.map(groupDesc => groupDesc.nbTeams).reduce((a,b) => Math.max(a,b), 0)
+      // iterator over rank 
+      for (let teamIdx = 0; teamIdx < maxTeams; teamIdx++) {
+        step.groups
+          // Keep groups having the team at the expected rank
+          .filter((group, gropuIdx) => teamIdx < step.drawType.groups[gropuIdx].nbTeams)
+          // foreach group take the team at the rank
+          .forEach(group => trs.push(this.getOuputTeamReferenceFromGroup(group, teamIdx+1)));        
+      }
+    }
+    // insert the ouput team from the groups at the beginning of the list, 
+    // because teams could not play during this step
+    step.outputTeams = [...trs, ...step.outputTeams];
+  }
+  private getOuputTeamReferenceFromGroup(group: Group, rank: number): TeamReference {
+    if ('ouputTeams' in group.specificData) {
+      const otrs = (group.specificData as SpecificDataCup).ouputTeams;
+      if (otrs && otrs.length > 0) {
+        const tr = otrs.find(otr => otr.rank === rank);
+        if (tr) {
+          return tr;
+        }
+        throw new Error('Internal error: group.specificData.outputTeams does not contains a team ranked '+ rank);
+      }
+      throw new Error('Internal error: group.specificData.outputTeams does not contains any team'+ otrs);
+    } else {
+      return { teamSelectorType: 'RANK_IN_GROUP', rank: rank, groupId: group.id }
+    }
+  }
+
 }
 
-/** @deprecated Use {@link PDrawTypeService}. */
-export class DrawTypeService extends PDrawTypeService {}

@@ -5,7 +5,7 @@ import {
   CoachRefereesRanking,
   createTournamentRefereeRanking,
 } from '@tournament-manager/persistent-data-model';
-import { PanelRankingExportService } from '../../service/panel-ranking-export.service';
+import { PanelRankingExportService } from '../../service/referee-ranking/panel-ranking-export.service';
 import { buildPanelTable } from './panel-table';
 import { RankingPanelComponent } from './ranking-panel.component';
 

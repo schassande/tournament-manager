@@ -1,10 +1,11 @@
 import { DivisionDraw, DrawGame, Game, Group, Tournament } from "@tournament-manager/persistent-data-model";
 import { GameData } from "./draw-game-cell.component";
-import { teamLabel } from "../../service/draw-cup.service";
-import { Directive, effect, input } from "@angular/core";
+import { DrawCupService } from "../../service/draw/draw-cup.service";
+import { Directive, effect, inject, input } from "@angular/core";
 
 @Directive()
 export abstract class AbstractDrawCupComponent {
+  protected drawCupService = inject(DrawCupService);
   group = input<Group|undefined>(undefined);
   divisionId = input<string|undefined>(undefined);
   tournament = input<Tournament|undefined>(undefined);
@@ -50,8 +51,8 @@ export abstract class AbstractDrawCupComponent {
         gameData.day = tournament.days.find(day => day.id === game.dayId);
         gameData.timeSlot = gameData.day!.parts.map(part => part.timeslots).flat().find(ts => ts.id === game.timeslotId);
         gameData.field = tournament.fields.find(field => field.id === game.fieldId);
-        gameData.homeTeamName = teamLabel(drawGame.homeTeam, divisionDraw, gameData.division);
-        gameData.awayTeamName = teamLabel(drawGame.awayTeam, divisionDraw, gameData.division);
+        gameData.homeTeamName = this.drawCupService.teamLabel(drawGame.homeTeam, divisionDraw, gameData.division);
+        gameData.awayTeamName = this.drawCupService.teamLabel(drawGame.awayTeam, divisionDraw, gameData.division);
       }
     }
     return gameData;

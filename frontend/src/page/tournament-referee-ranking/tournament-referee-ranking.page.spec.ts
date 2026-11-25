@@ -12,11 +12,11 @@ import {
   Tournament,
 } from '@tournament-manager/persistent-data-model';
 import { AttendeeService } from '../../service/attendee.service';
-import { RefereesRankingService } from '../../service/referees-ranking.service';
-import { TournamentRefereeRankingService } from '../../service/tournament-referee-ranking.service';
+import { RefereesRankingService } from '../../service/referee-ranking/referees-ranking.service';
+import { TournamentRefereeRankingService } from '../../service/referee-ranking/tournament-referee-ranking.service';
 import { TournamentService } from '../../service/tournament.service';
 import { UserService } from '../../service/user.service';
-import { PanelRankingExportService } from '../../service/panel-ranking-export.service';
+import { PanelRankingExportService } from '../../service/referee-ranking/panel-ranking-export.service';
 import { TournamentRefereeRankingComponent } from './tournament-referee-ranking.page';
 
 describe('tournament ranking page shell', () => {

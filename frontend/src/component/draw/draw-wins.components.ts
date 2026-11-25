@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import {
   Division,
   DivisionDraw,
@@ -7,7 +7,7 @@ import {
   SpecificDataPool,
   Tournament,
 } from '@tournament-manager/persistent-data-model';
-import { teamLabel } from '../../service/draw-cup.service';
+import { DrawCupService } from '../../service/draw/draw-cup.service';
 
 /** Displays the match planning grouped by referee coach. */
 @Component({
@@ -40,6 +40,8 @@ import { teamLabel } from '../../service/draw-cup.service';
   imports: [],
 })
 export class DrawWinsComponent {
+  private drawCupService = inject(DrawCupService);
+
   group = input<Group | undefined>(undefined);
   divisionId = input<string | undefined>(undefined);
   tournament = input<Tournament | undefined>(undefined);
@@ -64,7 +66,7 @@ export class DrawWinsComponent {
         });
       }
       return {
-        teamName: teamLabel(teamRef, this.divisionDraw()!, division),
+        teamName: this.drawCupService.teamLabel(teamRef, this.divisionDraw()!, division),
         win,
       };
     });

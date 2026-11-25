@@ -27,9 +27,10 @@ import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 import { forkJoin, of, switchMap, take } from 'rxjs';
 import { AttendeeService } from '../../service/attendee.service';
-import { DivisionDrawService, PDrawTypeService } from '../../service/division-draw.service';
+import { DivisionDrawService } from '../../service/draw/division-draw.service';
 import { GameService } from '../../service/game.service';
 import { TournamentService } from '../../service/tournament.service';
+import { PDrawTypeService } from '../../service/draw/pdrawtype.service';
 
 const SPREAD_TEAMS_ALGOS: { label: string; value: SpreadTeamsAlgo }[] = [
   { label: 'Random', value: 'Random' },

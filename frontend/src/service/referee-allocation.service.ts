@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { forkJoin, from, Observable, of } from 'rxjs';
 import { FragmentRefereeAllocation, TournamentRefereeAllocation } from '@tournament-manager/persistent-data-model';
-import { FragmentRefereeAllocationService } from './fragment-referee-allocation.service';
-import { TournamentRefereeAllocationService } from './tournament-referee-allocation.service';
-import { FragmentRefereeAllocationStatisticsService } from './fragment-referee-allocation-statistics.service';
-import { TournamentRefereeAllocationStatisticsService } from './tournament-referee-allocation-statistics.service';
+import { FragmentRefereeAllocationService } from './referee-allocation/fragment-referee-allocation.service';
+import { TournamentRefereeAllocationService } from './referee-allocation/tournament-referee-allocation.service';
+import { FragmentRefereeAllocationStatisticsService } from './referee-allocation/fragment-referee-allocation-statistics.service';
+import { TournamentRefereeAllocationStatisticsService } from './referee-allocation/tournament-referee-allocation-statistics.service';
 
 @Injectable({
   providedIn: 'root'

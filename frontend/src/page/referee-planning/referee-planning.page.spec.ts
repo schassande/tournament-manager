@@ -6,12 +6,12 @@ import { Tournament, WaterCarrierPlanning } from '@tournament-manager/persistent
 import { RefereePlanningComponent } from './referee-planning.page';
 import { TournamentService } from '../../service/tournament.service';
 import { UserService } from '../../service/user.service';
-import { WaterCarrierService } from '../../service/water-carrier.service';
+import { WaterCarrierService } from '../../service/water-carrier/water-carrier.service';
 import { AttendeeService } from '../../service/attendee.service';
-import { FragmentRefereeAllocationService } from '../../service/fragment-referee-allocation.service';
+import { FragmentRefereeAllocationService } from '../../service/referee-allocation/fragment-referee-allocation.service';
 import { GameAttendeeAllocationService } from '../../service/game-attendee-allocation.service';
 import { GameService } from '../../service/game.service';
-import { TournamentRefereeAllocationService } from '../../service/tournament-referee-allocation.service';
+import { TournamentRefereeAllocationService } from '../../service/referee-allocation/tournament-referee-allocation.service';
 
 /** Snapshot with two selectable public periods, requiring no protected collection reads. */
 function snapshot(period = 'f1'): WaterCarrierPlanning {

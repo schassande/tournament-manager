@@ -31,18 +31,18 @@ import {
 } from '@tournament-manager/persistent-data-model';
 import { WaterCarrierComponent } from '../../component/water-carrier/water-carrier.component';
 import { WaterCarrierStatsComponent } from '../../component/water-carrier-stats.component';
-import { WaterCarrierService } from '../../service/water-carrier.service';
+import { WaterCarrierService } from '../../service/water-carrier/water-carrier.service';
 import { CoachesPlanningComponent } from '../../component/coaches-planning.component';
 import { RefereesListComponent } from '../../component/referees-list.component';
 import { RefereesPlanningComponent } from '../../component/referees-planning.component';
 import { AbstractTournamentPage } from '../../component/tournament-abstract.page';
 import { AttendeeService } from '../../service/attendee.service';
-import { FragmentRefereeAllocationService } from '../../service/fragment-referee-allocation.service';
+import { FragmentRefereeAllocationService } from '../../service/referee-allocation/fragment-referee-allocation.service';
 import { GameAttendeeAllocationService } from '../../service/game-attendee-allocation.service';
 import { GameService } from '../../service/game.service';
 import { attendeeName, isAvailable, PlanningGame, PlanningScope } from '../../service/referee-planning-model';
-import { TournamentRefereeAllocationService } from '../../service/tournament-referee-allocation.service';
-import { FragmentRefereeAllocationStatisticsService } from '../../service/fragment-referee-allocation-statistics.service';
+import { TournamentRefereeAllocationService } from '../../service/referee-allocation/tournament-referee-allocation.service';
+import { FragmentRefereeAllocationStatisticsService } from '../../service/referee-allocation/fragment-referee-allocation-statistics.service';
 import { UserService } from '../../service/user.service';
 
 /** Displays published referee/coach planning and water-carrier self-allocation. */

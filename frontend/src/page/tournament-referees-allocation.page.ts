@@ -59,8 +59,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TooltipModule } from 'primeng/tooltip';
 import { AllocationAction, ClipboardItem, SelectionDescriptor, SelectionService } from '../service/selection.service';
-import { FragmentRefereeAllocationService } from '../service/fragment-referee-allocation.service';
-import { TournamentRefereeAllocationService } from '../service/tournament-referee-allocation.service';
+import { FragmentRefereeAllocationService } from '../service/referee-allocation/fragment-referee-allocation.service';
+import { TournamentRefereeAllocationService } from '../service/referee-allocation/tournament-referee-allocation.service';
 import { UserService } from '../service/user.service';
 import { RefereeSelectorActivation, RefereeSelectorFacade } from '../service/referee-selector.service';
 import {
@@ -68,7 +68,7 @@ import {
   AllocationProblemLocation,
   buildAllocationProblems,
   resolveAllocationConfiguration,
-} from '../service/allocation-problem.service';
+} from '../service/referee-allocation/allocation-problem.service';
 import { DialogModule } from 'primeng/dialog';
 
 const KEY_SHOW_COACHES = 'tournament-referee-allocation.show-coaches';

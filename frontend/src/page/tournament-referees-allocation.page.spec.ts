@@ -1,4 +1,4 @@
-import { FragmentRefereeAllocationService } from '../service/fragment-referee-allocation.service';
+import { FragmentRefereeAllocationService } from '../service/referee-allocation/fragment-referee-allocation.service';
 
 describe('tournament referee allocation page', () => {
   it('computes the rounded allocated-games percentage', () => {

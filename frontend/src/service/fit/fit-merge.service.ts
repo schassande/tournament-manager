@@ -15,10 +15,10 @@ import {
 } from '@tournament-manager/persistent-data-model';
 import { Observable, forkJoin, from, of } from 'rxjs';
 import { concatMap, map } from 'rxjs/operators';
-import { DateService } from './date.service';
+import { DateService } from '../date.service';
 import { FitGame, FITData, toCategory } from './fit-import.service';
-import { GameService } from './game.service';
-import { TournamentService } from './tournament.service';
+import { GameService } from '../game.service';
+import { TournamentService } from '../tournament.service';
 
 export type FitMergeAction =
   | 'Create'

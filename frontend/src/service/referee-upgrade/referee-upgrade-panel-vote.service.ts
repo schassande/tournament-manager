@@ -6,7 +6,7 @@ import {
   colRefereeUpgradePanelVote,
   refereeUpgradePanelVoteId,
 } from '@tournament-manager/persistent-data-model';
-import { AbstractPersistentDataService } from './abstract-persistent-data.service';
+import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
 
 /** Firestore service for referee panel upgrade decisions. */
 @Injectable({ providedIn: 'root' })

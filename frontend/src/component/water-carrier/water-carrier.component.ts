@@ -5,8 +5,8 @@ import {
   WaterCarrierPlanning,
   waterCarrierBlockingReason,
 } from '@tournament-manager/persistent-data-model';
-import { WaterCarrierService } from '../../service/water-carrier.service';
-import { WaterCarrierPdfService } from '../../service/water-carrier-pdf.service';
+import { WaterCarrierService } from '../../service/water-carrier/water-carrier.service';
+import { WaterCarrierPdfService } from '../../service/water-carrier/water-carrier-pdf.service';
 
 /** Public match grid with accessible, snapshot-validated referee self-allocation. */
 @Component({

@@ -1,7 +1,6 @@
-import { Component, effect, signal } from "@angular/core";
+import { Component, effect, inject, signal } from "@angular/core";
 import { DrawGameCell, GameData } from "./draw-game-cell.component";
 import { AbstractDrawCupComponent } from './abstract-draw-cup.component';
-import { getGameIndex } from "../../service/draw-cup.service";
 
 /** Displays the match planning grouped by referee coach. */
 @Component({
@@ -51,7 +50,7 @@ export class DrawCup4Rk2Component extends AbstractDrawCupComponent {
 
   protected assignGameData(gameData: GameData) {
     if (gameData.drawGame.round === 1) {
-      if (getGameIndex(gameData.drawGame.what) === 1) { // semi final 1
+      if (this.drawCupService.getGameIndex(gameData.drawGame.what) === 1) { // semi final 1
         this.gameSF1.set(gameData);
       } else { // semi final 2
         this.gameSF2.set(gameData);

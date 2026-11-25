@@ -21,11 +21,11 @@ import { DrawCup4Rk4Component } from '../../component/draw/draw-cup4-rk4.compone
 import { DrawCupRk4Component } from '../../component/draw/draw-cup-rk4.components';
 import { DrawPoolComponent } from '../../component/draw/draw-pool.components';
 import { DrawWinsComponent } from '../../component/draw/draw-wins.components';
-import { DivisionDrawService } from '../../service/division-draw.service';
-import { getGamewhat, teamLabel } from '../../service/draw-cup.service';
+import { DivisionDrawService } from '../../service/draw/division-draw.service';
 import { GameService } from '../../service/game.service';
 import { DateService } from '../../service/date.service';
 import { TournamentService } from '../../service/tournament.service';
+import { DrawCupService } from '../../service/draw/draw-cup.service';
 
 /** A game row enriched with its linked schedule and display data. */
 interface PublicGameRow {
@@ -55,6 +55,7 @@ export class DrawViewPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly tournamentService = inject(TournamentService);
   private readonly drawService = inject(DivisionDrawService);
+  private readonly drawCupService = inject(DrawCupService);
   private readonly gameService = inject(GameService);
   private readonly dateService = inject(DateService);
 
@@ -142,7 +143,7 @@ export class DrawViewPage implements OnInit {
   /** Returns the display name for a draw-game team reference. */
   teamName(reference: TeamReference, draw: DivisionDraw): string {
     const division = this.selectedDivision();
-    return division ? teamLabel(reference, draw, division) : '—';
+    return division ? this.drawCupService.teamLabel(reference, draw, division) : '—';
   }
 
   /** Returns the display name for a real game team, falling back to the draw reference. */
@@ -204,7 +205,7 @@ export class DrawViewPage implements OnInit {
 
   /** Resolves a draw-game description for fallback team labels. */
   gameDescription(drawGameId: string | undefined): string {
-    return getGamewhat(drawGameId, this.selectedDraw());
+    return this.drawCupService.getGamewhat(drawGameId, this.selectedDraw());
   }
 
   private isPublicStepStatus(status: StepStatus): boolean {

@@ -29,11 +29,11 @@ import { RankingCoachesComponent } from '../../component/ranking-coaches/ranking
 import { RankingMeComponent } from '../../component/ranking-me/ranking-me.component';
 import { RankingPanelComponent } from '../../component/ranking-panel/ranking-panel.component';
 import { buildPanelTable } from '../../component/ranking-panel/panel-table';
-import { PanelRankingExportService } from '../../service/panel-ranking-export.service';
+import { PanelRankingExportService } from '../../service/referee-ranking/panel-ranking-export.service';
 import { RankingRefereesComponent } from '../../component/ranking-referees/ranking-referees.component';
 import { AttendeeService } from '../../service/attendee.service';
-import { RefereesRankingService } from '../../service/referees-ranking.service';
-import { TournamentRefereeRankingService } from '../../service/tournament-referee-ranking.service';
+import { RefereesRankingService } from '../../service/referee-ranking/referees-ranking.service';
+import { TournamentRefereeRankingService } from '../../service/referee-ranking/tournament-referee-ranking.service';
 import { TournamentService } from '../../service/tournament.service';
 import { UserService } from '../../service/user.service';
 

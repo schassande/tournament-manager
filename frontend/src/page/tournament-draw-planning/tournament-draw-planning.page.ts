@@ -20,10 +20,10 @@ import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
 import { SelectModule } from 'primeng/select';
 import { firstValueFrom, forkJoin, take } from 'rxjs';
-import { DivisionDrawService } from '../../service/division-draw.service';
-import { fieldsForDay, hasTeamConflict, knownTeamId, PlanningDrawGame } from '../../service/draw-planning.service';
+import { DivisionDrawService } from '../../service/draw/division-draw.service';
+import { fieldsForDay, hasTeamConflict, knownTeamId, PlanningDrawGame } from '../../service/draw/draw-planning.service';
 import { GameService } from '../../service/game.service';
-import { computeStepStatus, normalizeStepStatus } from '../../service/step-lifecycle.service';
+import { computeStepStatus, normalizeStepStatus } from '../../service/draw/step-lifecycle.service';
 import { TournamentService } from '../../service/tournament.service';
 import { ref } from 'firebase/storage';
 

@@ -1,5 +1,5 @@
 # TODO list du projet Tournament Maager
-- Gestion des matches : creation du draw, resultats, classement
+- Gestion des matches : resultats, classement
 - My Planning
 - Water carrier : compatibilité avec le planning d'un arbitre
 - Scorecard papier
@@ -19,7 +19,6 @@
 - Ranking method Europe
 - Numéro de version et date d'une allocation pour savoir quand elle a été modifié.
 - Field map
-- Mon Planning
 - Candidature Arbitre
 - Candidature Referee Coach
 - Referees: Import csv
@@ -92,6 +91,7 @@
   - check 2 games à la suite doivent etre sur le meme terrain
 - 2026/10/24: amélioration de l'impression Water carrier
 - 2026/10/24: Water carrier statistiques
+- 2026/10/24: Gestion des matches : creation du draw
 
 
 ## Bugs non reproduis

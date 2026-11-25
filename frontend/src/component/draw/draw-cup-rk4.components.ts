@@ -1,8 +1,6 @@
-import { Component, computed, effect, signal } from "@angular/core";
+import { Component, computed, effect, inject, signal } from "@angular/core";
 import { DrawGameCell, GameData } from "./draw-game-cell.component";
-import { getGameIndex, isFinal } from "../../service/draw-cup.service";
 import { AbstractDrawCupComponent } from './abstract-draw-cup.component';
-import { Group, Step } from "@tournament-manager/persistent-data-model";
 
 /** Displays the match planning grouped by referee coach. */
 @Component({
@@ -56,7 +54,7 @@ export class DrawCupRk4Component extends AbstractDrawCupComponent {
     }
     const row = gameData.drawGame.round === this.lastRound()
       ? 1 
-      : getGameIndex(gameData.drawGame.what) + 1 ;
+      : this.drawCupService.getGameIndex(gameData.drawGame.what) + 1 ;
     let rowData: RowData|undefined = roundData.rows.find(rd => rd.row === row);
     if (!rowData) {
       rowData = { row, gameDatas: [] };
@@ -64,7 +62,7 @@ export class DrawCupRk4Component extends AbstractDrawCupComponent {
     }
     rowData.gameDatas.push(gameData);
     if (gameData.drawGame.round === this.lastRound()) {
-      rowData.gameDatas.sort((gd1,gd2) => isFinal(gd1.drawGame.what) ? 1 : -1);
+      rowData.gameDatas.sort((gd1,gd2) => this.drawCupService.isFinal(gd1.drawGame.what) ? 1 : -1);
     }
 
     this.roundDatas.update(rds => [...rds]);
