@@ -26,7 +26,9 @@ Use this skill for every frontend Angular code change, including `.ts`, `.html`,
 
 ## Templates and styles
 
-- Format inline templates like external HTML: use one element/attribute or meaningful interpolation per line when a line becomes difficult to scan; indent nested blocks by two spaces.
+- Format inline templates like external HTML and indent nested blocks by two spaces.
+- For Angular component HTML, keep a tag's attributes on the same line whenever they fit; wrap attributes only when needed to keep every line at 120 characters or fewer. Do not put every attribute on its own line by default.
+- Keep a closing tag's angle brackets together with the tag name. Never split the closing tag before its final `>`: `</xxx` followed by `>` on the next line is forbidden. For example, use `<xxxx> </xxx>` and never `<xxxx> </xxx` followed by `>` on a separate line.
 - Put Angular control-flow blocks (`@if`, `@for`, `@switch`) on readable lines and preserve whitespace around their bodies. Keep event bindings and complex expressions legible.
 - For component CSS, use one selector block per logical rule group, one declaration per line, consistent spacing after colons, and readable media-query blocks.
 - Do not alter template text, binding expressions, selectors, CSS values, or accessibility attributes as part of formatting.
@@ -34,7 +36,7 @@ Use this skill for every frontend Angular code change, including `.ts`, `.html`,
 ## Workflow and verification
 
 1. Inspect the applicable `.editorconfig`, `AGENTS.md`, and local style around the target file.
-2. Apply the smallest formatting-only change. Prefer a repository formatter if one is configured; otherwise format carefully by hand.
+2. Apply the smallest formatting-only change. Prefer a repository formatter if one is configured, then adjust its HTML output when necessary to keep compatible attributes together under the 120-character limit.
 3. Review the diff for semantic changes, whitespace/encoding damage, and accidental file-wide churn.
 4. Run the narrowest available validation (Angular build, type-check, lint, or tests) appropriate to the touched code.
 5. Review `/doc` for functional or technical impact. If formatting only has no documentation impact, explicitly report that existing documentation remains accurate.
