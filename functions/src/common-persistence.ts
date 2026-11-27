@@ -10,6 +10,14 @@ export async function byId<T extends PersistentObject>(
   firestore: admin.firestore.Firestore): Promise<T|undefined> {
   return (await firestore.collection(collectionName).doc(id).get()).data() as T;
 }
+export async function byIdInTx<T extends PersistentObject>(
+  collectionName:string,
+  id: string,
+  firestore: admin.firestore.Firestore,
+  tx: admin.firestore.Transaction): Promise<T|undefined> {
+  const ref = firestore.collection(collectionName).doc(id);
+  return (await tx.get(ref)).data() as T
+}
 export async function byIdRequired<T extends PersistentObject>(
   collectionName:string,
   id: string,
@@ -43,6 +51,15 @@ export async function save<T extends PersistentObject>(
   firestore: admin.firestore.Firestore): Promise<T> {
   persistentObject.lastChange = dateToEpoch(new Date());
   await firestore.collection(collectionName).doc(persistentObject.id).set(persistentObject);
+  return persistentObject;
+}
+export async function saveInTx<T extends PersistentObject>(
+  collectionName:string,
+  persistentObject: T,
+  firestore: admin.firestore.Firestore,
+  tx: admin.firestore.Transaction): Promise<T> {
+  persistentObject.lastChange = dateToEpoch(new Date());
+  tx.set(firestore.collection(collectionName).doc(persistentObject.id), persistentObject)
   return persistentObject;
 }
 
