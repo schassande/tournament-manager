@@ -2,6 +2,7 @@ import { Component, computed, inject, input, signal } from "@angular/core";
 import { Division, DivisionDraw, Game, Group, SpecificDataPool, Team, TeamPoint, Tournament } from "@tournament-manager/persistent-data-model";
 import { DrawCupService } from "../../service/draw/draw-cup.service";
 import { DivisionDrawService } from "../../service/draw/division-draw.service";
+import { DrawPoolService } from "../../service/draw/draw-pool.service";
 
 /** Displays the match planning grouped by referee coach. */
 @Component({
@@ -53,8 +54,7 @@ import { DivisionDrawService } from "../../service/draw/division-draw.service";
   imports: [],
 })
 export class DrawPoolComponent {
-  divisionDrawService = inject(DivisionDrawService);
-  drawCupService = inject(DrawCupService);
+  drawPoolService = inject(DrawPoolService);
 
   group = input<Group|undefined>(undefined);
   divisionId = input<string|undefined>(undefined);
@@ -62,11 +62,11 @@ export class DrawPoolComponent {
   divisionDraw = input<DivisionDraw|undefined>(undefined);
 
   teamsPointDatas = computed<TeamPointData[]|undefined>(() => 
-   this.divisionDrawService.getOrCreateTeamPoints(this.group()).map(teamsPoint => {
+   this.drawPoolService.getOrCreateTeamPoints(this.group()).map(teamsPoint => {
       const division: Division = this.tournament()!.divisions.find(div => div.id === this.divisionId())!;
       return {
         teamsPoint,
-        teamName: this.drawCupService.teamLabel(teamsPoint.team, this.divisionDraw()!, division)
+        teamName: this.drawPoolService.teamLabel(teamsPoint.team, this.divisionDraw()!, division)
       };
     })
   );

@@ -31,3 +31,5 @@ export const colFragmentRefereeAllocationStatistics =
 export const colRefereeUpgradeCoachVote = 'referee-upgrade-coach-vote';
 /** Firebase collection name for referee panel upgrade votes. */
 export const colRefereeUpgradePanelVote = 'referee-upgrade-panel-vote';
+/** Firebase collection name for referee panel upgrade votes. */
+export const colDivisionDraw = 'division-draw';

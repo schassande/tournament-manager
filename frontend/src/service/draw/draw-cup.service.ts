@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Division, DivisionDraw, DrawGame, Group, GroupType, SpecificDataCup, Step, TeamReference } from '@tournament-manager/persistent-data-model';
+import { DrawAbstractService, GroupAllocParams } from './draw-abstract.service';
 
 @Injectable({ providedIn: 'root' })
-export class DrawCupService  {
+export class DrawCupService extends DrawAbstractService {
 
   /**
    * Allocates games for a group Type CUP*
@@ -13,16 +14,17 @@ export class DrawCupService  {
    * @param whatPrefix is the prefix to use for naming the 'what' of a game
    * @throws Error when the group type is not well formatted
    */
-  public allocateGroupGamesCup(step: Step, group: Group, groupType: GroupType, whatPrefix: string) {
+  public allocateGroupGames(groupAllocParams : GroupAllocParams) {
+    const { draw, step, group, groupDesc, whatPrefix} =  groupAllocParams;
     // extract and verify group dimension from group type: "CUP<cup>_RK<rk>"
-    const match = groupType.match(/^CUP(\d+)_RK(\d+)$/);
+    const match = group.type.match(/^CUP(\d+)_RK(\d+)$/);
     const cupStr = match?.[1]; // "128"
     const rkStr = match?.[2]; // "4"
-    if (!cupStr || !rkStr) throw new Error('Malformed Cup groupType: ' + groupType);
+    if (!cupStr || !rkStr) throw new Error('Malformed Cup groupType: ' + group.type);
     const cup = Number.parseInt(cupStr);
     const rk = Number.parseInt(rkStr);
     if (Number.isNaN(cup) || Number.isNaN(rk) || !this.isPowerOfTwo(cup) || !this.isPowerOfTwo(rk))
-      throw new Error('Malformed Cup groupType: ' + groupType);
+      throw new Error('Malformed Cup groupType: ' + group.type);
 
     const cupSpecificData: SpecificDataCup = group.specificData as SpecificDataCup; 
     cupSpecificData.ouputTeams = [];
@@ -191,98 +193,6 @@ export class DrawCupService  {
       return -1;
     }
     return nb;
-  }
-  /** Returns a team label, using ? for an unresolved draw reference. */
-  public teamLabel(
-    reference: TeamReference, 
-    draw: DivisionDraw,
-    division:Division): string {
-    if (!reference) return '';
-    if (reference.teamId) {
-      const team = division.teams.find(team => team.id === reference.teamId);
-      if (team) return team.name 
-    }
-    switch (reference?.teamSelectorType) {
-      case 'RANK_IN_GROUP':
-        return this.rankName(reference.rank!) + ' of group ' + this.getGroupName(reference.groupId, draw);
-      case 'RANK_IN_STEP': {
-        return this.rankName(reference.rank!) + ' of step ' + this.getStepName(reference.stepId, draw);
-      }
-      case 'WINNER_OF':
-        return 'Winner of ' + this.getGamewhat(reference.drawGameId, draw);
-      case 'LOSER_OF':
-        return 'Loser of ' + this.getGamewhat(reference.drawGameId, draw);
-      default:
-        return '?';
-    }
-  }
-
-  public rankName(rank: number | undefined): string {
-    if (rank === undefined) return '?';
-    switch (rank) {
-      case 1:
-      case 11:
-      case 21:
-      case 31:
-      case 41:
-      case 51:
-      case 61:
-        return rank + 'st';
-      case 2:
-        return rank + 'nd';
-      case 12:
-      case 22:
-      case 32:
-      case 42:
-      case 52:
-      case 62:
-      case 3:
-        return rank + 'rd';
-      case 13:
-      case 23:
-      case 33:
-      case 43:
-      case 53:
-      case 63:
-      default:
-        return rank + 'th';
-    }
-  }
-  //  const draw: DivisionDraw | undefined = this.draws().find((d) => d.id === item.drawId);
-
-  public getGroupName(groupId: string | undefined, draw: DivisionDraw | undefined): string {
-    if (!groupId) return '?';
-    if (!draw) return 'Group';
-    let group: Group | undefined;
-    draw.steps.find((s) => {
-      group = s.groups.find((g) => g.id === groupId);
-      return group;
-    });
-    return group ? group.name : 'Group';
-  }
-  public getStepName(stepId: string | undefined, draw: DivisionDraw | undefined): string {
-    if (!stepId) return '?';
-    if (!draw) return 'Step';
-    const step: Step | undefined = draw.steps.find((s) => s.id === stepId);
-    if (!step) return 'Step';
-    return step.name;
-  }
-  public getGamewhat(drawGameId: string | undefined, draw: DivisionDraw | undefined): string {
-    if (!draw) return 'Game';
-    let what = '?';
-    draw.steps.find((s) => {
-      return s.groups.find((g) => {
-        const game = g.games.find((g) => g.id === drawGameId);
-        if (game) what = game.what;
-        return game;
-      });
-    });
-    if (what === '?') {
-      console.log('DrawGameId '+drawGameId+' not found in',
-        draw.steps.map((s) => s.groups.map((group) => 
-          group.games.map(game => s.name + '.'+ group.name+'.'+game.id))).flat(2).join(',\n'));
-    }
-    return what;
   }
 }
 

@@ -12,7 +12,7 @@ import { take } from 'rxjs';
 import { PDrawTypeService } from '../../service/draw/pdrawtype.service';
 
 const GROUP_TYPES: GroupType[] = [
-  'NONE', 'POOL', 'POOL_RET', 'POOL_3', '2_WINS', '3_WINS', '4_WINS', '5_WINS', 'CUP2_RK2', 'SEMI',
+  'NONE', 'POOL', 'POOL_RET', 'POOL_3', '2_WINS', '3_WINS', '4_WINS', '5_WINS', 'CUP2_RK2', 'RANKING',
   'CUP4_RK2', 'CUP4_RK4', 'CUP8_RK2', 'CUP8_RK4', 'CUP8_RK8', 'CUP16_RK2', 'CUP16_RK4', 'CUP16_RK8',
   'CUP32_RK2', 'CUP32_RK4', 'CUP32_RK8', 'CUP64_RK2', 'CUP64_RK4', 'CUP64_RK8', 'CUP128_RK2',
   'CUP128_RK4', 'CUP128_RK8',

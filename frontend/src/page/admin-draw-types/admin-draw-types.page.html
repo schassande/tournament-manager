@@ -3,22 +3,100 @@
 } @else {
   <main class="page">
     <header class="toolbar">
-      <div class="filter"><p-select id="nb-team-filter" [options]="teamCountOptions()" optionLabel="label" optionValue="value" [ngModel]="filterNbTeam()" (ngModelChange)="filterNbTeam.set($event)" /></div>
-      <button pButton type="button" icon="pi pi-plus" label="New draw type" (click)="newDrawType()" [disabled]="busy()"></button>
-      <button pButton type="button" icon="pi pi-database" label="Initialize defaults" severity="warn" (click)="initializeDefaults()" [disabled]="busy()"></button>
+      <div class="filter">
+        <p-select id="nb-team-filter" [options]="teamCountOptions()" optionLabel="label" optionValue="value"
+          [ngModel]="filterNbTeam()" (ngModelChange)="filterNbTeam.set($event)" />
+      </div>
+      <button pButton type="button" icon="pi pi-plus" label="New draw type" (click)="newDrawType()"
+        [disabled]="busy()"></button>
+      <button pButton type="button" icon="pi pi-database" label="Initialize defaults" severity="warn"
+        (click)="initializeDefaults()" [disabled]="busy()"></button>
     </header>
-    @if (error()) { <p-message severity="error">{{ error() }}</p-message> }
-    @if (message()) { <p-message severity="info">{{ message() }}</p-message> }
+    @if (error()) {
+      <p-message severity="error">{{ error() }}</p-message>
+    }
+    @if (message()) {
+      <p-message severity="info">{{ message() }}</p-message>
+    }
     <div class="workspace">
-      <aside class="list-panel card">@for (drawType of visibleDrawTypes(); track drawType.id) { <button type="button" class="draw-type-row" [class.selected]="selected()?.id === drawType.id" (click)="select(drawType)"><span>{{ drawType.drawName }}</span>@if (!drawType.enabled) { <small>Disabled</small> }</button> } @empty { <p>No draw types match the filter.</p> }</aside>
+      <aside class="list-panel card">
+        @for (drawType of visibleDrawTypes(); track drawType.id) {
+          <button type="button" class="draw-type-row" [class.selected]="selected()?.id === drawType.id"
+            (click)="select(drawType)">
+            <span>{{ drawType.drawName }}</span>
+            @if (!drawType.enabled) {
+              <small>Disabled</small>
+            }
+          </button>
+        } @empty {
+          <p>No draw types match the filter.</p>
+        }
+      </aside>
       <section class="editor card">
         @if (selected(); as drawType) {
-          <div class="editor-grid"><label class="name-field">Name <input pInputText [(ngModel)]="drawType.drawName" /></label><label class="enabled"><input type="checkbox" [(ngModel)]="drawType.enabled" /> Enabled</label></div>
-          <div class="derived"><span>Teams: {{ drawType.nbTeam }}</span><span>Groups: {{ drawType.nbGroup }}</span><span>Games: {{ drawType.nbGames }}</span><span>Points: {{ drawType.requirePointCalculationConfig ? 'Required' : 'Not required' }}</span></div>
-          <div class="groups-heading"><h2>Subgroups</h2><button pButton type="button" icon="pi pi-plus" label="Add subgroup" (click)="addGroup()"></button></div>
-          <table class="groups-table"><thead><tr><th>Position</th><th>Teams</th><th>Group type</th><th>Games</th><th></th></tr></thead><tbody>@for (group of drawType.groups; track $index; let index = $index) { <tr><td>{{ group.position }}</td><td><p-inputnumber [(ngModel)]="group.nbTeams" (ngModelChange)="groupChanged()" [min]="0" [inputStyle]="{ width: '4rem' }" /></td><td><p-select [options]="groupTypes" optionLabel="label" optionValue="value" [(ngModel)]="group.groupType" (ngModelChange)="groupChanged()" /></td><td><p-inputnumber [(ngModel)]="group.nbGames" (ngModelChange)="groupChanged()" [min]="0" [inputStyle]="{ width: '4rem' }" /></td><td><button pButton type="button" icon="pi pi-trash" severity="danger" text="true" (click)="deleteGroup(index)" aria-label="Delete subgroup"></button></td></tr> }</tbody></table>
-          <div class="actions"><button pButton type="button" label="Delete" severity="danger" (click)="delete()" [disabled]="!drawType.id || busy()"></button><button pButton type="button" label="Cancel" severity="secondary" (click)="cancel()" [disabled]="busy()"></button><button pButton type="button" label="Save" icon="pi pi-save" (click)="save()" [loading]="busy()"></button></div>
-        } @else { <p>Select a draw type or create a new one.</p> }
+          <div class="editor-grid">
+            <label class="name-field">
+              Name <input pInputText [(ngModel)]="drawType.drawName" />
+            </label>
+            <label class="enabled">
+              <input type="checkbox" [(ngModel)]="drawType.enabled" /> Enabled
+            </label>
+          </div>
+          <div class="derived">
+            <span>Teams: {{ drawType.nbTeam }}</span>
+            <span>Groups: {{ drawType.nbGroup }}</span>
+            <span>Games: {{ drawType.nbGames }}</span>
+            <span>Points: {{ drawType.requirePointCalculationConfig ? 'Required' : 'Not required' }}</span>
+          </div>
+          <div class="groups-heading">
+            <h2>Subgroups</h2>
+            <button pButton type="button" icon="pi pi-plus" label="Add subgroup" (click)="addGroup()"></button>
+          </div>
+          <table class="groups-table">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Teams</th>
+                <th>Group type</th>
+                <th>Games</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (group of drawType.groups; track $index; let index = $index) {
+                <tr>
+                  <td>{{ group.position }}</td>
+                  <td>
+                    <p-inputnumber [(ngModel)]="group.nbTeams" (ngModelChange)="groupChanged()" [min]="0"
+                      [inputStyle]="{ width: '4rem' }" />
+                  </td>
+                  <td>
+                    <p-select [options]="groupTypes" optionLabel="label" optionValue="value"
+                      [(ngModel)]="group.groupType" (ngModelChange)="groupChanged()" />
+                  </td>
+                  <td>
+                    <p-inputnumber [(ngModel)]="group.nbGames" (ngModelChange)="groupChanged()" [min]="0"
+                      [inputStyle]="{ width: '4rem' }" />
+                  </td>
+                  <td>
+                    <button pButton type="button" icon="pi pi-trash" severity="danger" text="true"
+                      (click)="deleteGroup(index)" aria-label="Delete subgroup"></button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <div class="actions">
+            <button pButton type="button" label="Delete" severity="danger" (click)="delete()"
+              [disabled]="!drawType.id || busy()"></button>
+            <button pButton type="button" label="Cancel" severity="secondary" (click)="cancel()"
+              [disabled]="busy()"></button>
+            <button pButton type="button" label="Save" icon="pi pi-save" (click)="save()"
+              [loading]="busy()"></button>
+          </div>
+        } @else {
+          <p>Select a draw type or create a new one.</p>
+        }
       </section>
     </div>
   </main>

@@ -15,11 +15,18 @@ import { query, where } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { AbstractPersistentDataService } from '../abstract-persistent-data.service';
 import { DrawCupService } from './draw-cup.service';
+import { DrawPoolService } from './draw-pool.service';
+import { DrawWinsService } from './draw-wins.service';
+import { DrawRankingService } from './draw-ranking.service';
+import { GroupAllocParams } from './draw-abstract.service';
 
 /** Provides persistence operations for competition draws belonging to tournaments. */
 @Injectable({ providedIn: 'root' })
 export class DivisionDrawService extends AbstractPersistentDataService<DivisionDraw> {
   private readonly drawCupService = inject(DrawCupService);
+  private readonly drawPoolService = inject(DrawPoolService);
+  private readonly drawWinsService = inject(DrawWinsService);
+  private readonly drawRankingService = inject(DrawRankingService);
 
   /** Returns the Firestore collection containing division draw definitions. */
   protected override getCollectionName(): string {
@@ -181,23 +188,13 @@ export class DivisionDrawService extends AbstractPersistentDataService<DivisionD
     // search into previous groups
     for (let index = 0; index < groupIdx; index++) {
       if (step.drawType.groups[index].nbTeams > step.groups[index].teams.length) {
-        console.log(
-          'findNextGroupNeedingTeam2, found',
-          index,
-          step.drawType.groups[index].nbTeams,
-          step.groups[index].teams.length,
-        );
+        //console.log( 'findNextGroupNeedingTeam2, found', index, step.drawType.groups[index].nbTeams, step.groups[index].teams.length, );
         return index;
       } else {
-        console.log(
-          'findNextGroupNeedingTeam2, rejected',
-          index,
-          step.drawType.groups[index].nbTeams,
-          step.groups[index].teams.length,
-        );
+        // console.log('findNextGroupNeedingTeam2, rejected', index, step.drawType.groups[index].nbTeams, step.groups[index].teams.length);
       }
     }
-    console.log('findNextGroupNeedingTeam', groupIdx, '=> no found');
+    // console.log('findNextGroupNeedingTeam', groupIdx, '=> no found');
     // no group needs more teams
     return undefined;
   }
@@ -236,6 +233,7 @@ export class DivisionDrawService extends AbstractPersistentDataService<DivisionD
       }
     });
   }
+
   /**
    * Allocates games in a group of a step
    * It delegates the implementation to each method specific to the GroupType
@@ -246,6 +244,7 @@ export class DivisionDrawService extends AbstractPersistentDataService<DivisionD
    * @throws Error when the group type is not supported.
    */
   private allocateGroupGames(draw: DivisionDraw, step: Step, group: Group, groupDesc: DrawTypeSubGroup, whatPrefix: string) {
+    const groupAllocParams : GroupAllocParams = {draw, step, group, groupDesc, whatPrefix};
     switch (groupDesc.groupType) {
       case 'NONE':
         return;
@@ -253,129 +252,22 @@ export class DivisionDrawService extends AbstractPersistentDataService<DivisionD
       case '3_WINS':
       case '4_WINS':
       case '5_WINS':
-        return this.allocateGroupGamesWins(draw, step, group, groupDesc, whatPrefix);
+        return this.drawWinsService.allocateGroupGames(groupAllocParams);
       case 'POOL':
-        return this.allocateGroupGamesPool(draw, step, group, whatPrefix, 1);
+        return this.drawPoolService.allocateGroupGames({...groupAllocParams, nbGamePerCouple: 1});
       case 'POOL_RET':
-        return this.allocateGroupGamesPool(draw, step, group, whatPrefix, 2);
+        return this.drawPoolService.allocateGroupGames({...groupAllocParams, nbGamePerCouple: 2});
       case 'POOL_3':
-        return this.allocateGroupGamesPool(draw, step, group, whatPrefix, 3);
+        return this.drawPoolService.allocateGroupGames({...groupAllocParams, nbGamePerCouple: 3});
       case 'SEMI':
-        return this.allocateGroupGamesSemi(draw, step, group, groupDesc, whatPrefix);
+      case 'RANKING':
+        return this.drawRankingService.allocateGroupGames(groupAllocParams);
       default:
         if (groupDesc.groupType.startsWith('CUP')) {
-          return this.drawCupService.allocateGroupGamesCup(step, group, groupDesc.groupType, whatPrefix);
+          return this.drawCupService.allocateGroupGames(groupAllocParams);
         }
         throw new Error('GroupType is not supported yet: ' + groupDesc.groupType);
     }
-  }
-
-  /**
-   * Allocates games for a group Type WINS*
-   * @param step is the Step object
-   * @param group is the Group object containing teams and where the game must be allocated
-   * @param groupDesc is the descriptor of the group (from DrawType)
-   * @param whatPrefix is the prefix to use for naming the 'what' of a game
-   */
-  private allocateGroupGamesWins(draw: DivisionDraw, step: Step, group: Group, groupDesc: DrawTypeSubGroup, whatPrefix: string) {
-    for (let gameIdx = 0; gameIdx < groupDesc.nbGames; gameIdx++) {
-      group.games.push({
-        homeTeam: this.getTeamReference(gameIdx % 2 === 0 ? 1 : 2, step, draw),
-        awayTeam: this.getTeamReference(gameIdx % 2 === 0 ? 2 : 1 , step, draw),
-        id: crypto.randomUUID(),
-        resultRequired: false,
-        round: gameIdx + 1,
-        status: 'DRAWN',
-        what: whatPrefix + '-W' + (gameIdx + 1),
-      });
-    }
-  }
-  /**
-   * Allocates games for a group Type POOL*
-   * @param step is the Step object
-   * @param group is the Group object containing teams and where the game must be allocated
-   * @param groupDesc is the descriptor of the group (from DrawType)
-   * @param whatPrefix is the prefix to use for naming the 'what' of a game
-   */
-  private allocateGroupGamesPool(draw: DivisionDraw, step: Step, group: Group, whatPrefix: string, nbGamePerCouple: number) {
-    const offset = step.groups.filter((g, idx) => idx < group.position).map(g => g.teams.length).reduce((a,b) => a+b, 0);
-    // console.log('allocateGroupGamesPool(', group.name, whatPrefix, nbGamePerCouple, group.teams.length + ' teams');
-    for (let ret = 1; ret <= nbGamePerCouple; ret++) {
-      GamePoolOptions[group.teams.length]
-        .filter((gpo) => (ret % 2 === 1 && !gpo.isReturn) || (ret % 2 === 0 && gpo.isReturn))
-        .forEach((gpo) => {
-          group.games.push({
-            homeTeam: this.getTeamReference(offset + gpo.teamHome, step, draw),
-            awayTeam: this.getTeamReference(offset + gpo.teamAway, step, draw),
-            id: crypto.randomUUID(),
-            resultRequired: false,
-            round: gpo.round,
-            status: 'DRAWN',
-            what: whatPrefix + '-R' + gpo.round + '-#' + gpo.gameNb
-          });
-        });
-    }
-    this.getOrCreateTeamPoints(group);
-  }
-  public getOrCreateTeamPoints(group: Group|undefined): TeamPoint[] {
-    if (group) {
-      let poolGroup: SpecificDataPool = group.specificData as SpecificDataPool;
-      poolGroup.teamsPoints = group.teams.map(teamRef => {
-        return {
-          team: teamRef,
-          cumulatedOppositeScore: 0,
-          cumulatedScore: 0,
-          draw: 0,
-          goalAverage: 0,
-          lost: 0,
-          played: 0,
-          points: 0,
-          rank: 1,
-          win: 0
-        };
-      });
-      return poolGroup.teamsPoints;
-    } else 
-      return []
-  }
-  private getTeamReference(rank: number, step: Step, draw: DivisionDraw): TeamReference {
-    console.log('getTeamReference', rank, step, draw);
-    const tr: TeamReference = { teamSelectorType: 'RANK_IN_STEP', rank };
-    if (step.position > 0) {
-      tr.stepId = draw.steps[step.position-1].id;
-    }
-    if (step.inputTeams[rank-1].teamId) {
-      tr.teamId = step.inputTeams[rank-1].teamId
-    }
-    return tr;
-  }
-
-  /**
-   * Allocates games for a group Type SEMI*: 1vs2,3vs4
-   * @param step is the Step object
-   * @param group is the Group object containing teams and where the game must be allocated
-   * @param groupDesc is the descriptor of the group (from DrawType)
-   * @param whatPrefix is the prefix to use for naming the 'what' of a game
-   */
-  private allocateGroupGamesSemi(draw: DivisionDraw, step: Step, group: Group, groupDesc: DrawTypeSubGroup, whatPrefix: string) {
-    group.games.push({
-      homeTeam: this.getTeamReference(1, step, draw),
-      awayTeam: this.getTeamReference(2, step, draw),
-      id: crypto.randomUUID(),
-      resultRequired: true,
-      round: 1,
-      status: 'DRAWN',
-      what: whatPrefix + '-1vs2',
-    });
-    group.games.push({
-      homeTeam: this.getTeamReference(3, step, draw),
-      awayTeam: this.getTeamReference(4, step, draw),
-      id: crypto.randomUUID(),
-      resultRequired: true,
-      round: 1,
-      status: 'DRAWN',
-      what: whatPrefix + '-3vs4',
-    });
   }
 
   //////////////////////////////////////////////////////////////////////////

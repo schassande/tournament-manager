@@ -33,7 +33,11 @@ export interface PointCalculation extends WithId {
   lostPoint: number;
   /** Number of point when a game is a draw*/
   drawPoint: number;
+  /** Ordered list of the criteria for ranking teams */
+  rankingCriteria?: RankingCriteria[];
 }
+
+export const DEFAULT_RANKING_CRITERIA: RankingCriteria[] = ['POINTS', 'GOAL_AVERAGE',  'WIN',  'CUMULATED_SCORE'];
 
 /**
  * For a given competition and divisions, this class defines a Step of the competition. 
@@ -140,6 +144,8 @@ export interface TeamPoint {
   rank: number;
 }
 
+export type RankingCriteria = 'POINTS' | 'GOAL_AVERAGE' | 'WIN' | 'CUMULATED_SCORE' | 'CUMULATED_OPPOSITE_SCORE';
+
 /** A game of the DrawGroup */
 export interface DrawGame extends WithId {
   /** The identifier of the real game  */
@@ -240,7 +246,7 @@ export type GroupType = 'NONE'
   | 'POOL' | 'POOL_RET' | 'POOL_3'
   | '2_WINS'  | '3_WINS' | '4_WINS' | '5_WINS' 
   | 'CUP2_RK2'
-  | 'SEMI' 
+  | 'RANKING' | 'SEMI' 
   | 'CUP4_RK2'   | 'CUP4_RK4' 
   | 'CUP8_RK2'   | 'CUP8_RK4'   | 'CUP8_RK8'
   | 'CUP16_RK2'  | 'CUP16_RK4'  | 'CUP16_RK8' 
@@ -274,7 +280,7 @@ export const default_drawlibs: DrawType[] = [
   createDrawType(6, '6 teams, 2 pools + Return',   createDrawTypeGroup(0, 3,	'POOL_RET',	3),  createDrawTypeGroup(1, 3,	'POOL_RET',	3)),
   createDrawType(6, '6 teams, Cup4 + Cup2',        createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 2,	'CUP2_RK2',	1)),
   createDrawType(6, '6 teams, Cup4 + none',        createDrawTypeGroup(0, 4,	'CUP4_RK4',	4),  createDrawTypeGroup(1, 2,	'NONE',	0)),
-  createDrawType(6, '6 teams, None4 + Cup2',       createDrawTypeGroup(0, 2,	'NONE',	0),      createDrawTypeGroup(1, 4,	'SEMI',	2)),
+  createDrawType(6, '6 teams, None4 + Cup2',       createDrawTypeGroup(0, 2,	'NONE',	0),      createDrawTypeGroup(1, 4,	'RANKING',	2)),
   createDrawType(6, '6 teams, Cup2 + None4',       createDrawTypeGroup(0, 2,	'CUP2_RK2',	1),  createDrawTypeGroup(1, 2,	'NONE',	0),),
 
   createDrawType(7, '7 teams, pool',               createDrawTypeGroup(0, 7,	'POOL',	21)),    
